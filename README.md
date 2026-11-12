@@ -38,6 +38,17 @@ cd backend && python -m pytest
 ## Demo accounts
 Created by `scripts/seed.py`. With `DEMO_MODE=true` the login page shows one-click persona buttons. The demo password for every seeded user is `Duly@2026` (synthetic demo data only).
 
+| Role | Email |
+|---|---|
+| Supplier (one per supplier, 6 total) | e.g. `invoices@kesar-spares.example` (Kesar Engineering Spares) |
+| AP Clerk | `asha.kulkarni@plantx.example`, `nikhil.verma@plantx.example` |
+| Approver L1 / L2 / L3 | `rohan.mehta@`, `kavita.desai@`, `vikram.rao@plantx.example` |
+| Stores | `imran.shaikh@plantx.example` |
+| Auditor | `meera.iyer@plantx.example` |
+| Admin | `sanjay.patil@plantx.example` |
+
+Five wrong passwords lock an account for 15 minutes; `python scripts/seed.py --reset` clears it.
+
 ## Troubleshooting
 - `npm` not found on Windows: reinstall Node.js and reopen the terminal.
 - Port already in use: stop other apps on 8000/5173, or run `python run.py --backend` and `python run.py --frontend` separately.

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     secret_key: str = ""
     session_minutes: int = 60
+    login_rate_limit: str = "10/minute"
+    lockout_threshold: int = 5
+    lockout_minutes: int = 15
     database_url: str = ""
     data_encryption_key: str = ""
     anthropic_api_key: str = ""

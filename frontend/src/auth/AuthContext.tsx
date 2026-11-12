@@ -41,9 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
-  const onSession = (me: Me) => {
-    qc.clear();
+  // On identity change, drop every cached query except "me" (which the provider observes;
+  // clearing it would detach the observer and leave the old user on screen).
+  const switchIdentity = (me: Me | null) => {
     qc.setQueryData(["me"], me);
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+  };
+  const onSession = (me: Me) => {
+    switchIdentity(me);
     return me;
   };
 
@@ -63,9 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login: (email, password) => loginMut.mutateAsync({ email, password }),
     demoLogin: (email) => demoMut.mutateAsync(email),
     logout: async () => {
-      await api<void>("/auth/logout", { method: "POST" });
-      qc.clear();
-      qc.setQueryData(["me"], null);
+      try {
+        await api<void>("/auth/logout", { method: "POST" });
+      } finally {
+        switchIdentity(null); // an already-expired session still signs out locally
+      }
     },
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

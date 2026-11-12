@@ -5,11 +5,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app import __version__
-from app.api import health
+from app.api import auth, health, invoices
 from app.core.config import get_settings
 from app.core.db import create_all
+from app.core.ratelimit import limiter
 
 _DOCS_PATHS = ("/api/docs", "/api/openapi.json")
 
@@ -46,7 +49,12 @@ def create_app() -> FastAPI:
             response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         return response
 
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(invoices.router, prefix="/api")
     return app
 
 

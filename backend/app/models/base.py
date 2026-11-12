@@ -16,3 +16,10 @@ def utcnow() -> datetime:
 
 def created_at_col():
     return mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+def as_utc(dt: datetime | None) -> datetime | None:
+    """SQLite returns naive datetimes even for timezone=True columns; treat them as UTC."""
+    if dt is None or dt.tzinfo is not None:
+        return dt
+    return dt.replace(tzinfo=UTC)
