@@ -1,0 +1,33 @@
+/* Shared page, table, skeleton and empty-state styles. */
+.page { display: flex; flex-direction: column; gap: 18px; }
+.page-head-row { flex-direction: row; justify-content: space-between; align-items: flex-end; }
+
+.table-panel { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--color-text-secondary); padding: 10px 12px; border-bottom: 1px solid var(--color-border);
+  background: var(--color-canvas); white-space: nowrap;
+}
+.table td { padding: 9px 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.table tbody tr:hover { background: #F8FAFC; }
+.table tbody tr:last-child td { border-bottom: none; }
+.num-col { text-align: right; }
+.row-link { font-weight: 500; text-decoration: none; }
+.row-link:hover { text-decoration: underline; }
+
+.empty { padding: 40px 20px; text-align: center; color: var(--color-text-secondary); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+.skeleton-rows { padding: 8px 12px; display: flex; flex-direction: column; gap: 10px; }
+.skeleton-row {
+  height: 22px; border-radius: 3px;
+  background: linear-gradient(90deg, #EEF2F7 0%, #F6F8FB 50%, #EEF2F7 100%);
+  background-size: 200% 100%; animation: shimmer 1.2s infinite linear;
+}
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.chip-lg { height: 28px; padding: 0 12px; font-size: 14px; border-radius: 14px; }
+.sev-icon { flex: none; }
+.sev-block { color: var(--color-block-text); }
+.sev-flag { color: var(--color-flag-text); }
+.sev-info { color: var(--color-primary); }

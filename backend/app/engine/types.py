@@ -8,6 +8,11 @@ from decimal import Decimal
 from app.core.enums import Severity
 
 
+def fmt_num(v: Decimal) -> str:
+    """Plain number for messages: Decimal('2000.000') -> '2000', Decimal('1.50') -> '1.5'."""
+    return format(v.normalize(), "f")
+
+
 @dataclass(frozen=True)
 class DocLine:
     line_no: int

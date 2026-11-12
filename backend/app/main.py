@@ -9,7 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app import __version__
-from app.api import auth, health, invoices
+from app.api import auth, health, invoices, suppliers
 from app.core.config import get_settings
 from app.core.db import create_all
 from app.core.ratelimit import limiter
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(invoices.router, prefix="/api")
+    app.include_router(suppliers.router, prefix="/api")
     return app
 
 

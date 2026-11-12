@@ -20,7 +20,8 @@ function readCookie(name: string): string | null {
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
-  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // JSON bodies are strings; FormData (uploads) must let the browser set the multipart boundary.
+  if (typeof init.body === "string" && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (method !== "GET" && method !== "HEAD") {
     const csrf = readCookie("duly_csrf");
     if (csrf) headers.set("X-CSRF-Token", csrf);

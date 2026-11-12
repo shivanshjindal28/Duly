@@ -15,6 +15,7 @@ from rapidfuzz import fuzz
 
 from app.engine.policy import Tolerances
 from app.engine.types import DocLine, InvoiceDoc, Reason
+from app.engine.types import fmt_num as _n
 from app.core.enums import Decision, Severity
 from app.validation.rules import validate
 
@@ -202,7 +203,7 @@ def _price_check(ln: DocLine, p: PoLineView, qty: Decimal, price: Decimal, tol: 
     sev = Severity.BLOCK if pct > tol.pp_block_pct else Severity.FLAG
     return [Reason("PRICE_VARIANCE", sev,
                    f"{where}: unit price {_inr(price)} is {pct:.2f}% above the PO price {_inr(p.unit_price)}; "
-                   f"{_inr(amount)} more on {qty:g} units.", ev, ln.line_no)]
+                   f"{_inr(amount)} more on {_n(qty)} units.", ev, ln.line_no)]
 
 
 def _goods_qty_check(ln: DocLine, p: PoLineView, qty: Decimal, uom: str, tol: Tolerances) -> list[Reason]:
@@ -223,12 +224,12 @@ def _goods_qty_check(ln: DocLine, p: PoLineView, qty: Decimal, uom: str, tol: To
           "tolerance_pct": str(allowed_pct), "uom": uom}
     if excess_pct <= allowed_pct:
         return [Reason("QTY_EXCEEDS_GR", Severity.INFO,
-                       f"{where}: billed {excess:g} {uom} over received, within the {allowed_pct}% quantity tolerance.",
+                       f"{where}: billed {_n(excess)} {uom} over received, within the {allowed_pct}% quantity tolerance.",
                        ev, ln.line_no)]
     sev = Severity.BLOCK if excess_pct > tol.dq_block_pct else Severity.FLAG
     return [Reason("QTY_EXCEEDS_GR", sev,
-                   f"{where}: billed {qty:g} {uom}, but only {open_qty:g} {uom} is received and not yet invoiced "
-                   f"({p.received_qty:g} received, {p.invoiced_qty:g} already invoiced). Excess {excess:g} {uom}.",
+                   f"{where}: billed {_n(qty)} {uom}, but only {_n(open_qty)} {uom} is received and not yet invoiced "
+                   f"({_n(p.received_qty)} received, {_n(p.invoiced_qty)} already invoiced). Excess {_n(excess)} {uom}.",
                    ev, ln.line_no)]
 
 
@@ -283,7 +284,7 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                     continue
                 qty, price = ln.qty * factor, ln.unit_price / factor
                 reasons.append(Reason("UOM_CONVERTED", Severity.INFO,
-                                      f"Line {ln.line_no}: {ln.qty:g} {inv_uom} converted to {qty:g} {po_uom} "
+                                      f"Line {ln.line_no}: {_n(ln.qty)} {inv_uom} converted to {_n(qty)} {po_uom} "
                                       f"(price {_inr(ln.unit_price)}/{inv_uom} = {_inr(price)}/{po_uom}).",
                                       {"from": f"{ln.qty} {inv_uom}", "to": f"{qty} {po_uom}"}, ln.line_no))
             if how == "description":
@@ -293,7 +294,7 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                                       ln.line_no))
             if ln.gst_rate != p.gst_rate:
                 reasons.append(Reason("TAX_MISMATCH", Severity.FLAG,
-                                      f"Line {ln.line_no}: GST {ln.gst_rate:g}% differs from the PO rate {p.gst_rate:g}%.",
+                                      f"Line {ln.line_no}: GST {_n(ln.gst_rate)}% differs from the PO rate {_n(p.gst_rate)}%.",
                                       {"invoice_rate": str(ln.gst_rate), "po_rate": str(p.gst_rate)}, ln.line_no))
             reasons += _price_check(ln, p, qty, price, tol)
             if po.is_service:

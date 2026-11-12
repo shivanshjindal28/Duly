@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Cpu, LayoutDashboard, LogOut, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Building2, Cpu, FileText, LayoutDashboard, LogOut, ShieldCheck, Upload, type LucideIcon } from "lucide-react";
 import { api, type Health } from "../api/client";
 import { roleBadge, useAuth, type Role } from "../auth/AuthContext";
 import "./AppShell.css";
@@ -14,7 +14,19 @@ interface NavItem {
 
 /** Role-aware menu. Items are added here as each screen is built (see PROGRESS.md). */
 const NAV: { section: string; items: NavItem[] }[] = [
-  { section: "Workspace", items: [{ to: "/", label: "Overview", icon: LayoutDashboard, roles: "all" }] },
+  {
+    section: "Workspace",
+    items: [
+      { to: "/", label: "Overview", icon: LayoutDashboard, roles: "all" },
+      {
+        to: "/invoices",
+        label: "Invoices",
+        icon: FileText,
+        roles: ["supplier", "clerk", "approver", "auditor", "admin"],
+      },
+      { to: "/upload", label: "Upload invoice", icon: Upload, roles: ["supplier", "clerk"] },
+    ],
+  },
 ];
 
 const AI_MODE_TEXT: Record<Health["ai_mode"], string> = {
@@ -55,7 +67,7 @@ export function AppShell() {
               <ul>
                 {s.items.map((item) => (
                   <li key={item.to}>
-                    <NavLink to={item.to} end className="nav-link">
+                    <NavLink to={item.to} end={item.to === "/"} className="nav-link">
                       <item.icon size={16} aria-hidden="true" />
                       {item.label}
                     </NavLink>

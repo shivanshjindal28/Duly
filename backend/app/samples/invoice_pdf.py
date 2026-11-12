@@ -179,10 +179,11 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
     # Line table
     y -= 24 * mm
     cols = [  # (header, x, align)
-        ("#", left, "l"), ("Item Code", left + 5 * mm, "l"), ("Description", left + 24 * mm, "l"),
-        ("HSN/SAC", left + 61 * mm, "l"), ("Qty", left + 84 * mm, "r"), ("UoM", left + 88 * mm, "l"),
-        ("Rate", left + 108 * mm, "r"), ("Taxable", left + 127 * mm, "r"), ("GST%", left + 136 * mm, "r"),
-        ("CGST", left + 151 * mm, "r"), ("SGST", left + 166 * mm, "r"), ("IGST", right, "r"),
+        # Amount columns are 18-20 mm apart so even ₹99,99,999.00 never touches its neighbour.
+        ("#", left, "l"), ("Item Code", left + 5 * mm, "l"), ("Description", left + 25 * mm, "l"),
+        ("HSN/SAC", left + 56 * mm, "l"), ("Qty", left + 76 * mm, "r"), ("UoM", left + 78 * mm, "l"),
+        ("Rate", left + 98 * mm, "r"), ("Taxable", left + 118 * mm, "r"), ("GST%", left + 126 * mm, "r"),
+        ("CGST", left + 144 * mm, "r"), ("SGST", left + 162 * mm, "r"), ("IGST", right, "r"),
     ]
     c.setFillColor(colors.HexColor("#EEF1F6"))
     c.rect(left - 1 * mm, y - 1.8 * mm, right - left + 2 * mm, 6 * mm, stroke=0, fill=1)
@@ -196,7 +197,7 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
         y -= 6 * mm
         ln: Line = row["line"]
         cells = [
-            str(row["no"]), ln.item_code, ln.description[:24], ln.hsn_sac, _qty(ln.qty), ln.uom,
+            str(row["no"]), ln.item_code, ln.description[:21], ln.hsn_sac, _qty(ln.qty), ln.uom,
             inr(ln.unit_price), inr(row["value"]), f"{ln.gst_rate.normalize():f}",
             inr(row["cgst"]), inr(row["sgst"]), inr(row["igst"]),
         ]

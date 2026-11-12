@@ -11,6 +11,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.engine.types import InvoiceDoc, Reason
+from app.engine.types import fmt_num as _n
 from app.core.enums import Severity
 from app.validation import hsn
 from app.validation.gstin import STATE_CODES, is_valid_gstin
@@ -110,15 +111,15 @@ def check_tax(doc: InvoiceDoc) -> list[Reason]:
     for ln in doc.lines:
         known = hsn.lookup(ln.hsn_sac)
         if known and ln.gst_rate not in known[2]:
-            allowed = ", ".join(f"{r:g}%" for r in sorted(known[2]))
+            allowed = ", ".join(f"{_n(r)}%" for r in sorted(known[2]))
             out.append(Reason("TAX_MISMATCH", Severity.FLAG,
-                              f"Line {ln.line_no}: GST {ln.gst_rate:g}% is not valid for HSN {ln.hsn_sac} ({known[1]}); expected {allowed}.",
+                              f"Line {ln.line_no}: GST {_n(ln.gst_rate)}% is not valid for HSN {ln.hsn_sac} ({known[1]}); expected {allowed}.",
                               {"hsn_sac": ln.hsn_sac, "gst_rate": str(ln.gst_rate), "allowed": allowed}, ln.line_no))
         line_tax = ln.cgst + ln.sgst + ln.igst
         expected = ln.taxable_value * ln.gst_rate / 100
         if abs(line_tax - expected) > ROUNDING:
             out.append(Reason("TAX_MISMATCH", Severity.FLAG,
-                              f"Line {ln.line_no}: tax {line_tax:.2f} does not equal {ln.gst_rate:g}% of {ln.taxable_value:.2f} ({expected:.2f}).",
+                              f"Line {ln.line_no}: tax {line_tax:.2f} does not equal {_n(ln.gst_rate)}% of {ln.taxable_value:.2f} ({expected:.2f}).",
                               {"line_tax": f"{line_tax:.2f}", "expected": f"{expected:.2f}"}, ln.line_no))
     return out
 

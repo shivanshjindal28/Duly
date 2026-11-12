@@ -9,10 +9,14 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import { applyTokens } from "./theme/tokens";
 import "./theme/global.css";
+import "./theme/common.css";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./layout/AppShell";
 import { LoginPage } from "./pages/LoginPage";
+import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
+import { InvoicesPage } from "./pages/InvoicesPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { UploadPage } from "./pages/UploadPage";
 
 applyTokens();
 
@@ -43,7 +47,17 @@ const router = createBrowserRouter([
       { path: "/login", element: <LoginPage /> },
       {
         element: <RequireAuth />,
-        children: [{ element: <AppShell />, children: [{ path: "/", element: <OverviewPage /> }] }],
+        children: [
+          {
+            element: <AppShell />,
+            children: [
+              { path: "/", element: <OverviewPage /> },
+              { path: "/invoices", element: <InvoicesPage /> },
+              { path: "/invoices/:id", element: <InvoiceDetailPage /> },
+              { path: "/upload", element: <UploadPage /> },
+            ],
+          },
+        ],
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],

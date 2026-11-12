@@ -13,7 +13,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -24,7 +24,8 @@ from app.ingestion.pipeline import UploadError, confidence_threshold, process_up
 from app.ingestion.storage import path_of
 from app.core.enums import Role
 from app.engine.catalog import info
-from app.models import Document, ExtractionResult, Invoice, Supplier, User
+from app.models import Document, ExtractionResult, Invoice, MatchResult, ReasonCode, Supplier, User
+from app.workflow.lifecycle import rail_progress
 from app.workflow.matching import latest_match
 
 router = APIRouter(
@@ -46,6 +47,7 @@ class InvoiceSummary(BaseModel):
     decision: str | None
     current_owner: str
     received_at: datetime
+    rail: int  # completed stops on the Duly rail (0-5)
 
 
 class LineOut(BaseModel):
@@ -121,12 +123,28 @@ class InvoiceDetail(InvoiceSummary):
     match: MatchOut | None
 
 
-def _summary_kwargs(inv: Invoice, supplier_name: str | None) -> dict:
+def _summary_kwargs(inv: Invoice, supplier_name: str | None, codes: set[str]) -> dict:
     return dict(
         id=inv.id, supplier_id=inv.supplier_id, supplier_name=supplier_name, invoice_number=inv.invoice_number,
         invoice_date=inv.invoice_date, po_number=inv.po_number_text, total=inv.total, status=inv.status,
         decision=inv.decision, current_owner=inv.current_owner, received_at=inv.received_at,
+        rail=rail_progress(inv, codes),
     )
+
+
+def _latest_codes(db: Session, invoice_ids: list[int]) -> dict[int, set[str]]:
+    """Reason codes of the latest match per invoice, in one query."""
+    if not invoice_ids:
+        return {}
+    latest = (select(func.max(MatchResult.id).label("mid")).where(MatchResult.invoice_id.in_(invoice_ids))
+              .group_by(MatchResult.invoice_id).subquery())
+    rows = db.execute(select(MatchResult.invoice_id, ReasonCode.code)
+                      .join(latest, latest.c.mid == MatchResult.id)
+                      .join(ReasonCode, ReasonCode.match_result_id == MatchResult.id)).all()
+    out: dict[int, set[str]] = {}
+    for inv_id, code in rows:
+        out.setdefault(inv_id, set()).add(code)
+    return out
 
 
 def get_invoice_in_scope(invoice_id: int, scope: SupplierScope, db: Session) -> Invoice:
@@ -147,8 +165,10 @@ def _detail(db: Session, inv: Invoice) -> InvoiceDetail:
     latest: dict[str, ExtractionResult] = {}
     for r in results:
         latest[r.field] = r
+    match = _match_out(db, inv.id)
+    codes = {r.code for r in match.reasons} if match else set()
     return InvoiceDetail(
-        **_summary_kwargs(inv, supplier.name if supplier else None),
+        **_summary_kwargs(inv, supplier.name if supplier else None, codes),
         supplier_gstin=inv.supplier_gstin, buyer_gstin=inv.buyer_gstin, place_of_supply=inv.place_of_supply,
         currency=inv.currency, taxable_total=inv.taxable_total, cgst=inv.cgst, sgst=inv.sgst, igst=inv.igst,
         bank_account_masked=("XXXXXX" + inv.bank_account_last4) if inv.bank_account_last4 else None,
@@ -160,7 +180,7 @@ def _detail(db: Session, inv: Invoice) -> InvoiceDetail:
                          and r.confidence < threshold)
                 for r in latest.values()],
         confidence_threshold=threshold,
-        match=_match_out(db, inv.id),
+        match=match,
     )
 
 
@@ -183,7 +203,9 @@ def list_invoices(scope: SupplierScope = Depends(get_scope), db: Session = Depen
     if scope.supplier_id is not None:
         q = q.where(Invoice.supplier_id == scope.supplier_id)
     names = {s.id: s.name for s in db.scalars(select(Supplier))}
-    return [InvoiceSummary(**_summary_kwargs(i, names.get(i.supplier_id))) for i in db.scalars(q)]
+    invoices = db.scalars(q).all()
+    codes = _latest_codes(db, [i.id for i in invoices])
+    return [InvoiceSummary(**_summary_kwargs(i, names.get(i.supplier_id), codes.get(i.id, set()))) for i in invoices]
 
 
 @router.post("/upload", response_model=InvoiceDetail, status_code=status.HTTP_201_CREATED)
