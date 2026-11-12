@@ -73,6 +73,9 @@ GUIDE: dict[str, tuple[str, str, str]] = {
     "BANK_MISMATCH": ("The bank account printed on the invoice is not the verified one on file. This is how payment-diversion "
                       "(BEC) fraud works.", "Duly pays only the verified account. A genuine change goes through a bank change "
                       "request with a call-back, a 72 h cooling period and a second approver.", "clerk"),
+    "LINE_MAPPED": ("The item code does not match the PO, so Duly matched the line by its description. That is only a "
+                    "suggestion: paying on a wrong match would pay for the wrong item.",
+                    "The clerk confirms the match (or picks the right PO line), or marks the line as not on the PO.", "clerk"),
     "EMAIL_SENDER_UNVERIFIED": ("The invoice came from an email address not on the vendor master (possibly a lookalike domain).",
                                 "The clerk calls the supplier on the number on file before anything is paid.", "clerk"),
     "ERS_PO_INVOICE": ("This PO is settled automatically from receipts (ERS), so a supplier invoice risks paying twice.",

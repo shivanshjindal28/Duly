@@ -22,7 +22,7 @@ def _reset_limits():
 
 
 def test_every_actionable_code_has_guidance():
-    info_only = {"LINE_MAPPED", "UOM_CONVERTED", "SMALL_DIFFERENCE", "EINVOICE_VERIFIED", "EINVOICE_NOT_APPLICABLE",
+    info_only = {"UOM_CONVERTED", "SMALL_DIFFERENCE", "EINVOICE_VERIFIED", "EINVOICE_NOT_APPLICABLE",
                  "ERS_SETTLEMENT", "EMAIL_RECEIVED", "CREDIT_NOTE_APPLIED"}
     assert set(CATALOG) - info_only <= set(GUIDE)
 

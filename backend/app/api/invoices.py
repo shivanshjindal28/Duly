@@ -23,7 +23,7 @@ from app.ingestion.hardening import MAX_BYTES, UploadRejected
 from app.ingestion.pages import page_png
 from app.ingestion.pipeline import UploadError, confidence_threshold, process_upload
 from app.ingestion.storage import path_of
-from app.core import clock
+from app.core import clock, jobs
 from app.core.enums import InvoiceStatus, Role
 from app.engine.catalog import info
 from app.erp import S4HanaAdapterStub
@@ -151,6 +151,7 @@ class WorkflowOut(BaseModel):
     approve_blocked_sod: bool
     mfa_required: bool
     can_override: bool
+    can_clerk_reject: bool = False
 
 
 class EInvoiceField(BaseModel):
@@ -295,6 +296,8 @@ def _workflow(db: Session, inv: Invoice, user: User) -> WorkflowOut:
         approve_blocked_sod=bool(show_approve and auth.sod),
         mfa_required=wf.mfa_required(db, inv),
         can_override=user.role == Role.CLERK and inv.status == InvoiceStatus.FLAGGED,
+        can_clerk_reject=user.role == Role.CLERK and inv.status in (InvoiceStatus.BLOCKED, InvoiceStatus.FLAGGED,
+                                                                  InvoiceStatus.NEEDS_REVIEW),
     )
 
 
@@ -404,7 +407,7 @@ def upload_invoice(
 ) -> InvoiceDetail:
     data = file.file.read(MAX_BYTES + 1)
     try:
-        inv = process_upload(db, user, file.filename or "upload", data, supplier_id)
+        inv = jobs.enqueue("process_upload", process_upload, db, user, file.filename or "upload", data, supplier_id).result
     except (UploadRejected, UploadError) as e:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
@@ -611,3 +614,24 @@ def explain_decision(invoice_id: int, user: User = Depends(require_roles(Role.CL
     # What the supplier is told about the same decision (rendered in English or Hindi from the reviewed i18n files).
     out["supplier_view"] = [t.model_dump() for t in _todos(db, inv, [])]
     return out
+
+
+class MappingIn(BaseModel):
+    po_line_id: int | None = None  # None = not on the PO
+    reason: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/{invoice_id}/lines/{line_no}/mapping", response_model=InvoiceDetail)
+def line_mapping(invoice_id: int, line_no: int, body: MappingIn, user: User = Depends(require_roles(Role.CLERK)),
+                 scope: SupplierScope = Depends(get_scope), db: Session = Depends(get_db)) -> InvoiceDetail:
+    """Confirm (po_line_id) or reject (null) a line the engine matched by description."""
+    from app.workflow.line_mapping import MappingError, decide_mapping
+
+    inv = get_invoice_in_scope(invoice_id, scope, db)
+    try:
+        decide_mapping(db, inv, line_no, user, body.po_line_id, body.reason)
+    except MappingError as e:
+        db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
+    db.refresh(inv)
+    return _detail(db, inv, user)

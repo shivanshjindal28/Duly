@@ -32,7 +32,7 @@ CATALOG: dict[str, CodeInfo] = {
     "MISSING_GR": CodeInfo("No goods receipt yet", _R, "MIGO movement type 101"),
     "MISSING_SES": CodeInfo("No service entry sheet", _R, "ML81N service entry"),
     "SES_VALUE_EXCEEDED": CodeInfo("Billed more than accepted services", _R, "ML81N / MIRO"),
-    "LINE_MAPPED": CodeInfo("Line matched by description", "None (information)", "ME23N items"),
+    "LINE_MAPPED": CodeInfo("Line matched by description", _R + " until a clerk confirms", "ME23N items"),
     "UOM_CONVERTED": CodeInfo("Unit of measure converted", "None (information)", "MIRO quantity in order unit"),
     "SMALL_DIFFERENCE": CodeInfo("Small difference auto-accepted", "None (tolerance key BD)", "MIRO small differences"),
     "TAX_MISMATCH": CodeInfo("GST does not match the rules", _R, "MIRO tax / J1IG"),

@@ -4,6 +4,7 @@ import { fmtDateTime } from "../../lib/format";
 import { DecisionChip, SeverityIcon } from "../StatusChip";
 import { SapTerm } from "../SapTerm";
 import { ExplainPanel } from "./ExplainPanel";
+import { LineMappingActions } from "./LineMappingActions";
 
 const ORDER: Record<Severity, number> = { block: 0, flag: 1, info: 2 };
 
@@ -13,7 +14,7 @@ const SUMMARY = {
   BLOCK: "Cannot be paid until the cause is fixed. Blocks cannot be overridden.",
 } as const;
 
-function ReasonItem({ r, onLine, invoiceId }: { r: ReasonOut; onLine?: (line: number) => void; invoiceId?: number }) {
+function ReasonItem({ r, onLine, invoiceId, canMap }: { r: ReasonOut; onLine?: (line: number) => void; invoiceId?: number; canMap?: boolean }) {
   return (
     <li className={`reason reason-${r.severity}`}>
       <SeverityIcon severity={r.severity} />
@@ -33,6 +34,7 @@ function ReasonItem({ r, onLine, invoiceId }: { r: ReasonOut; onLine?: (line: nu
             Compare side by side
           </Link>
         ) : null}
+        {canMap && invoiceId && r.code === "LINE_MAPPED" && r.severity === "flag" ? <LineMappingActions r={r} invoiceId={invoiceId} /> : null}
         {r.sap_equivalent ? (
           <p className="reason-sap" title="What a user would see / use in SAP today">
             SAP: {r.sap_equivalent}
@@ -44,7 +46,7 @@ function ReasonItem({ r, onLine, invoiceId }: { r: ReasonOut; onLine?: (line: nu
 }
 
 /** Decision card: the engine's outcome, every reason with evidence, and how it was produced. */
-export function DecisionPanel({ match, onLine, invoiceId, canExplain }: { match: MatchOut | null; onLine?: (line: number) => void; invoiceId?: number; canExplain?: boolean }) {
+export function DecisionPanel({ match, onLine, invoiceId, canExplain, canMap }: { match: MatchOut | null; onLine?: (line: number) => void; invoiceId?: number; canExplain?: boolean; canMap?: boolean }) {
   if (!match) return <p className="muted">Not matched yet.</p>;
   const reasons = [...match.reasons].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
   const actionable = reasons.filter((r) => r.severity !== "info");
@@ -63,7 +65,7 @@ export function DecisionPanel({ match, onLine, invoiceId, canExplain }: { match:
       {actionable.length > 0 ? (
         <ul className="reasons" aria-label="Reasons">
           {actionable.map((r, i) => (
-            <ReasonItem key={i} r={r} onLine={onLine} invoiceId={invoiceId} />
+            <ReasonItem key={i} r={r} onLine={onLine} invoiceId={invoiceId} canMap={canMap} />
           ))}
         </ul>
       ) : (
@@ -76,7 +78,7 @@ export function DecisionPanel({ match, onLine, invoiceId, canExplain }: { match:
           </summary>
           <ul className="reasons">
             {infos.map((r, i) => (
-              <ReasonItem key={i} r={r} onLine={onLine} invoiceId={invoiceId} />
+              <ReasonItem key={i} r={r} onLine={onLine} invoiceId={invoiceId} canMap={canMap} />
             ))}
           </ul>
         </details>

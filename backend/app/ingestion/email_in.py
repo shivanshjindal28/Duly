@@ -27,7 +27,7 @@ from rapidfuzz import fuzz
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core import audit, clock
+from app.core import audit, clock, jobs
 from app.core.enums import Role, Severity
 from app.engine.types import Reason
 from app.models import InboundEmail, Invoice, Supplier, User
@@ -163,7 +163,8 @@ def process(db: Session, user: User, raw: bytes, source: str = "mailbox") -> Inb
                             "error": "Not an invoice file: Duly reads PDF, JPG and PNG attachments only."})
             continue
         try:
-            inv = process_upload(db, user, a.filename, a.data, None, source_email_id=em.id)
+            inv = jobs.enqueue("process_email_attachment", process_upload, db, user, a.filename, a.data, None,
+                               source_email_id=em.id).result
         except (UploadRejected, UploadError) as e:
             db.rollback()
             results.append({**row, "outcome": "rejected", "error": str(e)})

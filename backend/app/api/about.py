@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import __version__
 from app.ai.extract import ai_mode_setting
-from app.core import audit
+from app.core import audit, jobs
 from app.core.config import REPO_ROOT, get_settings
 from app.core.db import get_db
 from app.core.enums import Role
@@ -56,6 +56,7 @@ def architecture(db: Session = Depends(get_db)) -> dict:
             "policy_version": policy.version if policy else None,
             "invoices": db.scalar(select(func.count()).select_from(Invoice)),
             "demo_mode": settings.demo_mode,
+            "jobs": jobs.status(),
         },
     }
 

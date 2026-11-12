@@ -14,7 +14,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core import audit, clock
+from app.core import audit, clock, jobs
 from app.core.enums import Decision, InvoiceStatus
 from app.models import GoodsReceipt, GRLine, Invoice, POLine, PurchaseOrder, ServiceEntrySheet, User
 from app.workflow import ers
@@ -102,7 +102,7 @@ def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tupl
                 after={"po": po.po_number, "movement_type": "101",
                        "lines": [{"po_line_id": i, "qty": q} for i, q in lines]})
     settled = ers.settle(db, po, "GR", gr.gr_number, [(po_lines[i], q) for i, q in lines])
-    results = rematch_waiting(db, po, trigger=f"gr_posted:{gr.gr_number}")
+    results = jobs.enqueue("rematch_after_gr", rematch_waiting, db, po, trigger=f"gr_posted:{gr.gr_number}").result
     db.commit()
     return gr, results, settled
 
@@ -127,6 +127,6 @@ def post_service_entry(db: Session, user: User, po_number: str, po_line_id: int,
     audit.queue(db, "ses.posted", "service_entry", ses.ses_number,
                 after={"po": po.po_number, "po_line_id": pl.id, "value": value})
     settled = ers.settle(db, po, "SES", ses.ses_number, [(pl, value)])
-    results = rematch_waiting(db, po, trigger=f"ses_posted:{ses.ses_number}")
+    results = jobs.enqueue("rematch_after_ses", rematch_waiting, db, po, trigger=f"ses_posted:{ses.ses_number}").result
     db.commit()
     return ses, results, settled

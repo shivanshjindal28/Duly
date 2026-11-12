@@ -54,7 +54,9 @@ def invoice_to_doc(inv: Invoice, credits: dict[int, tuple[Decimal, Decimal]] | N
         lines=tuple(
             DocLine(ln.line_no, ln.item_code, ln.description, ln.hsn_sac, ln.qty, ln.uom, ln.unit_price,
                     ln.taxable_value, ln.gst_rate, ln.cgst, ln.sgst, ln.igst,
-                    *credits.get(ln.id, (Decimal(0), Decimal(0))))
+                    *credits.get(ln.id, (Decimal(0), Decimal(0))),
+                    confirmed_po_line_id=ln.mapping_po_line_id if ln.mapping_decision == "confirmed" else None,
+                    mapping_rejected=ln.mapping_decision == "rejected")
             for ln in inv.lines
         ),
         bank_account=decrypt_str(inv.bank_account_enc) if inv.bank_account_enc else None,

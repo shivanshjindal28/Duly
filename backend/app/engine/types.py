@@ -31,6 +31,9 @@ class DocLine:
     # (quantity in this line's unit for goods, taxable value for services).
     credited_qty: Decimal = Decimal(0)
     credited_value: Decimal = Decimal(0)
+    # A person's decision on a description match: confirmed PO line id, or rejected (not on the PO).
+    confirmed_po_line_id: int | None = None
+    mapping_rejected: bool = False
 
 
 @dataclass(frozen=True)

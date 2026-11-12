@@ -194,6 +194,7 @@ export interface WorkflowOut {
   approve_blocked_sod: boolean;
   mfa_required: boolean;
   can_override: boolean;
+  can_clerk_reject: boolean;
 }
 
 export interface SupplierOut {

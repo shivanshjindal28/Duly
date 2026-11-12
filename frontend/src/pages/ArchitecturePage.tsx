@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Database, FileText, Link2, ScanText, Sparkles, XCircle } from "lucide-react";
+import { CheckCircle2, Cpu, Database, FileText, Link2, ScanText, Sparkles, XCircle } from "lucide-react";
 import { api } from "../api/client";
 import { Markdown } from "../components/Markdown";
 import "./AboutPages.css";
@@ -18,6 +18,7 @@ interface ArchitectureOut {
     policy_version: number | null;
     invoices: number;
     demo_mode: boolean;
+    jobs: { queue: string; recent: { id: number; name: string; status: string; duration_ms: number | null }[] };
   };
 }
 
@@ -59,6 +60,8 @@ export function ArchitecturePage() {
             <Status ok={s.ocr !== "missing"} icon={ScanText} label="OCR" value={s.ocr === "loaded" ? "loaded" : s.ocr === "ready" ? "ready (loads on first scan)" : "missing"} />
             <Status ok={s.audit_chain_ok} icon={Link2} label="Audit chain" value={s.audit_chain_ok ? `verified · ${s.audit_events} events` : "BROKEN"} />
             <Status ok={s.policy_version !== null} icon={FileText} label="Policy" value={`version ${s.policy_version ?? "-"}`} />
+            <Status ok={!s.jobs.recent.some((j) => j.status === "failed")} icon={Cpu} label="Job queue"
+              value={`${s.jobs.queue} · ${s.jobs.recent.length ? `last: ${s.jobs.recent[0].name.replace(/_/g, " ")} ${s.jobs.recent[0].duration_ms ?? "-"} ms` : "no jobs since start"}`} />
           </ul>
         </section>
       ) : null}

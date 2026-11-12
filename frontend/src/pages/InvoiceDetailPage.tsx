@@ -202,7 +202,8 @@ export function InvoiceDetailPage() {
               Decision
             </h2>
           </div>
-          <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} canExplain={!!me && me.role !== "supplier" && me.role !== "stores"} />
+          <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} canExplain={!!me && me.role !== "supplier" && me.role !== "stores"}
+            canMap={me?.role === "clerk" && ["received", "needs_review", "flagged", "blocked"].includes(inv.status)} />
           <CreditNotePanel inv={inv} />
           <div className="pane-head pane-head-sub">
             <h2 className="label">e-invoice (signed QR)</h2>

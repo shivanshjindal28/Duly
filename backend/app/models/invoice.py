@@ -98,8 +98,13 @@ class InvoiceLine(Base):
     sgst: Mapped[Decimal] = mapped_column(Money, default=0)
     igst: Mapped[Decimal] = mapped_column(Money, default=0)
     po_line_id: Mapped[int | None] = mapped_column(ForeignKey("po_lines.id"))
+    # A clerk's decision on a line the engine matched by description: "confirmed" (to mapping_po_line_id)
+    # or "rejected" (not on the PO). The engine honours it on every later match.
+    mapping_decision: Mapped[str | None] = mapped_column(String(10))
+    mapping_po_line_id: Mapped[int | None] = mapped_column(ForeignKey("po_lines.id"))
+    mapping_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
-    invoice: Mapped[Invoice] = relationship(back_populates="lines")
+    invoice: Mapped[Invoice] = relationship(back_populates="lines", foreign_keys=[invoice_id])
 
 
 class ExtractionResult(Base):

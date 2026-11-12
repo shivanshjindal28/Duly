@@ -117,10 +117,18 @@ def _norm_text(s: str) -> str:
 
 
 def map_lines(doc: InvoiceDoc, po: PoView) -> dict[int, tuple[PoLineView, str]]:
-    """Invoice line_no -> (PO line, how it was matched: 'item_code' | 'description')."""
+    """Invoice line_no -> (PO line, how it was matched: 'confirmed' | 'item_code' | 'description')."""
     out: dict[int, tuple[PoLineView, str]] = {}
     used: set[int] = set()
     for ln in doc.lines:
+        if ln.mapping_rejected:  # a person said this line is not on the PO
+            continue
+        if ln.confirmed_po_line_id is not None:
+            hit = next((p for p in po.lines if p.id == ln.confirmed_po_line_id and p.id not in used), None)
+            if hit is not None:
+                used.add(hit.id)
+                out[ln.line_no] = (hit, "confirmed")
+                continue
         code = (ln.item_code or "").strip().upper()
         hit = next((p for p in po.lines if p.id not in used and p.item_code.upper() == code), None)
         how = "item_code"
@@ -296,11 +304,18 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                                       f"Line {ln.line_no}: {_n(ln.qty)} {inv_uom} converted to {_n(qty)} {po_uom} "
                                       f"(price {_inr(ln.unit_price)}/{inv_uom} = {_inr(price)}/{po_uom}).",
                                       {"from": f"{ln.qty} {inv_uom}", "to": f"{qty} {po_uom}"}, ln.line_no))
-            if how == "description":
-                reasons.append(Reason("LINE_MAPPED", Severity.INFO,
-                                      f"Line {ln.line_no} matched to PO line {p.line_no} ({p.item_code}) by description.",
-                                      {"invoice_description": ln.description, "po_description": p.description},
+            if how == "description":  # a suggestion only: a person must confirm it before it can be approved
+                reasons.append(Reason("LINE_MAPPED", Severity.FLAG,
+                                      f"Line {ln.line_no} looks like PO line {p.line_no} ({p.item_code}) by description; "
+                                      "a clerk must confirm the match.",
+                                      {"invoice_description": ln.description, "po_description": p.description,
+                                       "po_line_id": p.id, "po_line_no": p.line_no, "po_item_code": p.item_code},
                                       ln.line_no))
+            elif how == "confirmed":
+                reasons.append(Reason("LINE_MAPPED", Severity.INFO,
+                                      f"Line {ln.line_no} matched to PO line {p.line_no} ({p.item_code}), confirmed by a clerk.",
+                                      {"invoice_description": ln.description, "po_description": p.description,
+                                       "po_line_id": p.id, "confirmed": True}, ln.line_no))
             if ln.gst_rate != p.gst_rate:
                 reasons.append(Reason("TAX_MISMATCH", Severity.FLAG,
                                       f"Line {ln.line_no}: GST {_n(ln.gst_rate)}% differs from the PO rate {_n(p.gst_rate)}%.",

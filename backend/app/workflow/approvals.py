@@ -262,6 +262,25 @@ def reject(db: Session, inv: Invoice, user: User, reason: str) -> None:
     db.commit()
 
 
+def clerk_reject(db: Session, inv: Invoice, user: User, reason: str) -> None:
+    """AP clerk closes an invoice that must never be paid as it stands (e.g. a blocked duplicate).
+
+    Rejecting is not an override: it pays nothing. Allowed only for blocked, flagged or in-review
+    invoices; anything already routed to approvers is theirs to reject.
+    """
+    if user.role != Role.CLERK:
+        raise ApprovalError("Only an AP clerk can reject an invoice from the exception queue.")
+    if inv.status not in (InvoiceStatus.BLOCKED, InvoiceStatus.FLAGGED, InvoiceStatus.NEEDS_REVIEW):
+        raise ApprovalError(f"The invoice is {inv.status}; a clerk can reject only blocked, flagged or in-review invoices.")
+    if len(reason.strip()) < 5:
+        raise ApprovalError("A rejection needs a reason; the supplier will see it.")
+    before = {"status": str(inv.status)}
+    _cancel_open_steps(db, inv, "Cancelled: invoice rejected by AP clerk")
+    inv.status, inv.current_owner = InvoiceStatus.REJECTED, "Rejected by AP clerk"
+    audit.queue(db, "invoice.rejected_by_clerk", "invoice", inv.id, before=before, after={"reason": reason.strip()})
+    db.commit()
+
+
 def send_back(db: Session, inv: Invoice, user: User, comment: str) -> None:
     if len(comment.strip()) < 5:
         raise ApprovalError("Say what the clerk should look at.")

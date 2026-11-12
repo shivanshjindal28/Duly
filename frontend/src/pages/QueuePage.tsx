@@ -84,6 +84,25 @@ export function QueuePage() {
     onError: (e) => setNotice(e instanceof ApiError ? e.message : "Could not approve."),
   });
 
+  // R / F ask for a reason in a small dialog, then act (the server re-checks every action).
+  const [ask, setAsk] = useState<{ kind: "reject" | "send-back" | "clerk-reject"; row: Row } | null>(null);
+  const [askText, setAskText] = useState("");
+  const askRef = useRef<HTMLTextAreaElement>(null);
+  const decide = useMutation({
+    mutationFn: (a: { kind: string; id: number; text: string }) =>
+      api(`/approvals/invoices/${a.id}/${a.kind}`, { method: "POST", body: JSON.stringify({ comment: a.text }) }),
+    onSuccess: (_d, a) => {
+      setNotice(a.kind === "send-back" ? "Sent back to the AP clerk." : "Rejected.");
+      setAsk(null);
+      setAskText("");
+      qc.invalidateQueries({ queryKey: ["queue"] });
+    },
+    onError: (e) => setNotice(e instanceof ApiError ? e.message : "Could not complete the action."),
+  });
+  useEffect(() => {
+    if (ask) askRef.current?.focus();
+  }, [ask]);
+
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -92,23 +111,31 @@ export function QueuePage() {
     setCursor(0);
   }
 
-  // Keyboard: J/K move, Enter open, A approve (approvers), R open to reject, F open to flag/review.
+  // Keyboard: J/K move, Enter open, A approve (approvers), R reject (approver: their step; clerk: blocked /
+  // flagged / in-review invoices), F flag back to the clerk (approvers) or open to review (clerks).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;
-      if (t.closest("input, select, textarea") || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (ask || t.closest("input, select, textarea, [role=dialog]") || e.ctrlKey || e.metaKey || e.altKey) return;
       const row = rows[cursor];
       const key = e.key.toLowerCase();
+      const clerkCanReject = row && ["blocked", "flagged", "needs_review"].includes(row.status);
       if (key === "j") setCursor((c) => Math.min(rows.length - 1, c + 1));
       else if (key === "k") setCursor((c) => Math.max(0, c - 1));
-      else if ((key === "enter" || key === "r" || key === "f") && row) navigate(`/invoices/${row.id}`);
+      else if (key === "enter" && row) navigate(`/invoices/${row.id}`);
       else if (key === "a" && row && me?.role === "approver") approve.mutate(row.id);
+      else if (key === "r" && row && me?.role === "approver") setAsk({ kind: "reject", row });
+      else if (key === "r" && row && me?.role === "clerk") {
+        if (clerkCanReject) setAsk({ kind: "clerk-reject", row });
+        else setNotice(`${row.invoice_number} is ${row.status.replace("_", " ")}: a clerk can reject only blocked, flagged or in-review invoices.`);
+      } else if (key === "f" && row && me?.role === "approver") setAsk({ kind: "send-back", row });
+      else if (key === "f" && row) navigate(`/invoices/${row.id}`);
       else return;
       e.preventDefault();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rows, cursor, me, navigate, approve]);
+  }, [rows, cursor, me, navigate, approve, ask]);
 
   useEffect(() => {
     tableRef.current?.querySelector<HTMLElement>(`tr[data-idx="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
@@ -233,16 +260,50 @@ export function QueuePage() {
         {me?.role === "approver" ? (
           <>
             {" "}
-            · <kbd>A</kbd> approve (no-MFA invoices) · <kbd>R</kbd> open to reject
+            · <kbd>A</kbd> approve (no-MFA invoices) · <kbd>R</kbd> reject · <kbd>F</kbd> send back to the clerk
           </>
-        ) : (
+        ) : me?.role === "clerk" ? (
           <>
             {" "}
-            · <kbd>F</kbd> open to review or flag
+            · <kbd>R</kbd> reject (blocked, flagged, in review) · <kbd>F</kbd> open to review or flag
           </>
-        )}{" "}
+        ) : null}{" "}
         · {rows.length} invoice{rows.length === 1 ? "" : "s"}
       </p>
+      {ask ? (
+        <div className="q-ask-backdrop" onClick={() => setAsk(null)}>
+          <form
+            className="panel q-ask"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="q-ask-title"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setAsk(null);
+            }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              decide.mutate({ kind: ask.kind, id: ask.row.id, text: askText });
+            }}
+          >
+            <h2 id="q-ask-title">
+              {ask.kind === "send-back" ? "Send back to the AP clerk" : "Reject"} {ask.row.invoice_number}
+            </h2>
+            <label className="field">
+              <span>{ask.kind === "send-back" ? "What should the clerk look at?" : "Reason (the supplier sees it)"}</span>
+              <textarea ref={askRef} className="input textarea" rows={3} value={askText} onChange={(e) => setAskText(e.target.value)} />
+            </label>
+            <div className="q-ask-actions">
+              <button type="submit" className={`btn ${ask.kind === "send-back" ? "btn-primary" : "btn-danger"}`}
+                disabled={askText.trim().length < 5 || decide.isPending}>
+                {ask.kind === "send-back" ? "Send back" : "Reject"}
+              </button>
+              <button type="button" className="btn" onClick={() => setAsk(null)}>Cancel</button>
+              <span className="muted small">At least 5 characters · Esc cancels</span>
+            </div>
+          </form>
+        </div>
+      ) : null}
       {notice ? (
         <p className="alert alert-info" role="status">
           {notice}

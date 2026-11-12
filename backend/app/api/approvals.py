@@ -123,6 +123,11 @@ def reject(invoice_id: int, body: ActionIn, scope: SupplierScope = Depends(get_s
     return _act(wf.reject, invoice_id, scope, db, body.comment)
 
 
+@router.post("/invoices/{invoice_id}/clerk-reject", dependencies=[Depends(require_roles(Role.CLERK))])
+def clerk_reject(invoice_id: int, body: ActionIn, scope: SupplierScope = Depends(get_scope), db: Session = Depends(get_db)):
+    return _act(wf.clerk_reject, invoice_id, scope, db, body.comment)
+
+
 @router.post("/invoices/{invoice_id}/send-back", dependencies=[Depends(require_roles(Role.APPROVER))])
 def send_back(invoice_id: int, body: ActionIn, scope: SupplierScope = Depends(get_scope), db: Session = Depends(get_db)):
     return _act(wf.send_back, invoice_id, scope, db, body.comment)

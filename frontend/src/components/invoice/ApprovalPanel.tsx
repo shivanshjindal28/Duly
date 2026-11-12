@@ -47,7 +47,7 @@ function StepRow({ s }: { s: StepOut }) {
   );
 }
 
-type Action = "approve" | "reject" | "send-back" | "request-info" | "override";
+type Action = "approve" | "reject" | "send-back" | "request-info" | "override" | "clerk-reject";
 
 /** Approval timeline and the actions the signed-in user may take (the server re-checks every one). */
 export function ApprovalPanel({ inv }: { inv: InvoiceDetail }) {
@@ -150,16 +150,27 @@ export function ApprovalPanel({ inv }: { inv: InvoiceDetail }) {
         </div>
       ) : null}
 
-      {wf.can_override ? (
+      {wf.can_override || wf.can_clerk_reject ? (
         <div className="action-box">
           <label className="field">
-            <span>Justification to route this FLAG for approval (min. 15 characters; needs a second approver)</span>
+            <span>
+              {wf.can_override
+                ? "Justification to route this FLAG for approval (min. 15 characters; needs a second approver), or the reason to reject it"
+                : "Reason to reject this invoice (the supplier sees it). A block cannot be overridden."}
+            </span>
             <textarea className="input textarea" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
           </label>
           <div className="action-row">
-            <button type="button" className="btn btn-primary" disabled={busy || comment.trim().length < 15} onClick={() => act.mutate("override")}>
-              <ShieldAlert size={15} aria-hidden="true" /> Override and route for approval
-            </button>
+            {wf.can_override ? (
+              <button type="button" className="btn btn-primary" disabled={busy || comment.trim().length < 15} onClick={() => act.mutate("override")}>
+                <ShieldAlert size={15} aria-hidden="true" /> Override and route for approval
+              </button>
+            ) : null}
+            {wf.can_clerk_reject ? (
+              <button type="button" className="btn btn-danger" disabled={busy || comment.trim().length < 5} onClick={() => act.mutate("clerk-reject")}>
+                <OctagonX size={15} aria-hidden="true" /> Reject invoice
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}
