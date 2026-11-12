@@ -6,6 +6,7 @@ import { api, ApiError } from "../api/client";
 import type { InvoiceDetail } from "../api/types";
 import { DulyRail } from "../components/DulyRail";
 import { ApprovalPanel } from "../components/invoice/ApprovalPanel";
+import { CreditNotePanel } from "../components/invoice/CreditNotePanel";
 import { DecisionPanel } from "../components/invoice/DecisionPanel";
 import { DocumentViewer } from "../components/invoice/DocumentViewer";
 import { EInvoicePanel } from "../components/invoice/EInvoicePanel";
@@ -190,6 +191,7 @@ export function InvoiceDetailPage() {
             </h2>
           </div>
           <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} />
+          <CreditNotePanel inv={inv} />
           <div className="pane-head pane-head-sub">
             <h2 className="label">e-invoice (signed QR)</h2>
           </div>

@@ -92,6 +92,7 @@ class DemoCheck:
         self.step("S04+", "S04 stores posts GR -> auto re-match releases it", self._s04_gr, ("S04",))
         self.step("S05+", "S05 side-by-side compare with INV/0042", self._s05_compare, ("S05",))
         self.step("S06+", "S06 security alert logged", self._s06_alert, ("S06",))
+        self.step("S03+", "S03 supplier credit note -> quantity block released", self._s03_credit, ("S03",))
         self.step("S07+", "S07 hidden text shown to the clerk", self._s07_injection, ("S07",))
         self.step("S12+", "S12 clerk review logged -> matched", self._s12_review, ("S12",))
         self.step("S01+", "S01 L1 then L2 approve with MFA", self._s01_approvals, ("S01",))
@@ -198,6 +199,22 @@ class DemoCheck:
         d = self.detail("S04")
         assert d["decision"] == "APPROVE" and d["status"] == "pending_approval", (d["decision"], d["status"])
         return f"GR {r.json().get('number', '')} -> APPROVE, routed to approval"
+
+    def _s03_credit(self) -> str:
+        iid = self.inv["S03"]["id"]
+        h = self.login(KESAR)
+        d = self.client.get(f"/api/invoices/{iid}").json()
+        s = d["credit_suggestion"]
+        assert d["can_issue_credit"] and len(s) == 1 and D(s[0]["qty"]) == 20, s
+        r = self.client.post(f"/api/invoices/{iid}/credit-notes", headers=h, json={
+            "number": "CN/0071", "note_date": d["invoice_date"], "reason": "20 bearings not delivered",
+            "lines": [{"line_no": s[0]["line_no"], "qty": s[0]["qty"]}]})
+        assert r.status_code == 201, r.text[:200]
+        d = r.json()
+        assert d["decision"] == "APPROVE" and d["status"] == "pending_approval", (d["decision"], d["status"])
+        assert D(d["total"]) - D(d["net_total"]) == D(s[0]["total"]), (d["total"], d["net_total"])
+        return (f"CN/0071 credits 20 bearings Rs {s[0]['total']}: APPROVE, routed on the net "
+                f"Rs {d['net_total']} (invoice Rs {d['total']})")
 
     def _ers(self) -> str:
         h = self.login(STORES)

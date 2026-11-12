@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { BadgeCheck, CalendarClock, CircleAlert, Hourglass, Languages, Landmark, Upload, Wallet } from "lucide-react";
+import { BadgeCheck, CalendarClock, CircleAlert, FileMinus2, Hourglass, Languages, Landmark, Upload, Wallet } from "lucide-react";
 import { api } from "../api/client";
 import type { InvoiceStatus } from "../api/types";
 import { BankDetailsCard } from "../components/BankDetailsCard";
@@ -122,6 +122,12 @@ function InvoiceCard({ inv, msme }: { inv: PortalInvoice; msme: boolean }) {
               <li key={x.code}>{msg(x)}</li>
             ))}
           </ul>
+          {mine.some((x) => x.code === "QTY_EXCEEDS_GR" || x.code === "SES_VALUE_EXCEEDED") &&
+          !mine.some((x) => x.code === "DUPLICATE") ? (
+            <Link to={`/invoices/${inv.id}#credit-note`} className="btn btn-sm todo-btn">
+              <FileMinus2 size={14} aria-hidden="true" /> {t("portal.enter_credit_note")}
+            </Link>
+          ) : null}
         </section>
       ) : null}
       {theirs.length ? (

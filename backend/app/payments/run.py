@@ -22,9 +22,10 @@ from sqlalchemy.orm import Session
 
 from app.core import audit, clock
 from app.core.enums import InvoiceStatus, Role
-from app.models import Invoice, Payment, Policy, Supplier, User
+from app.models import CreditNote, Invoice, Payment, Policy, Supplier, User
 from app.models.base import as_utc
 from app.payments import msme as m
+from app.workflow.credit_notes import net_amounts
 from app.payments import tds as tds_mod
 
 TWO = Decimal("0.01")
@@ -76,7 +77,8 @@ class RunPlan:
     items: list[Proposal] = field(default_factory=list)
 
 
-def _discount(s: Supplier, inv: Invoice, today: date, due: date | None, cof: Decimal) -> tuple[Decimal, Decimal | None, bool]:
+def _discount(s: Supplier, inv: Invoice, today: date, due: date | None, cof: Decimal,
+              total: Decimal) -> tuple[Decimal, Decimal | None, bool]:
     """(discount amount, annualised return %, worth taking)."""
     pct = Decimal(str(s.early_discount_pct or 0))
     if pct <= 0 or not inv.invoice_date or not s.early_discount_days:
@@ -85,7 +87,7 @@ def _discount(s: Supplier, inv: Invoice, today: date, due: date | None, cof: Dec
         return Decimal(0), None, False
     days_early = max(1, ((due or today) - today).days)
     apr = (pct / (100 - pct) * Decimal(365) / Decimal(days_early) * 100).quantize(TWO)
-    amount = (inv.total * pct / 100).quantize(TWO, rounding=ROUND_HALF_UP)
+    amount = (total * pct / 100).quantize(TWO, rounding=ROUND_HALF_UP)
     return amount, apr, apr > cof
 
 
@@ -94,7 +96,10 @@ def _paid_this_fy(db: Session, supplier_id: int, today: date) -> Decimal:
     total = db.scalar(select(func.coalesce(func.sum(Invoice.taxable_total), 0))
                       .join(Payment, Payment.invoice_id == Invoice.id)
                       .where(Invoice.supplier_id == supplier_id, Payment.paid_at >= start))
-    return Decimal(str(total or 0))
+    credited = db.scalar(select(func.coalesce(func.sum(CreditNote.taxable), 0))
+                         .join(Payment, Payment.invoice_id == CreditNote.invoice_id)
+                         .where(CreditNote.supplier_id == supplier_id, Payment.paid_at >= start))
+    return Decimal(str(total or 0)) - Decimal(str(credited or 0))
 
 
 def plan(db: Session) -> RunPlan:
@@ -111,20 +116,22 @@ def plan(db: Session) -> RunPlan:
     paid_ids = set(db.scalars(select(Payment.invoice_id)))
     fy_paid: dict[int, Decimal] = {}
     invoices = db.scalars(select(Invoice).where(Invoice.status == InvoiceStatus.APPROVED)).all()
+    net = net_amounts(db, invoices)  # net of credit notes: what Plant X actually owes
     for inv in invoices:
         if inv.id in paid_ids:
             continue
+        taxable, total = net[inv.id]
         s = db.get(Supplier, inv.supplier_id)
         is_msme = inv.msme_due_date is not None
         binding = min(d for d in (inv.due_date, inv.msme_due_date) if d) if (inv.due_date or inv.msme_due_date) else None
         days_left = (binding - today).days if binding else None
-        disc, apr, worth = _discount(s, inv, today, inv.due_date, cof)
+        disc, apr, worth = _discount(s, inv, today, inv.due_date, cof, total)
         interest = Decimal(0)
         if binding and binding < today:
             rule, pay = "overdue", True
             reason = f"Overdue since {binding:%d %b %Y}: pay now."
             if is_msme:
-                interest = m.interest(inv.total, inv.msme_due_date, today, bank_rate)
+                interest = m.interest(total, inv.msme_due_date, today, bank_rate)
                 reason = (f"MSME payment overdue since {inv.msme_due_date:%d %b %Y}: pay now. "
                           f"Interest under MSMED s.16 so far: Rs {interest:,.2f}.")
         elif is_msme and inv.msme_due_date <= nxt + timedelta(days=buffer):
@@ -148,13 +155,13 @@ def plan(db: Session) -> RunPlan:
             disc = Decimal(0)
         if s.id not in fy_paid:
             fy_paid[s.id] = _paid_this_fy(db, s.id, today)
-        t = tds_mod.compute(s.tds_section or "none", s.pan or "", inv.taxable_total, fy_paid[s.id], table)
+        t = tds_mod.compute(s.tds_section or "none", s.pan or "", taxable, fy_paid[s.id], table)
         if pay:
-            fy_paid[s.id] += inv.taxable_total
+            fy_paid[s.id] += taxable
         out.items.append(Proposal(
             inv.id, inv.invoice_number, s.id, s.name, is_msme, inv.invoice_date, inv.due_date, inv.msme_due_date,
-            days_left, pay, rule, reason, inv.total, inv.taxable_total, disc, apr, t.section, t.label, t.rate_pct,
-            t.amount, inv.total - disc - t.amount, interest))
+            days_left, pay, rule, reason, total, taxable, disc, apr, t.section, t.label, t.rate_pct,
+            t.amount, total - disc - t.amount, interest))
     order = {"overdue": 0, "msme": 1, "discount": 2, "terms": 3, "defer": 4}
     out.items.sort(key=lambda x: (order[x.rule], x.msme_due_date or x.due_date or date.max, x.invoice_number))
     return out
@@ -221,12 +228,12 @@ def release(db: Session, user: User, invoice_ids: list[int]) -> tuple[str, list[
         s = db.get(Supplier, inv.supplier_id)
         if s.id not in fy_paid:
             fy_paid[s.id] = _paid_this_fy(db, s.id, today)
-        t = tds_mod.compute(s.tds_section or "none", s.pan or "", inv.taxable_total, fy_paid[s.id], table)
-        fy_paid[s.id] += inv.taxable_total
+        t = tds_mod.compute(s.tds_section or "none", s.pan or "", item.taxable, fy_paid[s.id], table)
+        fy_paid[s.id] += item.taxable
         disc = item.discount if item.rule == "discount" else Decimal(0)
-        p = Payment(invoice_id=iid, payment_run_id=run_id, gross_amount=inv.total, tds_amount=t.amount,
+        p = Payment(invoice_id=iid, payment_run_id=run_id, gross_amount=item.gross, tds_amount=t.amount,
                     tds_section=t.section, tds_rate_pct=t.rate_pct, discount_amount=disc,
-                    net_amount=inv.total - disc - t.amount, utr=_utr(today), released_by_user_id=user.id,
+                    net_amount=item.gross - disc - t.amount, utr=_utr(today), released_by_user_id=user.id,
                     reason=item.reason[:200], paid_at=now)
         db.add(p)
         inv.status = InvoiceStatus.PAID
@@ -234,7 +241,7 @@ def release(db: Session, user: User, invoice_ids: list[int]) -> tuple[str, list[
         payments.append(p)
         late = inv.msme_due_date is not None and today > inv.msme_due_date
         audit.queue(db, "payment.released", "invoice", iid, after={
-            "run": run_id, "utr": p.utr, "gross": str(inv.total), "tds": str(t.amount), "tds_section": t.section,
+            "run": run_id, "utr": p.utr, "gross": str(item.gross), "tds": str(t.amount), "tds_section": t.section,
             "discount": str(disc), "net": str(p.net_amount), "rule": item.rule, "msme_late": late})
     db.commit()
     return run_id, payments
@@ -268,8 +275,11 @@ def msme_rows(db: Session) -> list[MsmeRow]:
     today = clock.today()
     pays = {p.invoice_id: p for p in db.scalars(select(Payment))}
     rows = []
-    for inv in db.scalars(select(Invoice).where(Invoice.msme_due_date.is_not(None),
-                                                Invoice.status != InvoiceStatus.REJECTED)):
+    msme_invoices = db.scalars(select(Invoice).where(Invoice.msme_due_date.is_not(None),
+                                                     Invoice.status != InvoiceStatus.REJECTED)).all()
+    net = net_amounts(db, msme_invoices)
+    for inv in msme_invoices:
+        amount = net[inv.id][1]
         s = db.get(Supplier, inv.supplier_id)
         p = pays.get(inv.id)
         paid_on = as_utc(p.paid_at).astimezone(clock.IST).date() if p else None
@@ -280,12 +290,12 @@ def msme_rows(db: Session) -> list[MsmeRow]:
             risk, effect = Decimal(0), Decimal(0)
         else:
             status = "overdue" if late else "open"
-            risk, effect = m.deduction_at_risk(inv.total, inv.msme_due_date, today, tax_rate)
+            risk, effect = m.deduction_at_risk(amount, inv.msme_due_date, today, tax_rate)
         rows.append(MsmeRow(
-            inv.id, inv.invoice_number, s.name, s.udyam_no, s.msme_category, inv.total,
+            inv.id, inv.invoice_number, s.name, s.udyam_no, s.msme_category, amount,
             as_utc(inv.accepted_at).astimezone(clock.IST).date() if inv.accepted_at else None,
             inv.msme_due_date, paid_on, status, None if paid_on else (inv.msme_due_date - today).days, late,
-            m.interest(inv.total, inv.msme_due_date, end, bank_rate), risk, effect))
+            m.interest(amount, inv.msme_due_date, end, bank_rate), risk, effect))
     rows.sort(key=lambda r: (r.status not in ("overdue", "open"), r.due_date))
     return rows
 

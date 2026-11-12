@@ -1,5 +1,5 @@
 """SQLAlchemy models. Importing this package registers every table on Base.metadata."""
-from app.models.invoice import Document, ExtractionResult, Invoice, InvoiceLine, MatchResult, ReasonCode
+from app.models.invoice import CreditNote, CreditNoteLine, Document, ExtractionResult, Invoice, InvoiceLine, MatchResult, ReasonCode
 from app.models.org import Organisation, Supplier, User
 from app.models.procurement import GoodsReceipt, GRLine, POLine, PurchaseOrder, ServiceEntrySheet
 from app.models.workflow import (AppSetting, ApprovalStep, AuditEvent, BankChangeRequest, ChatSession, Delegation,
@@ -11,6 +11,8 @@ __all__ = [
     "AuditEvent",
     "BankChangeRequest",
     "ChatSession",
+    "CreditNote",
+    "CreditNoteLine",
     "Delegation",
     "Document",
     "ExtractionResult",

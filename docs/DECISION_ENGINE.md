@@ -57,6 +57,20 @@ passed into `decide(..., extra_reasons)` so the engine itself stays pure, and th
 | ERS_SETTLEMENT | info | Self-billed settlement created by Duly from a GR / SES on an ERS purchase order, at the PO price (`workflow/ers.py`) | MRRL evaluated receipt settlement |
 | ERS_PO_INVOICE | flag | A supplier invoice was uploaded against an ERS purchase order, whose receipts Duly settles itself: check it is not a second bill (if it re-bills settled trips, SES_VALUE_EXCEEDED / QTY_EXCEEDS_GR also blocks it) | Block R · MRRL / ME23N ERS indicator |
 
+| CREDIT_NOTE_APPLIED | info | The match is net of the supplier's credit note(s) against this invoice; message gives the numbers, the amount credited and the net payable (`workflow/credit_notes.py`) | MIRO credit memo / FB60 |
+
+**Credit notes.** A BLOCK cannot be overridden; an over-billed invoice is resolved by the supplier's credit note.
+The supplier (own invoice) or the AP clerk enters it against a blocked or flagged invoice; the form is prefilled
+with the exact credit that clears the QTY_EXCEEDS_GR (quantity) or SES_VALUE_EXCEEDED (value) exception. Duly prices
+it from the invoice line (unit price, GST rate, CGST+SGST or IGST as on the invoice) and re-runs the match. The
+engine sees each invoice line net of its credited quantity / value (`DocLine.credited_qty`, `credited_value`), and
+earlier invoices count net of their credit notes in the cumulative view. The printed invoice is never changed:
+math, tax and e-invoice checks still use the printed values; approval bands, MFA, the payment run (gross, TDS
+base) and the DoA control use the net amount. Rules: number 1-16 characters and unused by that supplier, dated on or
+after the invoice and not in the future, never more than billed per line. Not built: reading a credit-note PDF,
+price-difference credit notes clearing PRICE_VARIANCE (the clerk override covers that FLAG), credit notes after
+approval.
+
 **Evaluated receipt settlement (ERS).** POs flagged `ers` (seeded: 4500001015, Konkan freight) need no supplier
 invoice. When stores posts a GR or SES on one, Duly creates the payable `ERS-<receipt number>` from the receipt at the
 PO price and GST rate (CGST+SGST or IGST by state), logs every field with source `ers`, and runs it through this same

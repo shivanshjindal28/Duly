@@ -153,3 +153,41 @@ class ReasonCode(Base):
     line_no: Mapped[int | None] = mapped_column(Integer)
 
     match_result: Mapped[MatchResult] = relationship(back_populates="reasons")
+
+
+class CreditNote(Base):
+    """A supplier credit note (GST s.34) against one invoice. Applied at once: the rules match the
+    invoice net of its credit notes, and the payment run pays the net amount."""
+    __tablename__ = "credit_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), index=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), index=True)
+    number: Mapped[str] = mapped_column(String(40))
+    number_norm: Mapped[str] = mapped_column(String(40), index=True)
+    note_date: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str] = mapped_column(String(300))
+    taxable: Mapped[Decimal] = mapped_column(Money)
+    cgst: Mapped[Decimal] = mapped_column(Money, default=0)
+    sgst: Mapped[Decimal] = mapped_column(Money, default=0)
+    igst: Mapped[Decimal] = mapped_column(Money, default=0)
+    total: Mapped[Decimal] = mapped_column(Money)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = created_at_col()
+
+    lines: Mapped[list[CreditNoteLine]] = relationship(back_populates="credit_note", order_by="CreditNoteLine.id")
+
+
+class CreditNoteLine(Base):
+    __tablename__ = "credit_note_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    credit_note_id: Mapped[int] = mapped_column(ForeignKey("credit_notes.id"), index=True)
+    invoice_line_id: Mapped[int] = mapped_column(ForeignKey("invoice_lines.id"), index=True)
+    qty: Mapped[Decimal] = mapped_column(Qty, default=0)  # goods: quantity credited, in the invoice line's unit
+    taxable_value: Mapped[Decimal] = mapped_column(Money)
+    cgst: Mapped[Decimal] = mapped_column(Money, default=0)
+    sgst: Mapped[Decimal] = mapped_column(Money, default=0)
+    igst: Mapped[Decimal] = mapped_column(Money, default=0)
+
+    credit_note: Mapped[CreditNote] = relationship(back_populates="lines")

@@ -123,6 +123,33 @@ export interface InvoiceDetail extends InvoiceSummary {
     findings: { where: string; text: string; page: number | null; patterns: string[] }[];
     ai_quarantined: { header?: Record<string, { value: string | null }> } | null;
   } | null;
+  credit_notes: CreditNoteOut[];
+  /** Total minus credit notes: what approval and payment use. */
+  net_total: string;
+  credit_suggestion: CreditSuggestion[];
+  can_issue_credit: boolean;
+}
+
+export interface CreditNoteOut {
+  number: string;
+  note_date: string;
+  reason: string;
+  taxable: string;
+  total: string;
+  entered_by: string | null;
+  created_at: string;
+  lines: { line_no: number; qty: string; taxable_value: string }[];
+}
+
+export interface CreditSuggestion {
+  line_no: number;
+  item: string;
+  uom: string;
+  mode: "qty" | "value";
+  qty: string;
+  value: string;
+  total: string;
+  reason_code: string;
 }
 
 export interface EInvoiceOut {

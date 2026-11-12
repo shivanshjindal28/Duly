@@ -27,6 +27,7 @@
 .todo { border-radius: var(--radius-sm); padding: 10px 14px; }
 .todo h3 { display: flex; align-items: center; gap: 6px; font-size: 14px; margin-bottom: 4px; }
 .todo ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.todo-btn { align-self: flex-start; margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
 .todo-you { background: var(--color-block-bg); color: var(--color-block-text); border: 1px solid #F3BCD6; }
 .todo-them { background: var(--color-primary-soft); color: var(--color-primary-hover); border: 1px solid #C6D8F0; }
 .todo-none { display: flex; gap: 6px; align-items: center; color: var(--color-approve-text); font-size: 14px; }

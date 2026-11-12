@@ -30,6 +30,7 @@ from app.core.crypto import decrypt_str
 from app.core.enums import Decision, InvoiceStatus, Role, StepStatus
 from app.models import ApprovalStep, Delegation, Invoice, Policy, PurchaseOrder, User
 from app.models.base import as_utc
+from app.workflow.credit_notes import net_total
 
 LEVEL_TITLE = {1: "L1 Finance Manager", 2: "L2 Plant Head", 3: "L3 CFO"}
 
@@ -79,7 +80,8 @@ def _owner_for(step: ApprovalStep) -> str:
 
 def _open_route(db: Session, inv: Invoice, override: bool) -> None:
     policy = _policy(db)
-    levels = required_levels(inv.total, policy, override)
+    amount = net_total(db, inv)  # net of credit notes
+    levels = required_levels(amount, policy, override)
     now = clock.now()
     if not levels:
         db.add(ApprovalStep(invoice_id=inv.id, sequence=1, level=0, status=StepStatus.APPROVED, by_policy="P-01",
@@ -87,7 +89,7 @@ def _open_route(db: Session, inv: Invoice, override: bool) -> None:
                                                     f"(Rs {policy['doa']['touchless_max_inr']:,})."))
         inv.status, inv.current_owner = InvoiceStatus.APPROVED, "Approved by policy P-01; awaiting payment run"
         audit.queue(db, "approval.by_policy", "invoice", inv.id,
-                    after={"policy": "P-01", "total": inv.total, "touchless_max": policy["doa"]["touchless_max_inr"]}, actor=audit.SYSTEM)
+                    after={"policy": "P-01", "total": amount, "touchless_max": policy["doa"]["touchless_max_inr"]}, actor=audit.SYSTEM)
         return
     sla = timedelta(hours=policy.get("sla_hours", 48))
     for i, level in enumerate(levels, start=1):
@@ -96,7 +98,7 @@ def _open_route(db: Session, inv: Invoice, override: bool) -> None:
     inv.status = InvoiceStatus.PENDING_APPROVAL
     inv.current_owner = f"Awaiting {LEVEL_TITLE[levels[0]]}"
     audit.queue(db, "approval.routed", "invoice", inv.id,
-                after={"levels": levels, "total": inv.total, "override": override,
+                after={"levels": levels, "total": amount, "override": override,
                        "sla_hours": sla.total_seconds() / 3600}, actor=audit.SYSTEM)
 
 
@@ -201,7 +203,7 @@ def authority(db: Session, inv: Invoice, step: ApprovalStep, user: User) -> Auth
 
 
 def mfa_required(db: Session, inv: Invoice) -> bool:
-    return inv.total > Decimal(str(_policy(db).get("mfa_threshold_inr", 1_000_000)))
+    return net_total(db, inv) > Decimal(str(_policy(db).get("mfa_threshold_inr", 1_000_000)))
 
 
 def _check_mfa(db: Session, inv: Invoice, user: User, code: str | None) -> bool:

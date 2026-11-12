@@ -29,6 +29,7 @@ from app.duplicates.detector import DupView, assess
 from app.ingestion.injection import injection_reasons
 from app.ingestion.qr import einvoice_reasons
 from app.workflow.approvals import sync_after_match
+from app.workflow.credit_notes import credit_reasons, credited_by_line
 from app.workflow.ers import ORIGIN as ERS_ORIGIN, ers_reasons, is_ers
 
 # Invoices whose quantities count as "already invoiced" against a PO line.
@@ -41,7 +42,9 @@ _STATUS = {
 }
 
 
-def invoice_to_doc(inv: Invoice) -> InvoiceDoc:
+def invoice_to_doc(inv: Invoice, credits: dict[int, tuple[Decimal, Decimal]] | None = None) -> InvoiceDoc:
+    """credits: invoice_line_id -> (qty, taxable value) credited by credit notes; the match uses the net."""
+    credits = credits or {}
     return InvoiceDoc(
         invoice_number=inv.invoice_number, invoice_date=inv.invoice_date, supplier_gstin=inv.supplier_gstin,
         buyer_gstin=inv.buyer_gstin, place_of_supply=inv.place_of_supply, po_number=inv.po_number_text,
@@ -49,7 +52,8 @@ def invoice_to_doc(inv: Invoice) -> InvoiceDoc:
         total=inv.total,
         lines=tuple(
             DocLine(ln.line_no, ln.item_code, ln.description, ln.hsn_sac, ln.qty, ln.uom, ln.unit_price,
-                    ln.taxable_value, ln.gst_rate, ln.cgst, ln.sgst, ln.igst)
+                    ln.taxable_value, ln.gst_rate, ln.cgst, ln.sgst, ln.igst,
+                    *credits.get(ln.id, (Decimal(0), Decimal(0))))
             for ln in inv.lines
         ),
         bank_account=decrypt_str(inv.bank_account_enc) if inv.bank_account_enc else None,
@@ -81,11 +85,14 @@ def build_po_view(db: Session, po: PurchaseOrder, exclude_invoice_id: int | None
         received = db.scalar(select(func.coalesce(func.sum(GRLine.qty), 0)).where(GRLine.po_line_id == pl.id))
         accepted = db.scalar(select(func.coalesce(func.sum(ServiceEntrySheet.value), 0))
                              .where(ServiceEntrySheet.po_line_id == pl.id))
-        prior = db.execute(
-            select(InvoiceLine.qty, InvoiceLine.uom, InvoiceLine.taxable_value)
+        prior_rows = db.execute(
+            select(InvoiceLine.id, InvoiceLine.qty, InvoiceLine.uom, InvoiceLine.taxable_value)
             .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
             .where(InvoiceLine.po_line_id == pl.id, Invoice.status.in_(_CONSUMING), Invoice.id != (exclude_invoice_id or -1))
         ).all()
+        credited = credited_by_line(db, line_ids=[r[0] for r in prior_rows]) if prior_rows else {}
+        zero = (Decimal(0), Decimal(0))
+        prior = [(q - credited.get(lid, zero)[0], u, v - credited.get(lid, zero)[1]) for lid, q, u, v in prior_rows]
         lines.append(PoLineView(
             id=pl.id, line_no=pl.line_no, item_code=pl.item_code, description=pl.description, qty=pl.qty,
             uom=pl.uom, unit_price=pl.unit_price, gst_rate=pl.gst_rate,
@@ -163,11 +170,12 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     policy = active_policy(db)
     tol = Tolerances.from_policy(policy.data, policy.version)
     supplier = db.get(Supplier, inv.supplier_id)
-    doc = invoice_to_doc(inv)
+    doc = invoice_to_doc(inv, credited_by_line(db, [inv.id]))
     _matches, dup_reasons = duplicate_check(db, inv, doc)
     qr_reasons = einvoice_reasons(doc, inv.qr_status, inv.qr_payload, supplier.e_invoice_applicable)
     qr_reasons += injection_reasons(inv.injection)
     qr_reasons += ers_reasons(inv, po)
+    qr_reasons += credit_reasons(db, inv)
     outcome = decide(doc, build_po_view(db, po, inv.id) if po else None, _supplier_view(supplier),
                      tol, plant_gstin(db), clock.today(), tuple(dup_reasons + qr_reasons))
 

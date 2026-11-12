@@ -27,9 +27,12 @@ from app.core import clock
 from app.core.enums import InvoiceStatus, Role
 from app.engine.catalog import info
 from app.erp import S4HanaAdapterStub
-from app.models import Document, Invoice, MatchResult, PurchaseOrder, ReasonCode, Supplier, User
+from app.models import CreditNote, Document, Invoice, MatchResult, PurchaseOrder, ReasonCode, Supplier, User
 from app.models.base import as_utc
 from app.workflow import approvals as wf
+from app.workflow.credit_notes import OPEN_FOR_CREDIT, CreditNoteError, can_credit, net_total
+from app.workflow.credit_notes import issue as issue_credit_note
+from app.workflow.credit_notes import suggest as suggest_credit
 from app.workflow.lifecycle import rail_progress
 from app.workflow.matching import latest_match
 from app.ingestion.pipeline import latest_fields, pending_review
@@ -187,6 +190,48 @@ def _einvoice(inv: Invoice, supplier: Supplier | None) -> EInvoiceOut:
     )
 
 
+class CreditNoteLineOut(BaseModel):
+    line_no: int
+    qty: Decimal
+    taxable_value: Decimal
+
+
+class CreditNoteOut(BaseModel):
+    number: str
+    note_date: date
+    reason: str
+    taxable: Decimal
+    total: Decimal
+    entered_by: str | None
+    created_at: datetime
+    lines: list[CreditNoteLineOut]
+
+
+class CreditSuggestionOut(BaseModel):
+    line_no: int
+    item: str
+    uom: str
+    mode: str  # qty | value
+    qty: Decimal
+    value: Decimal
+    total: Decimal
+    reason_code: str
+
+
+def _credit_notes(db: Session, inv: Invoice) -> list[CreditNoteOut]:
+    notes = db.scalars(select(CreditNote).where(CreditNote.invoice_id == inv.id).order_by(CreditNote.id)).all()
+    if not notes:
+        return []
+    names = {u.id: u.full_name for u in db.scalars(select(User).where(
+        User.id.in_({n.created_by_user_id for n in notes if n.created_by_user_id})))}
+    line_no = {ln.id: ln.line_no for ln in inv.lines}
+    return [CreditNoteOut(number=n.number, note_date=n.note_date, reason=n.reason, taxable=n.taxable, total=n.total,
+                          entered_by=names.get(n.created_by_user_id), created_at=n.created_at,
+                          lines=[CreditNoteLineOut(line_no=line_no.get(cl.invoice_line_id, 0), qty=cl.qty,
+                                                   taxable_value=cl.taxable_value) for cl in n.lines])
+            for n in notes]
+
+
 class InvoiceDetail(InvoiceSummary):
     supplier_gstin: str | None
     buyer_gstin: str | None
@@ -211,6 +256,10 @@ class InvoiceDetail(InvoiceSummary):
     workflow: WorkflowOut
     einvoice: EInvoiceOut
     injection: dict | None  # D2 scan: {"found", "findings", "ai_quarantined"}
+    credit_notes: list[CreditNoteOut]
+    net_total: Decimal  # total minus credit notes: what approval and payment use
+    credit_suggestion: list[CreditSuggestionOut]  # credit that would clear qty / value exceptions
+    can_issue_credit: bool
 
 
 def _workflow(db: Session, inv: Invoice, user: User) -> WorkflowOut:
@@ -304,6 +353,11 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
         workflow=_workflow(db, inv, user),
         einvoice=_einvoice(inv, supplier),
         injection=inv.injection,
+        credit_notes=_credit_notes(db, inv),
+        net_total=net_total(db, inv),
+        credit_suggestion=[CreditSuggestionOut(**vars(s)) for s in suggest_credit(db, inv)]
+        if inv.status in OPEN_FOR_CREDIT else [],
+        can_issue_credit=user.role in (Role.SUPPLIER, Role.CLERK) and can_credit(db, inv),
     )
 
 
@@ -393,6 +447,38 @@ def review(
     db.refresh(inv)
     return _detail(db, inv, user)
 
+
+class CreditLineIn(BaseModel):
+    line_no: int
+    qty: Decimal | None = Field(None, gt=0, max_digits=16, decimal_places=3)  # goods
+    value: Decimal | None = Field(None, gt=0, max_digits=16, decimal_places=2)  # services: taxable value
+
+
+class CreditNoteIn(BaseModel):
+    number: str = Field(min_length=1, max_length=16)
+    note_date: date
+    reason: str = Field(min_length=3, max_length=300)
+    lines: list[CreditLineIn] = Field(min_length=1, max_length=50)
+
+
+@router.post("/{invoice_id}/credit-notes", response_model=InvoiceDetail, status_code=status.HTTP_201_CREATED)
+def add_credit_note(
+    invoice_id: int,
+    body: CreditNoteIn,
+    user: User = Depends(require_roles(Role.SUPPLIER, Role.CLERK)),
+    scope: SupplierScope = Depends(get_scope),
+    db: Session = Depends(get_db),
+) -> InvoiceDetail:
+    """Supplier (own invoice) or AP clerk on its behalf records a credit note; Duly re-runs the match net of it."""
+    inv = get_invoice_in_scope(invoice_id, scope, db)
+    try:
+        issue_credit_note(db, user, inv, body.number, body.note_date, body.reason,
+                          [(ln.line_no, ln.qty, ln.value) for ln in body.lines])
+    except CreditNoteError as e:
+        db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
+    db.refresh(inv)
+    return _detail(db, inv, user)
 
 
 class CompareField(BaseModel):

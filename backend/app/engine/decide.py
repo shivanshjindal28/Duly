@@ -8,7 +8,7 @@ Any BLOCK reason blocks; otherwise any FLAG flags; otherwise the invoice is appr
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import ROUND_HALF_UP, Decimal
 
 from rapidfuzz import fuzz
@@ -283,7 +283,7 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
             p, how = hit
             line_map[ln.line_no] = p.id
             inv_uom, po_uom = _norm_uom(ln.uom), _norm_uom(p.uom)
-            qty, price = ln.qty, ln.unit_price
+            qty, price = ln.qty - ln.credited_qty, ln.unit_price  # net of credit notes
             if inv_uom != po_uom:
                 factor = UOM_FACTORS.get((inv_uom, po_uom))
                 if factor is None:
@@ -291,7 +291,7 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                                           f"Line {ln.line_no}: unit {ln.uom} cannot be converted to the PO unit {p.uom}.",
                                           {"invoice_uom": ln.uom, "po_uom": p.uom}, ln.line_no))
                     continue
-                qty, price = ln.qty * factor, ln.unit_price / factor
+                qty, price = (ln.qty - ln.credited_qty) * factor, ln.unit_price / factor
                 reasons.append(Reason("UOM_CONVERTED", Severity.INFO,
                                       f"Line {ln.line_no}: {_n(ln.qty)} {inv_uom} converted to {_n(qty)} {po_uom} "
                                       f"(price {_inr(ln.unit_price)}/{inv_uom} = {_inr(price)}/{po_uom}).",
@@ -307,7 +307,8 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                                       {"invoice_rate": str(ln.gst_rate), "po_rate": str(p.gst_rate)}, ln.line_no))
             reasons += _price_check(ln, p, qty, price, tol)
             if po.is_service:
-                reasons += _service_check(ln, p, tol)
+                net = replace(ln, taxable_value=ln.taxable_value - ln.credited_value) if ln.credited_value else ln
+                reasons += _service_check(net, p, tol)
                 received, prev = p.accepted_value, p.invoiced_value
                 qty_var = None
             else:

@@ -27,6 +27,10 @@ class DocLine:
     cgst: Decimal = Decimal(0)
     sgst: Decimal = Decimal(0)
     igst: Decimal = Decimal(0)
+    # Credited on the supplier's credit notes against this invoice: the match uses the net
+    # (quantity in this line's unit for goods, taxable value for services).
+    credited_qty: Decimal = Decimal(0)
+    credited_value: Decimal = Decimal(0)
 
 
 @dataclass(frozen=True)

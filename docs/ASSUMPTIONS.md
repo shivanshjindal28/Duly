@@ -92,5 +92,8 @@ Council notifications: verify before any real use.
   paper. GST: in India a registered supplier still issues the tax invoice that gives Plant X its input tax credit;
   the ERS settlement drives the payment, and the supplier's tax invoice would be linked to it for GST returns (not
   built). Verify the GST treatment of freight (GTA forward charge vs reverse charge) with the tax team.
+- **Credit notes** (GST s.34) are entered in a form (supplier portal or AP clerk), not read from a PDF. Duly prices
+  them from the invoice line, so the GST on the credit note mirrors the invoice. They are accepted at once (they only
+  reduce what Plant X owes) and the invoice is re-checked net of them.
 - SAP configuration values in the posting preview (company code PX01, plant PX10, tax codes, withholding tax
   types) are fictional.

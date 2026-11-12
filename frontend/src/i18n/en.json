@@ -33,6 +33,7 @@
     "plant_x_doing": "What Plant X is doing",
     "nothing_to_do": "Nothing. Your invoice is on track.",
     "details": "View details",
+    "enter_credit_note": "Enter credit note",
     "payments": "Payment history",
     "no_payments": "No payments yet.",
     "col_invoice": "Invoice",
@@ -55,7 +56,7 @@
   },
   "todo": {
     "NEEDS_REVIEW": "Plant X is confirming a few fields that were hard to read on your document. No action needed.",
-    "QTY_EXCEEDS_GR": "You billed {{excess}} {{uom}} more {{item}} than Plant X has received. Send the remaining goods, or upload a credit note for ₹{{credit}}.",
+    "QTY_EXCEEDS_GR": "You billed {{excess}} {{uom}} more {{item}} than Plant X has received. Send the remaining goods, or enter a credit note for ₹{{credit}}.",
     "PRICE_VARIANCE": "The unit price for {{item}} is above the agreed PO price (₹{{po_price}}). Upload a credit note for ₹{{credit}} or contact your buyer.",
     "MISSING_GR": "Waiting for Plant X stores to record receipt of {{item}}. Nothing for you to do: Duly re-checks your invoice automatically.",
     "MISSING_SES": "Waiting for Plant X to confirm the service for {{item}} was completed. Nothing for you to do.",

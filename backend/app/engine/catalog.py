@@ -51,6 +51,7 @@ CATALOG: dict[str, CodeInfo] = {
     "BANK_ACCOUNT_SHARED": CodeInfo("Bank account used by another supplier", _A, "XK03 bank details / FBL1N"),
     "BANK_MISMATCH": CodeInfo("Bank details differ from vendor master", _A, "XK03 bank details"),
     "ERS_SETTLEMENT": CodeInfo("Self-billed from the receipt (ERS)", "None (information)", "MRRL evaluated receipt settlement"),
+    "CREDIT_NOTE_APPLIED": CodeInfo("Credit note applied", "None (information)", "MIRO credit memo / FB60"),
     "ERS_PO_INVOICE": CodeInfo("Supplier invoice on an ERS purchase order", _R, "MRRL / ME23N ERS indicator"),
 }
 

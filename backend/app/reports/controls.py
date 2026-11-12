@@ -22,6 +22,7 @@ from app.models import (ApprovalStep, AuditEvent, BankChangeRequest, ExtractionR
 from app.models.base import as_utc
 from app.payments.msme import interest as msme_interest
 from app.workflow.approvals import required_levels
+from app.workflow.credit_notes import net_amounts
 
 FINAL = (InvoiceStatus.APPROVED, InvoiceStatus.PAID)
 
@@ -125,15 +126,17 @@ def build(db: Session, period_from: date, period_to: date) -> ControlsReport:
          "blocked_exact": sum("DUPLICATE" in codes.get(i.id, set()) for i in dups)},
         [ev(i, ", ".join(sorted(codes[i.id] & {"DUPLICATE", "POSSIBLE_DUPLICATE"}))) for i in dups[:10]]))
 
-    # C-04 Delegation of Authority respected
+    # C-04 Delegation of Authority respected (on the amount routed: invoice total net of credit notes)
     exc = []
+    net = net_amounts(db, list(final))
     for i in final:
+        amount = net[i.id][1]
         done = [s for s in steps.get(i.id, []) if s.status == StepStatus.APPROVED]
         if any(s.by_policy for s in done):
-            if i.override_justification or i.total > Decimal(str(policy["doa"]["touchless_max_inr"])):
+            if i.override_justification or amount > Decimal(str(policy["doa"]["touchless_max_inr"])):
                 exc.append(ev(i, "approved by policy above the touchless limit or after an override"))
             continue
-        need = required_levels(i.total, policy, override=bool(i.override_justification))
+        need = required_levels(amount, policy, override=bool(i.override_justification))
         have = sorted({s.level for s in done})
         if not set(need) <= set(have):
             exc.append(ev(i, f"needed levels {need}, approved at {have}"))
@@ -198,7 +201,8 @@ def build(db: Session, period_from: date, period_to: date) -> ControlsReport:
     late_paid = [i for i in msme if i.id in pays and as_utc(pays[i.id].paid_at).astimezone(clock.IST).date() > i.msme_due_date]
     overdue = [i for i in msme if i.id not in pays and i.status != InvoiceStatus.REJECTED and i.msme_due_date < today]
     rate = Decimal(str(policy.get("msme", {}).get("rbi_bank_rate_pct", 6.5))) * 3 / 100
-    exposure = sum((msme_interest(i.total, i.msme_due_date, today, rate * 100 / 3) for i in overdue), Decimal(0))
+    owed = net_amounts(db, overdue)  # net of credit notes, as the payment run pays
+    exposure = sum((msme_interest(owed[i.id][1], i.msme_due_date, today, rate * 100 / 3) for i in overdue), Decimal(0))
     paid_msme = [i for i in msme if i.id in pays]
     controls.append(ControlResult(
         "C-08", "MSME payments on time",
