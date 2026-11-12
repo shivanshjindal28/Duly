@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
+import imagehash
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,14 @@ from app.workflow.matching import run_match
 
 # Fields that must be read reliably before the rules can run on an invoice.
 KEY_FIELDS = ("supplier_gstin", "invoice_number", "invoice_date", "po_number", "total")
+
+
+def page1_phash(data: bytes, kind: str) -> str | None:
+    """Perceptual hash of page 1 (catches the same paper invoice rescanned or photographed)."""
+    try:
+        return str(imagehash.phash(render_pages(data, kind, dpi=60)[0].convert("L")))
+    except Exception:  # noqa: BLE001 - a missing hash only weakens one duplicate signal
+        return None
 
 
 class UploadError(ValueError):
@@ -106,7 +115,7 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
 
     doc = Document(
         original_filename=filename[:255], stored_name=store(clean.data, clean.kind), mime_type=clean.mime,
-        size_bytes=len(clean.data), sha256=file_hash, pages=clean.pages, uploaded_by_user_id=user.id,
+        size_bytes=len(clean.data), sha256=file_hash, phash=page1_phash(clean.data, clean.kind), pages=clean.pages, uploaded_by_user_id=user.id,
     )
     db.add(doc)
     db.flush()

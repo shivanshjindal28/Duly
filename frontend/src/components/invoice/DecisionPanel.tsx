@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type { MatchOut, ReasonOut, Severity } from "../../api/types";
 import { fmtDateTime } from "../../lib/format";
 import { DecisionChip, SeverityIcon } from "../StatusChip";
@@ -10,7 +11,7 @@ const SUMMARY = {
   BLOCK: "Cannot be paid until the cause is fixed. Blocks cannot be overridden.",
 } as const;
 
-function ReasonItem({ r, onLine }: { r: ReasonOut; onLine?: (line: number) => void }) {
+function ReasonItem({ r, onLine, invoiceId }: { r: ReasonOut; onLine?: (line: number) => void; invoiceId?: number }) {
   return (
     <li className={`reason reason-${r.severity}`}>
       <SeverityIcon severity={r.severity} />
@@ -25,6 +26,11 @@ function ReasonItem({ r, onLine }: { r: ReasonOut; onLine?: (line: number) => vo
           ) : null}
         </p>
         <p className="reason-msg">{r.message}</p>
+        {(r.code === "DUPLICATE" || r.code === "POSSIBLE_DUPLICATE") && invoiceId ? (
+          <Link to={`/invoices/${invoiceId}/compare`} className="reason-compare">
+            Compare side by side
+          </Link>
+        ) : null}
         {r.sap_equivalent ? (
           <p className="reason-sap" title="What a user would see / use in SAP today">
             SAP: {r.sap_equivalent}
@@ -36,7 +42,7 @@ function ReasonItem({ r, onLine }: { r: ReasonOut; onLine?: (line: number) => vo
 }
 
 /** Decision card: the engine's outcome, every reason with evidence, and how it was produced. */
-export function DecisionPanel({ match, onLine }: { match: MatchOut | null; onLine?: (line: number) => void }) {
+export function DecisionPanel({ match, onLine, invoiceId }: { match: MatchOut | null; onLine?: (line: number) => void; invoiceId?: number }) {
   if (!match) return <p className="muted">Not matched yet.</p>;
   const reasons = [...match.reasons].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
   const actionable = reasons.filter((r) => r.severity !== "info");
@@ -50,7 +56,7 @@ export function DecisionPanel({ match, onLine }: { match: MatchOut | null; onLin
       {actionable.length > 0 ? (
         <ul className="reasons" aria-label="Reasons">
           {actionable.map((r, i) => (
-            <ReasonItem key={i} r={r} onLine={onLine} />
+            <ReasonItem key={i} r={r} onLine={onLine} invoiceId={invoiceId} />
           ))}
         </ul>
       ) : (
@@ -63,7 +69,7 @@ export function DecisionPanel({ match, onLine }: { match: MatchOut | null; onLin
           </summary>
           <ul className="reasons">
             {infos.map((r, i) => (
-              <ReasonItem key={i} r={r} onLine={onLine} />
+              <ReasonItem key={i} r={r} onLine={onLine} invoiceId={invoiceId} />
             ))}
           </ul>
         </details>

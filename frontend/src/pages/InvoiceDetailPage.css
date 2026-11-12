@@ -164,3 +164,5 @@
 .btn-danger:hover { background: var(--color-block-bg); }
 .field > span svg { vertical-align: -2px; }
 .pane-head-sub { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+
+.reason-compare { font-size: 12px; font-weight: 600; align-self: flex-start; }

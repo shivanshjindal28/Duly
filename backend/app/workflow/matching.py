@@ -19,11 +19,12 @@ from app.engine.catalog import info
 from app.engine.decide import UOM_FACTORS, MatchOutcome, PoLineView, PoView, SupplierView, decide
 from app.engine.policy import Tolerances
 from app.engine.types import DocLine, InvoiceDoc, Reason
-from app.models import (GoodsReceipt, GRLine, Invoice, InvoiceLine, MatchResult, Organisation, Policy, PurchaseOrder,
+from app.models import (Document, GoodsReceipt, GRLine, Invoice, InvoiceLine, MatchResult, Organisation, Policy, PurchaseOrder,
                         ReasonCode, ServiceEntrySheet, Supplier)
 from app.models.base import as_utc
 from app.payments.msme import msme_eligible, statutory_due_date
 from app.validation.rules import validate
+from app.duplicates.detector import DupView, assess
 from app.workflow.approvals import sync_after_match
 
 # Invoices whose quantities count as "already invoiced" against a PO line.
@@ -102,6 +103,26 @@ def _acceptance_time(db: Session, po: PurchaseOrder):
     return max((t for t in (gr, ses) if t is not None), default=None)
 
 
+def dup_view(inv: Invoice, doc_row: Document | None, bank_account: str | None) -> DupView:
+    return DupView(
+        invoice_id=inv.id, invoice_number=inv.invoice_number, number_norm=inv.invoice_number_norm,
+        supplier_id=inv.supplier_id, supplier_gstin=inv.supplier_gstin, fiscal_year=inv.fiscal_year, irn=inv.irn,
+        sha256=doc_row.sha256 if doc_row else None, phash=doc_row.phash if doc_row else None, total=inv.total,
+        invoice_date=inv.invoice_date, lines=tuple((ln.item_code or "", ln.qty) for ln in inv.lines),
+        bank_account=bank_account, status=inv.status,
+    )
+
+
+def duplicate_check(db: Session, inv: Invoice, doc: InvoiceDoc):
+    """Compare with every earlier, non-rejected invoice (so an original is never flagged as a copy)."""
+    docs = {d.id: d for d in db.scalars(select(Document))}
+    earlier = []
+    for o in db.scalars(select(Invoice).where(Invoice.id < inv.id, Invoice.status != InvoiceStatus.REJECTED)):
+        bank = decrypt_str(o.bank_account_enc) if o.bank_account_enc else None
+        earlier.append(dup_view(o, docs.get(o.document_id), bank))
+    return assess(dup_view(inv, docs.get(inv.document_id), doc.bank_account), earlier)
+
+
 def _set_due_dates(inv: Invoice, supplier: Supplier, policy: dict) -> None:
     """Contract due date for everyone; statutory MSME due date for eligible micro/small suppliers."""
     if inv.accepted_at is None:
@@ -126,8 +147,10 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     policy = active_policy(db)
     tol = Tolerances.from_policy(policy.data, policy.version)
     supplier = db.get(Supplier, inv.supplier_id)
-    outcome = decide(invoice_to_doc(inv), build_po_view(db, po, inv.id) if po else None, _supplier_view(supplier),
-                     tol, plant_gstin(db), clock.today())
+    doc = invoice_to_doc(inv)
+    _matches, dup_reasons = duplicate_check(db, inv, doc)
+    outcome = decide(doc, build_po_view(db, po, inv.id) if po else None, _supplier_view(supplier),
+                     tol, plant_gstin(db), clock.today(), tuple(dup_reasons))
 
     result = MatchResult(invoice_id=inv.id, decision=outcome.decision, policy_version=outcome.policy_version,
                          engine_version=outcome.engine_version, trigger=trigger,

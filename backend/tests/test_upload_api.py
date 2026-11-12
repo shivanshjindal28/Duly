@@ -25,7 +25,7 @@ def pdf():
 
     db = SessionLocal()
     try:
-        return render_invoice_pdf(seeded_invoice(db))
+        return render_invoice_pdf(seeded_invoice(db, invoice_number="KES/UP/0001"))
     finally:
         db.close()
 
@@ -39,13 +39,15 @@ def test_supplier_upload_extracts_fields_with_locations(client, pdf):
     r = upload(client, login(client, KESAR), pdf)
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["invoice_number"] == "KES/26-27/0042"
+    assert body["invoice_number"] == "KES/UP/0001"
     assert body["supplier_name"] == "Kesar Engineering Spares"
     assert len(body["lines"]) == 2
     # Seeded PO 4500001003: 100 bearings billed, only 80 received -> blocked by the rules.
     assert body["status"] == "blocked" and body["decision"] == "BLOCK"
     reasons = {(r["code"], r["severity"]) for r in body["match"]["reasons"]}
-    assert reasons == {("QTY_EXCEEDS_GR", "block")}
+    # Earlier tests upload look-alike bearings invoices, so a POSSIBLE_DUPLICATE flag may also appear.
+    assert ("QTY_EXCEEDS_GR", "block") in reasons and reasons <= {("QTY_EXCEEDS_GR", "block"),
+                                                                   ("POSSIBLE_DUPLICATE", "flag")}
     q = next(r for r in body["match"]["reasons"] if r["code"] == "QTY_EXCEEDS_GR")
     assert q["evidence"]["received"] == "80.000" and q["sap_equivalent"].startswith("Payment block R")
     assert len(body["match"]["matrix"]) == 2

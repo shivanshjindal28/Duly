@@ -40,6 +40,9 @@ CATALOG: dict[str, CodeInfo] = {
     "GSTIN_INVALID": CodeInfo("Supplier GSTIN invalid", _A, "XK03 tax numbers"),
     "INVOICE_NO_INVALID": CodeInfo("Invoice number format", _R, "MIRO reference"),
     "DATE_INVALID": CodeInfo("Invoice date not acceptable", _R, "MIRO invoice date"),
+    "DUPLICATE": CodeInfo("Duplicate invoice", _A, "MIRO duplicate invoice check (message M8108)"),
+    "POSSIBLE_DUPLICATE": CodeInfo("Possible duplicate", _R, "MIRO duplicate invoice check"),
+    "BANK_ACCOUNT_SHARED": CodeInfo("Bank account used by another supplier", _A, "XK03 bank details / FBL1N"),
     "BANK_MISMATCH": CodeInfo("Bank details differ from vendor master", _A, "XK03 bank details"),
 }
 

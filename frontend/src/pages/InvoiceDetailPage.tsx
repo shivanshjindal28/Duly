@@ -164,7 +164,7 @@ export function InvoiceDetailPage() {
               Decision
             </h2>
           </div>
-          <DecisionPanel match={inv.match} onLine={selectLine} />
+          <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} />
           <div className="pane-head pane-head-sub">
             <h2 className="label">Approval</h2>
             <span className="muted pane-hint">Delegation of Authority</span>

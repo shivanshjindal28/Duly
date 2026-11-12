@@ -42,8 +42,8 @@ def totp(db, email) -> str:
 
 
 def upload(client, db, supplier: str, number: str, po: str, lines: list[Line], **kw) -> dict:
-    spec = seeded_invoice(db, supplier, invoice_number=number, invoice_date=date(2026, 11, 9), po_number=po,
-                          lines=lines, **kw)
+    kw.setdefault("invoice_date", date(2026, 11, 9))
+    spec = seeded_invoice(db, supplier, invoice_number=number, po_number=po, lines=lines, **kw)
     h = login(client, SUPPLIER_EMAIL[supplier])
     r = client.post("/api/invoices/upload", headers=h,
                     files={"file": (f"{number}.pdf", render_invoice_pdf(spec), "application/pdf")})
@@ -156,9 +156,10 @@ def test_sla_escalation_and_delegation(client, db):
 def test_delegation_send_back_override_and_reject(client, db):
     # Two freight trips (Rs 85,120) need L1. The PO was created by Rohan (L1), so SoD stops him;
     # he delegates to Vikram (L3), who then acts on the L1 step through the delegation.
+    # Billed 39 days before KBC/FRT/3381 for different trips, so it is not a near-duplicate of it.
     inv = upload(client, db, "Konkan Bulk Carriers", "KBC/FRT/3382", "4500001007",
                  [Line("FRT-TNK-01", "Bulk tanker freight Dahej to Taloja", "996511", D(2), "TRIP", D("38000.00"),
-                       D(12))])
+                       D(12))], invoice_date=date(2026, 10, 1))
     assert inv["status"] == "pending_approval"
     h = login(client, L1)
     vikram = db.scalar(select(User).where(User.email == "vikram.rao@plantx.example"))

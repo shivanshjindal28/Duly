@@ -253,8 +253,10 @@ def _service_check(ln: DocLine, p: PoLineView, tol: Tolerances) -> list[Reason]:
 
 
 def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tolerances,
-           plant_gstin: str, today) -> MatchOutcome:
+           plant_gstin: str, today, extra_reasons: tuple[Reason, ...] = ()) -> MatchOutcome:
+    """extra_reasons: findings computed outside the engine from other invoices (duplicates)."""
     reasons: list[Reason] = list(validate(doc, plant_gstin, today))
+    reasons += extra_reasons
     reasons += _header_checks(doc, po, supplier)
     reasons += _bank_check(doc, supplier)
     matrix: list[MatrixRow] = []

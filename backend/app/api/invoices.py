@@ -349,3 +349,86 @@ def review(
     db.refresh(inv)
     return _detail(db, inv, user)
 
+
+
+class CompareField(BaseModel):
+    field: str
+    this: str | None
+    other: str | None
+    same: bool
+    normalised_same: bool | None = None
+
+
+class DupSignalOut(BaseModel):
+    name: str
+    score: float
+    detail: str
+
+
+class DupOther(BaseModel):
+    id: int
+    invoice_number: str
+    status: str
+    decision: str | None
+    received_at: datetime
+    pages: int
+
+
+class DupMatchOut(BaseModel):
+    probability: float
+    exact: bool
+    signals: list[DupSignalOut]
+    other: DupOther
+    fields: list[CompareField]
+
+
+class DuplicatesOut(BaseModel):
+    invoice_id: int
+    pages: int
+    matches: list[DupMatchOut]
+
+
+def _compare_fields(a: Invoice, b: Invoice, da: Document | None, db_: Document | None) -> list[CompareField]:
+    def lines(inv: Invoice) -> str:
+        return "; ".join(f"{ln.item_code} x {ln.qty.normalize():f}" for ln in inv.lines)
+
+    pairs = [
+        ("invoice_number", a.invoice_number, b.invoice_number),
+        ("invoice_date", str(a.invoice_date or ""), str(b.invoice_date or "")),
+        ("supplier_gstin", a.supplier_gstin, b.supplier_gstin),
+        ("po_number", a.po_number_text, b.po_number_text),
+        ("taxable_total", str(a.taxable_total), str(b.taxable_total)),
+        ("total", str(a.total), str(b.total)),
+        ("lines", lines(a), lines(b)),
+        ("bank_account", f"XXXXXX{a.bank_account_last4}" if a.bank_account_last4 else None,
+         f"XXXXXX{b.bank_account_last4}" if b.bank_account_last4 else None),
+        ("irn", a.irn, b.irn),
+        ("file_sha256", da.sha256[:16] if da else None, db_.sha256[:16] if db_ else None),
+    ]
+    out = [CompareField(field=f, this=x, other=y, same=x is not None and x == y) for f, x, y in pairs]
+    out[0].normalised_same = a.invoice_number_norm == b.invoice_number_norm
+    return out
+
+
+@router.get("/{invoice_id}/duplicates", response_model=DuplicatesOut)
+def duplicates(invoice_id: int, scope: SupplierScope = Depends(get_scope), db: Session = Depends(get_db)) -> DuplicatesOut:
+    """Side-by-side evidence for every earlier invoice this one may duplicate."""
+    from app.workflow.matching import duplicate_check, invoice_to_doc
+
+    inv = get_invoice_in_scope(invoice_id, scope, db)
+    matches, _ = duplicate_check(db, inv, invoice_to_doc(inv))
+    doc = db.get(Document, inv.document_id) if inv.document_id else None
+    out = []
+    for m in matches:
+        other = db.get(Invoice, m.invoice_id)
+        if other is None or not scope.allows(other.supplier_id):
+            continue
+        odoc = db.get(Document, other.document_id) if other.document_id else None
+        out.append(DupMatchOut(
+            probability=m.probability, exact=m.exact,
+            signals=[DupSignalOut(name=s.name, score=s.score, detail=s.detail) for s in m.signals],
+            other=DupOther(id=other.id, invoice_number=other.invoice_number, status=other.status,
+                           decision=other.decision, received_at=other.received_at, pages=odoc.pages if odoc else 0),
+            fields=_compare_fields(inv, other, doc, odoc),
+        ))
+    return DuplicatesOut(invoice_id=inv.id, pages=doc.pages if doc else 0, matches=out)
