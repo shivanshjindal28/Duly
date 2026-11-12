@@ -118,7 +118,7 @@ def _todos(db: Session, inv: Invoice, codes: list[tuple[str, str]]) -> list[Todo
             params = {"item": line.item_code or line.description}
         elif r.code in ("DUPLICATE", "POSSIBLE_DUPLICATE"):
             params = {"of": str(ev.get("duplicate_of", ""))}
-        you_act = r.code not in ("MISSING_GR", "MISSING_SES", "PAYMENT_TERMS_MISMATCH", "POSSIBLE_DUPLICATE",
+        you_act = r.code not in ("MISSING_GR", "MISSING_SES", "PAYMENT_TERMS_MISMATCH", "POSSIBLE_DUPLICATE", "PRICE_VARIANCE",
                                  "BANK_ACCOUNT_SHARED", "INJECTION_ATTEMPT", "EMAIL_SENDER_UNVERIFIED", "ERS_PO_INVOICE",
                                  "LINE_MAPPED")
         out.append(Todo(code=r.code, severity=r.severity, you_act=you_act, params=params))

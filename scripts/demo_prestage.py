@@ -25,6 +25,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Prepare the stage database for the Duly demo.")
     parser.add_argument("--reset", action="store_true", help="reset with the 90-day history first (~25 s)")
     parser.add_argument("--ids", default=",".join(DEFAULT), help="comma-separated scenario ids from demo/manifest.json")
+    parser.add_argument("--snapshot", action="store_true",
+                        help="after staging, save a snapshot that 'Reset demo data' restores (used by the hosted demo)")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -55,6 +57,10 @@ def main() -> int:
         db.close()
     for c in check.checks:
         print(f" {'OK  ' if c.ok else 'FAIL'} {c.name}: {c.detail}")
+    if check.ok and args.snapshot:
+        from app import demo_snapshot
+
+        print(f"Snapshot saved: {demo_snapshot.save()}")
     print("Ready. Live: S01, S04, S05, S06, S07, S08 (docs/DEMO_SCRIPT.md)." if check.ok else "Something failed: see above.")
     return 0 if check.ok else 1
 

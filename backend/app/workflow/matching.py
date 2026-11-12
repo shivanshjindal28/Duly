@@ -198,7 +198,11 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     inv.decision = outcome.decision
     if inv.status != InvoiceStatus.NEEDS_REVIEW:  # review must finish before the decision takes effect
         inv.status, inv.current_owner = _STATUS[outcome.decision]
-    if po is not None:
+    if any(r.code == "DUPLICATE" and r.severity == "block" for r in outcome.reasons):
+        # An exact duplicate is never owed (it can never be approved), so it has no payment due date:
+        # it must not show as an overdue MSME payment, accrue interest or count in the MSME summary.
+        inv.due_date = inv.msme_due_date = None
+    elif po is not None:
         # The MSME clock starts at acceptance (GR / SES), whatever the match outcome.
         inv.accepted_at = _acceptance_time(db, po)
         _set_due_dates(inv, supplier, policy.data)

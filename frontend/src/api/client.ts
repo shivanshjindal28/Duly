@@ -40,7 +40,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
         info = { sod: !!body.detail.sod, mfa: !!body.detail.mfa };
       } else detail = JSON.stringify(body.detail);
     } catch {
-      /* non-JSON error body */
+      /* non-JSON error body: a proxy or gateway answered, not Duly */
+      if (res.status === 502 || res.status === 503 || res.status === 504) {
+        detail =
+          "The Duly server did not answer in time. It may be waking up (about a minute after a quiet spell), or a " +
+          "photo or scan is still being read. Wait a moment and refresh; PDF invoices are the quickest.";
+      }
     }
     throw new ApiError(res.status, detail, info);
   }

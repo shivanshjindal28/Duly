@@ -4,7 +4,7 @@ import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YA
 import { AlertTriangle, CalendarClock, Clock, Copy, Inbox, Wallet, Zap } from "lucide-react";
 import { api } from "../api/client";
 import { tokens } from "../theme/tokens";
-import { fmtDate, fmtDateTime, inr } from "../lib/format";
+import { fmtDate, fmtDateTime, inr, inrShort } from "../lib/format";
 import "./DashboardPage.css";
 
 interface Summary {
@@ -28,13 +28,13 @@ interface Summary {
 
 const C = tokens.color;
 
-function Kpi({ icon: Icon, label, value, sub, onClick }: { icon: typeof Inbox; label: string; value: string; sub?: string; onClick?: () => void }) {
+function Kpi({ icon: Icon, label, value, sub, onClick, title }: { icon: typeof Inbox; label: string; value: string; sub?: string; onClick?: () => void; title?: string }) {
   const body = (
     <>
       <span className="kpi-label">
         <Icon size={13} aria-hidden="true" /> {label}
       </span>
-      <span className="kpi-value num">{value}</span>
+      <span className="kpi-value num" title={title}>{value}</span>
       {sub ? <span className="kpi-sub">{sub}</span> : null}
     </>
   );
@@ -84,7 +84,7 @@ export function DashboardPage() {
 
       <section className="kpis" aria-label="Key figures">
         <Kpi icon={Inbox} label="In queue" value={String(k.in_queue)} sub="open invoices" onClick={() => go({ status: "open" })} />
-        <Kpi icon={AlertTriangle} label="Value on hold" value={inr(k.value_on_hold)} sub="blocked, flagged, in review" onClick={() => go({ status: "open" })} />
+        <Kpi icon={AlertTriangle} label="Value on hold" value={inrShort(k.value_on_hold)} title={inr(k.value_on_hold)} sub="blocked, flagged, in review" onClick={() => go({ status: "open" })} />
         <Kpi
           icon={Zap}
           label="Touchless rate"
@@ -99,7 +99,7 @@ export function DashboardPage() {
           sub={k.msme_overdue ? `${k.msme_overdue} already overdue` : "none overdue"}
           onClick={() => go({ status: "all", msme_due_within: 7 })}
         />
-        <Kpi icon={Copy} label="Duplicates prevented" value={String(k.duplicates_prevented)} sub={inr(k.duplicates_value)} />
+        <Kpi icon={Copy} label="Duplicates prevented" value={String(k.duplicates_prevented)} sub={`${inrShort(k.duplicates_value)} not paid twice`} />
       </section>
 
       <div className="dash-grid">

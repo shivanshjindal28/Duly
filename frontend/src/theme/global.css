@@ -58,6 +58,7 @@ a { color: var(--color-primary); }
   cursor: pointer;
 }
 .btn:hover { background: var(--color-canvas); }
+a.btn, a.btn:hover { text-decoration: none; }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn-primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 .btn-primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }

@@ -59,7 +59,7 @@
 }
 
 /* Fields */
-.fields { display: flex; flex-direction: column; gap: 8px; max-height: 76vh; overflow-y: auto; padding-right: 2px; }
+.fields { display: flex; flex-direction: column; gap: 8px; max-height: 76vh; overflow-y: auto; overflow-x: hidden; padding-right: 2px; min-width: 0; }
 .fields-note { font-size: 12px; }
 .field-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .field-group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-secondary); margin: 8px 0 2px; }
@@ -119,12 +119,17 @@
 .detail-skeleton { display: flex; flex-direction: column; gap: 14px; }
 .detail-skeleton-grid { display: grid; grid-template-columns: 5fr 4fr 4fr; gap: 14px; }
 
-@media (max-width: 1200px) {
-  .detail-grid { grid-template-columns: 1fr 1fr; }
-  .detail-grid > :first-child { grid-column: 1 / -1; }
+/* Laptops (up to ~1440 px wide): document and fields on the left, the decision beside them. */
+@media (max-width: 1440px) {
+  .detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "doc decision" "fields decision"; }
+  .detail-grid > :nth-child(1) { grid-area: doc; }
+  .detail-grid > :nth-child(2) { grid-area: fields; }
+  .detail-grid > :nth-child(3) { grid-area: decision; }
+  .viewer-scroll { max-height: 56vh; }
+  .fields { max-height: none; }
 }
 @media (max-width: 800px) {
-  .detail-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; grid-template-areas: "doc" "decision" "fields"; }
   .detail-head { grid-template-columns: 1fr; }
   .detail-facts { justify-content: flex-start; }
 }

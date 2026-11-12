@@ -57,7 +57,7 @@
   "todo": {
     "NEEDS_REVIEW": "Plant X is confirming a few fields that were hard to read on your document. No action needed.",
     "QTY_EXCEEDS_GR": "You billed {{excess}} {{uom}} more {{item}} than Plant X has received. Send the remaining goods, or enter a credit note for ₹{{credit}}.",
-    "PRICE_VARIANCE": "The unit price for {{item}} is above the agreed PO price (₹{{po_price}}). Upload a credit note for ₹{{credit}} or contact your buyer.",
+    "PRICE_VARIANCE": "The unit price for {{item}} is above the agreed PO price (₹{{po_price}}), so Plant X's AP team is reviewing it. If they do not accept the new price, they will ask you for a credit note of ₹{{credit}}. You can also check the price with your buyer.",
     "MISSING_GR": "Waiting for Plant X stores to record receipt of {{item}}. Nothing for you to do: Duly re-checks your invoice automatically.",
     "MISSING_SES": "Waiting for Plant X to confirm the service for {{item}} was completed. Nothing for you to do.",
     "BANK_MISMATCH": "The bank details on this invoice differ from the account Plant X has on record. For your safety we only pay the verified account. To change it, send a bank change request; Plant X will call you to confirm.",
@@ -173,5 +173,15 @@
     "workspace": "Workspace",
     "footer": "Built for LYB Mumbai Hackathon 2026 · Plant X is a fictional company. Synthetic data only.",
     "ai_use": "Invoices are read by OCR (AI optional, off in this demo); rules decide."
+  },
+  "status": {
+    "received": "Received",
+    "needs_review": "Needs review",
+    "flagged": "Flagged",
+    "blocked": "Blocked",
+    "pending_approval": "Pending approval",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "paid": "Paid"
   }
 }

@@ -80,7 +80,7 @@ function InvoiceCard({ inv, msme }: { inv: PortalInvoice; msme: boolean }) {
         </div>
         <div className="pinv-amount">
           <span className="num">{inr(inv.total)}</span>
-          <StatusChip status={inv.status} />
+          <StatusChip status={inv.status} label={t(`status.${inv.status}`)} />
         </div>
       </header>
       <DulyRail completed={inv.rail} />

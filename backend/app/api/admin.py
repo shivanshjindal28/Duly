@@ -119,10 +119,18 @@ def reset_demo(db: Session = Depends(get_db)) -> ResetOut:
     from app.core import runtime
     from app.seed import reset_and_seed
 
+    from app import demo_snapshot
+
     started = time.time()
     actor = db.info.get("audit_actor")
     override = runtime.ai_override(db)
-    counts = reset_and_seed(db, history=True)
+    if demo_snapshot.available():  # hosted demo: back to the staged state saved at build time
+        db.close()
+        demo_snapshot.restore()
+        clock.load_offset(db)
+        counts = {"restored_snapshot": 1}
+    else:
+        counts = reset_and_seed(db, history=True)
     if override is not None:
         runtime.set_ai_mode(db, override)
     if actor is not None:

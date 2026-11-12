@@ -11,3 +11,7 @@
 .po-history { font-size: 12px; }
 .alert-success { background: var(--color-approve-bg); color: var(--color-approve-text); border: 1px solid #BFE5CF; }
 .alert-info { background: var(--color-primary-soft); color: var(--color-primary-hover); border: 1px solid #C6D8F0; }
+.recv-find { max-width: 420px; }
+.recv-find-box { position: relative; display: flex; align-items: center; }
+.recv-find-box svg { position: absolute; left: 10px; color: var(--color-text-secondary); }
+.recv-find-box .input { width: 100%; padding-left: 32px; }

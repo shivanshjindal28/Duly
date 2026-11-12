@@ -31,12 +31,13 @@ const STATUS: Record<InvoiceStatus, { cls: string; label: string; Icon: typeof C
   paid: { cls: "chip-approve", label: "Paid", Icon: Wallet },
 };
 
-export function StatusChip({ status }: { status: InvoiceStatus }) {
+/** `label` overrides the English text (the supplier portal passes its translated label). */
+export function StatusChip({ status, label }: { status: InvoiceStatus; label?: string }) {
   const s = STATUS[status];
   return (
     <span className={`chip ${s.cls}`}>
       <s.Icon size={13} aria-hidden="true" />
-      {s.label}
+      {label ?? s.label}
     </span>
   );
 }

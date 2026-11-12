@@ -19,7 +19,7 @@ router = APIRouter(prefix="/reports", tags=["reports"], dependencies=[Depends(re
 
 def _period(date_from: date | None, date_to: date | None) -> tuple[date, date]:
     to = date_to or clock.today()
-    frm = date_from or to - timedelta(days=90)
+    frm = date_from or to - timedelta(days=120)
     if frm > to:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The start date is after the end date.")
     return frm, to

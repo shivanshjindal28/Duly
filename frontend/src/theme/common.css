@@ -1,6 +1,7 @@
 /* Shared page, table, skeleton and empty-state styles. */
 .page { display: flex; flex-direction: column; gap: 18px; }
-.page-head-row { flex-direction: row; justify-content: space-between; align-items: flex-end; }
+.page-head { display: flex; flex-direction: column; gap: 4px; }
+.page-head.page-head-row { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 16px; }
 
 .table-panel { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }

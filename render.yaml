@@ -2,10 +2,11 @@
 #
 # Free plan (team decision): no persistent disk, so the demo database is built during the
 # build step (seed with ~250 invoices of history, then the background demo scenarios S02 S03
-# S09a S09b S10 S11 S12, exactly like scripts/demo_prestage.py on a laptop) and every start
+# S05 S09a S09b S10 S11 S12, like scripts/demo_prestage.py on a laptop; S05 is a photo and photo
+# OCR is too slow on the free plan's CPU to upload live) and every start
 # begins from that copy. To get back to the staged state on the live site: Render -> Restart.
 # Changes made on the live site are lost when the instance restarts or sleeps; "Reset demo
-# data" (admin) rebuilds it at run time. Secrets are generated during the build into
+# data" (admin) restores the snapshot saved at the end of the build (about a second). Secrets are generated during the build into
 # backend/data/keys (not in git) and ship with that build only.
 services:
   - type: web
@@ -14,7 +15,7 @@ services:
     plan: free
     region: singapore
     branch: main
-    buildCommand: pip install -r backend/requirements.txt && python scripts/demo_prestage.py --reset
+    buildCommand: pip install -r backend/requirements.txt && python scripts/demo_prestage.py --reset --snapshot --ids S02,S03,S05,S09A,S09B,S10,S11,S12
     startCommand: cd backend && OCR_DET_MAX_SIDE=1280 uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
     healthCheckPath: /api/health
     # Redeploy only when something the backend uses changes (it also reads the i18n texts and docs).

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, PackageCheck, Wrench } from "lucide-react";
+import { AlertTriangle, CheckCircle2, PackageCheck, Search, Wrench } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import { fmtDate, fmtDateTime, inr, qty } from "../lib/format";
 import "./ReceivingPage.css";
@@ -170,9 +170,21 @@ function POCard({ po }: { po: OpenPO }) {
 /** Stores: post goods receipts and service entry sheets against open POs (simulates SAP MIGO / ML81N). */
 export function ReceivingPage() {
   const q = useQuery({ queryKey: ["open-pos"], queryFn: () => api<OpenPO[]>("/stores/open-pos") });
-  const pos = [...(q.data ?? [])].sort(
-    (a, b) => Number(b.lines.some((l) => Number(l.open) > 0)) - Number(a.lines.some((l) => Number(l.open) > 0)),
-  );
+  const [find, setFind] = useState("");
+  const needle = find.trim().toLowerCase();
+  // Newest POs first (that is what arrives at the gate), POs with nothing left to receive last.
+  const pos = [...(q.data ?? [])]
+    .filter((po) =>
+      !needle ||
+      po.po_number.includes(needle) ||
+      po.supplier_name.toLowerCase().includes(needle) ||
+      po.lines.some((l) => `${l.item_code} ${l.description}`.toLowerCase().includes(needle)),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.lines.some((l) => Number(l.open) > 0)) - Number(a.lines.some((l) => Number(l.open) > 0)) ||
+        b.po_number.localeCompare(a.po_number),
+    );
   return (
     <div className="page receiving">
       <header className="page-head">
@@ -183,6 +195,15 @@ export function ReceivingPage() {
           Duly automatically.
         </p>
       </header>
+      <label className="field recv-find">
+        <span>Find a PO</span>
+        <span className="recv-find-box">
+          <Search size={15} aria-hidden="true" />
+          <input className="input" value={find} onChange={(e) => setFind(e.target.value)} placeholder="PO number, supplier or item"
+            aria-describedby="recv-count" />
+        </span>
+        <span id="recv-count" className="muted small">{pos.length} open PO{pos.length === 1 ? "" : "s"}{needle ? " match" : ""}</span>
+      </label>
       {q.isLoading ? (
         <div className="skeleton-rows" aria-busy="true">
           {Array.from({ length: 4 }, (_, i) => (
@@ -191,7 +212,7 @@ export function ReceivingPage() {
         </div>
       ) : pos.length === 0 ? (
         <div className="panel empty">
-          <p>No open purchase orders. When purchasing raises a PO, it appears here for receiving.</p>
+          <p>{needle ? `No open PO matches "${find.trim()}".` : "No open purchase orders. When purchasing raises a PO, it appears here for receiving."}</p>
         </div>
       ) : (
         pos.map((po) => <POCard key={po.po_number} po={po} />)

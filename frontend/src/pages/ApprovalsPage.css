@@ -13,4 +13,4 @@
 .mfa-card { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: center; padding: 18px 20px; }
 .mfa-qr svg { width: 180px; height: 180px; display: block; background: #fff; }
 .mfa-card p { font-size: 13px; }
-@media (max-width: 1000px) { .approvals-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1440px) { .approvals-grid { grid-template-columns: 1fr; } }

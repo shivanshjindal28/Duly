@@ -96,9 +96,15 @@ export function DemoControlsPage() {
         </div>
         {resetDemo.data ? (
           <p className="alert alert-success" role="status">
-            Demo reset in {resetDemo.data.seconds.toFixed(0)} s: {resetDemo.data.counts.history_invoices} history invoices,{" "}
-            {resetDemo.data.counts.purchase_orders} POs, {resetDemo.data.counts.history_payment_runs} payment runs. The 12
-            scenario files in demo/invoices are ready to upload.
+            {resetDemo.data.counts.restored_snapshot ? (
+              <>Demo restored to its staged state in {resetDemo.data.seconds.toFixed(0)} s (history plus the background scenarios). The live-demo files are ready to upload.</>
+            ) : (
+              <>
+                Demo reset in {resetDemo.data.seconds.toFixed(0)} s: {resetDemo.data.counts.history_invoices} history invoices,{" "}
+                {resetDemo.data.counts.purchase_orders} POs, {resetDemo.data.counts.history_payment_runs} payment runs. The 12
+                scenario files in demo/invoices are ready to upload.
+              </>
+            )}
           </p>
         ) : null}
         {resetDemo.isError ? (

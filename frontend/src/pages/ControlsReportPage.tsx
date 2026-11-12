@@ -57,7 +57,7 @@ function Metrics({ m }: { m: Record<string, unknown> }) {
 /** Auditor: every control tested on live data for a period; downloadable as PDF. */
 export function ControlsReportPage() {
   const today = new Date();
-  const [from, setFrom] = useState(iso(new Date(today.getTime() - 90 * 86400000)));
+  const [from, setFrom] = useState(iso(new Date(today.getTime() - 120 * 86400000)));
   const [to, setTo] = useState(iso(today));
   const [params, setParams] = useState({ from, to });
   const q = useQuery({
