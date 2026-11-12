@@ -92,8 +92,11 @@ and PAN, with single and yearly thresholds, on the taxable value. It is a labell
 team". Not tax advice.
 
 **18. Who changes tolerances and approval limits?**
-They are versioned policy data, not code. Every match stores the policy version that decided it, so old decisions
-stay explainable after a change.
+An administrator, on the Policy page (`/policy`), with a written reason. A change never edits the live policy: it
+validates the values (ranges, and rules such as "block level at or above flag level"), saves a new version, keeps the
+old one and writes the before/after values and the reason to the audit chain. Every match stores the policy version
+that decided it, so old decisions stay explainable after a change. Statutory MSME days are shown but not editable.
+No code release is needed. In production we would add a second approver for policy changes (maker-checker).
 
 **19. How do you protect supplier data?**
 Row-level scoping (suppliers see only their invoices; others' return 404), AES-GCM encryption of bank accounts,

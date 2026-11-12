@@ -30,6 +30,7 @@ import { ImpactPage } from "./pages/ImpactPage";
 import { InboxPage } from "./pages/InboxPage";
 import { ArchitecturePage } from "./pages/ArchitecturePage";
 import { AssumptionsPage } from "./pages/AssumptionsPage";
+import { PolicyPage } from "./pages/PolicyPage";
 import { TrustPage } from "./pages/TrustPage";
 import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
@@ -81,6 +82,7 @@ const router = createBrowserRouter([
               { path: "/receiving", element: <ReceivingPage /> },
               { path: "/approvals", element: <ApprovalsPage /> },
               { path: "/admin/demo", element: <DemoControlsPage /> },
+              { path: "/policy", element: <PolicyPage /> },
               { path: "/audit", element: <AuditPage /> },
               { path: "/controls", element: <ControlsReportPage /> },
               { path: "/bank-changes", element: <BankChangesPage /> },

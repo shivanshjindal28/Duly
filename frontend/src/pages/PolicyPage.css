@@ -1,0 +1,24 @@
+.policy { max-width: 1000px; }
+.policy h1 { display: flex; align-items: center; gap: 8px; }
+.policy-form { display: flex; flex-direction: column; gap: 12px; }
+.policy-section { padding: 10px 16px 12px; border: 1px solid var(--color-border); margin: 0; }
+.policy-section legend { display: flex; gap: 6px; align-items: center; font-weight: 600; font-size: 13px; padding: 0 6px; }
+.policy-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 180px 150px; gap: 12px; align-items: center;
+  padding: 8px 6px; border-bottom: 1px solid var(--color-border);
+}
+.policy-row:last-child { border-bottom: none; }
+.policy-row label { display: flex; flex-direction: column; gap: 2px; }
+.policy-label { font-size: 13.5px; font-weight: 500; }
+.policy-input { display: flex; align-items: center; gap: 6px; }
+.policy-input .input { width: 130px; text-align: right; }
+.policy-unit { font-size: 12px; color: var(--color-text-secondary); min-width: 36px; }
+.policy-row.changed { background: var(--color-flag-bg); border-radius: var(--radius-sm); }
+.policy-was { color: var(--color-flag-text); }
+.policy-save { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; position: sticky; bottom: 0; z-index: 5; }
+.policy-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.policy-diff { margin: 0; padding-left: 16px; font-size: 12.5px; }
+.policy .panel-title { display: flex; gap: 6px; align-items: center; font-size: 15px; }
+@media (max-width: 700px) {
+  .policy-row { grid-template-columns: 1fr; }
+}

@@ -9,7 +9,7 @@ const SCREENS: { who: string; paths: string[] }[] = [
   { who: "Rohan Mehta", paths: ["/approvals"] },
   { who: "Imran Shaikh", paths: ["/receiving"] },
   { who: "Meera Iyer", paths: ["/audit", "/controls"] },
-  { who: "Sanjay Patil", paths: ["/admin/demo"] },
+  { who: "Sanjay Patil", paths: ["/admin/demo", "/policy"] },
 ];
 
 async function signInAs(page: Page, name: string) {

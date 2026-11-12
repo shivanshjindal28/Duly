@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { api } from "../api/client";
@@ -73,7 +74,8 @@ export function AssumptionsPage() {
         <h1>Scenario &amp; assumptions</h1>
         <p className="muted">
           Every company, person and number here is fictional, and every rule value is an assumption. Rules are policy
-          data (version {q.data.policy.version}), so finance can change them without a code release.
+          data (version {q.data.policy.version}), so finance can change them without a code release, on the{" "}
+          <Link to="/policy">Policy</Link> page.
         </p>
       </header>
 
