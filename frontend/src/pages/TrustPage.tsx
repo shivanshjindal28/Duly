@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { BrainCircuit, Eye, FileLock2, Gavel, KeyRound, Link2, ScanSearch, ShieldAlert, type LucideIcon } from "lucide-react";
 import { api } from "../api/client";
@@ -58,7 +61,13 @@ function Control({ icon: Icon, title, how, evidence }: { icon: LucideIcon; title
 /** Trust & controls (spec section 12): each control with the live numbers that show it working. */
 export function TrustPage() {
   const q = useQuery({ queryKey: ["trust"], queryFn: () => api<TrustOut>("/trust") });
-  if (q.isLoading) return <div className="page muted">Loading...</div>;
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (q.data && hash) {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ block: "center" });
+    }
+  }, [q.data, hash]);
+  if (q.isLoading) return <PageSkeleton blocks={4} label="Loading controls" />;
   if (!q.data) return <div className="page alert alert-error">Could not load the controls.</div>;
   const t = q.data;
   const e = t.extraction;
@@ -186,7 +195,7 @@ export function TrustPage() {
             </ul>
           </div>
         </div>
-        <p className="muted small">
+        <p className="muted small" id="ai-use">
           Generative AI use: Claude (via Claude Code) helped design and write this code, and Claude via the API powers
           extraction and the chatbot inside Duly. The team reviewed and can explain all of it.
         </p>

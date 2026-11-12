@@ -67,9 +67,12 @@
   padding: 24px 28px 40px;
 }
 .content:focus { outline: none; }
+.content:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; grid-template-areas: "top" "main"; }
   .sidebar { display: none; }
   .topbar-user { display: none; }
 }
+.sidebar-foot-link { color: var(--color-navy-text, #AFC0DA); text-decoration: underline; }
+.sidebar-foot-link:hover { color: #fff; }

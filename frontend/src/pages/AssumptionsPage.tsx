@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { PageSkeleton } from "../components/PageSkeleton";
 import { api } from "../api/client";
 import { inr } from "../lib/format";
 import "./AboutPages.css";
@@ -54,7 +55,7 @@ function Rows({ rows }: { rows: [string, string, string?][] }) {
 /** Scenario & assumptions (spec section 3): the story, and every rule value Duly runs on, from live policy data. */
 export function AssumptionsPage() {
   const q = useQuery({ queryKey: ["assumptions"], queryFn: () => api<AssumptionsOut>("/assumptions") });
-  if (q.isLoading) return <div className="page muted">Loading...</div>;
+  if (q.isLoading) return <PageSkeleton blocks={4} label="Loading assumptions" />;
   if (!q.data?.policy) return <div className="page alert alert-error">Could not load the assumptions.</div>;
   const { organisation: org, suppliers, hsn } = q.data;
   const p = q.data.policy.data;

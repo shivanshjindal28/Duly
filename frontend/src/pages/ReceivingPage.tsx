@@ -175,6 +175,10 @@ export function ReceivingPage() {
             <div key={i} className="skeleton-row" style={{ height: 120 }} />
           ))}
         </div>
+      ) : pos.length === 0 ? (
+        <div className="panel empty">
+          <p>No open purchase orders. When purchasing raises a PO, it appears here for receiving.</p>
+        </div>
       ) : (
         pos.map((po) => <POCard key={po.po_number} po={po} />)
       )}

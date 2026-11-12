@@ -7,7 +7,7 @@
 .run-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 12px 4px; flex-wrap: wrap; }
 .run-table .why { max-width: 380px; }
 .run-table .why .small { margin-top: 3px; }
-.row-off td { opacity: 0.6; }
+.row-off td { background: var(--color-canvas); color: var(--color-text-secondary); }
 .countdown { font-size: 12px; font-weight: 600; }
 .cd-ok { color: var(--color-text-secondary); }
 .cd-soon { color: var(--color-flag-text); }

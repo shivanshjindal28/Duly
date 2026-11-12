@@ -19,7 +19,7 @@ export function SapTerm({ term, children }: { term: SapTermKey; children: ReactN
   return (
     <span className="sap-term">
       {children}
-      <span className="tip" tabIndex={0} aria-label={SAP_TERMS[term]}>
+      <span className="tip" tabIndex={0} role="img" aria-label={SAP_TERMS[term]}>
         <Info size={11} aria-hidden="true" />
         <span role="tooltip" className="tip-body">{SAP_TERMS[term]}</span>
       </span>

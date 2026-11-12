@@ -141,5 +141,29 @@
     },
     "hours_left": "about {{hours}} hours left",
     "to": "to {{account}} ({{ifsc}})"
+  },
+  "upload": {
+    "title": "Upload invoice",
+    "formats": "PDF, PNG or JPG up to 10 MB. Scans and phone photos are read too.",
+    "drag": "Drag a file here, or",
+    "choose": "Choose file",
+    "choose_another": "Choose another file",
+    "file_label": "Invoice file",
+    "failed": "Upload failed. Please try again.",
+    "submit": "Upload and check",
+    "busy": "Reading and checking...",
+    "slow": "Scans can take up to 20 seconds to read.",
+    "checks_label": "What happens to your file",
+    "checks": "Every file is checked before anything reads it: type and content must match, size and page limits apply, PDFs with scripts or embedded files are refused, and photo metadata (such as location) is removed. The file is stored under a random name and fingerprinted (SHA-256)."
+  },
+  "shell": {
+    "overview": "Overview",
+    "my_invoices": "My invoices",
+    "upload": "Upload invoice",
+    "sign_out": "Sign out",
+    "search": "Search and jump to",
+    "workspace": "Workspace",
+    "footer": "Built for LYB Mumbai Hackathon 2026 · Plant X is a fictional company. Synthetic data only.",
+    "ai_use": "AI use: Claude reads invoices; rules decide."
   }
 }

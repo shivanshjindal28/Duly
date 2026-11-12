@@ -79,6 +79,18 @@ test("impact, trust and architecture pages show live data", async ({ page }) => 
   await expect(page.locator(".md-diagram svg").first()).toBeVisible();
 });
 
+test("command palette: Ctrl+K, type an invoice number, Enter opens it", async ({ page }) => {
+  await signInAs(page, "Asha Kulkarni");
+  await page.goto("/dashboard");
+  await page.keyboard.press("Control+K");
+  const box = page.getByRole("combobox", { name: /Search pages, invoices/ });
+  await expect(box).toBeFocused();
+  await box.fill("0042");
+  await expect(page.getByRole("option", { name: /INV\/0042/ }).first()).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "INV/0042" })).toBeVisible();
+});
+
 test("auditor verifies the tamper-evident audit chain", async ({ page }) => {
   await signInAs(page, "Meera Iyer");
   await page.goto("/audit");

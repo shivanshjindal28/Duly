@@ -189,7 +189,7 @@ export function PaymentsPage() {
             <div className="kpi">
               <span className="kpi-label">
                 <BadgeIndianRupee size={13} aria-hidden="true" /> Tax deduction at risk
-                <span className="tip" tabIndex={0} aria-label={g.tax_rule}>
+                <span className="tip" tabIndex={0} role="img" aria-label={g.tax_rule}>
                   <Info size={12} aria-hidden="true" />
                   <span role="tooltip" className="tip-body">{g.tax_rule}</span>
                 </span>

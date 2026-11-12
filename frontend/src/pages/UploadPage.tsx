@@ -5,6 +5,7 @@ import { AlertTriangle, FileUp, Loader2, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import type { InvoiceDetail, SupplierOut } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { useTranslation } from "react-i18next";
 import "./UploadPage.css";
 
 const ACCEPT = ".pdf,.png,.jpg,.jpeg";
@@ -19,6 +20,10 @@ export function UploadPage() {
   const [supplierId, setSupplierId] = useState<string>("");
   const [dragging, setDragging] = useState(false);
   const isClerk = me?.role === "clerk";
+  // Suppliers see their chosen language (English / Hindi); the staff UI stays in English.
+  const { i18n } = useTranslation();
+  const t = i18n.getFixedT(isClerk ? "en" : i18n.language);
+  const hindi = !isClerk && i18n.language === "hi";
 
   const suppliers = useQuery({
     queryKey: ["suppliers"],
@@ -54,11 +59,11 @@ export function UploadPage() {
   }
 
   return (
-    <div className="page upload-page">
+    <div className={`page upload-page${hindi ? " lang-hi" : ""}`} lang={hindi ? "hi" : "en"}>
       <header className="page-head">
         <p className="label">{isClerk ? "Upload on behalf of a supplier" : me?.supplier?.name}</p>
-        <h1>Upload invoice</h1>
-        <p className="muted">PDF, PNG or JPG up to 10 MB. Scans and phone photos are read with on-device OCR.</p>
+        <h1>{t("upload.title")}</h1>
+        <p className="muted">{t("upload.formats")}</p>
       </header>
 
       <section className="panel upload-panel">
@@ -91,17 +96,17 @@ export function UploadPage() {
               <strong>{file.name}</strong> <span className="muted">({(file.size / 1024).toFixed(0)} KB)</span>
             </p>
           ) : (
-            <p>Drag a file here, or</p>
+            <p>{t("upload.drag")}</p>
           )}
           <button type="button" className="btn" onClick={() => input.current?.click()}>
-            {file ? "Choose another file" : "Choose file"}
+            {file ? t("upload.choose_another") : t("upload.choose")}
           </button>
           <input
             ref={input}
             type="file"
             accept={ACCEPT}
             className="sr-only"
-            aria-label="Invoice file"
+            aria-label={t("upload.file_label")}
             onChange={(e) => pick(e.target.files?.[0])}
           />
         </div>
@@ -110,7 +115,7 @@ export function UploadPage() {
           <div className="alert alert-error" role="alert">
             <AlertTriangle size={16} aria-hidden="true" />
             <span>
-              {upload.error instanceof ApiError ? upload.error.message : "Upload failed. Is the server running?"}
+              {upload.error instanceof ApiError ? upload.error.message : t("upload.failed")}
             </span>
           </div>
         ) : null}
@@ -123,19 +128,15 @@ export function UploadPage() {
             onClick={() => upload.mutate()}
           >
             {upload.isPending ? <Loader2 size={16} className="spin" aria-hidden="true" /> : <FileUp size={16} aria-hidden="true" />}
-            {upload.isPending ? "Reading and checking..." : "Upload and check"}
+            {upload.isPending ? t("upload.busy") : t("upload.submit")}
           </button>
-          {upload.isPending ? <span className="muted">Scans can take up to 20 seconds to read.</span> : null}
+          {upload.isPending ? <span className="muted">{t("upload.slow")}</span> : null}
         </div>
       </section>
 
-      <section className="upload-checks" aria-label="What happens to your file">
+      <section className="upload-checks" aria-label={t("upload.checks_label")}>
         <ShieldCheck size={18} aria-hidden="true" />
-        <p>
-          Every file is checked before anything reads it: type and content must match, size and page limits, PDFs with
-          scripts or embedded files are refused, and photo metadata (such as location) is removed. The file is stored
-          under a random name and fingerprinted (SHA-256).
-        </p>
+        <p>{t("upload.checks")}</p>
       </section>
     </div>
   );

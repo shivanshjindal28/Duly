@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Banknote,
@@ -16,6 +16,7 @@ import {
   LogOut,
   MessageCircle,
   Network,
+  Search,
   PackageCheck,
   ShieldCheck,
   Stamp,
@@ -25,12 +26,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { api, type Health } from "../api/client";
+import { CommandPalette } from "../components/CommandPalette";
 import { roleBadge, useAuth, type Role } from "../auth/AuthContext";
+import { useTranslation } from "react-i18next";
 import "./AppShell.css";
 
 interface NavItem {
   to: string;
   label: string;
+  /** i18n key for roles that see the shell in their own language (suppliers: English / Hindi). */
+  i18n?: string;
   icon: LucideIcon;
   roles: Role[] | "all";
 }
@@ -40,8 +45,8 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Workspace",
     items: [
-      { to: "/", label: "Overview", icon: LayoutDashboard, roles: "all" },
-      { to: "/portal", label: "My invoices", icon: Wallet, roles: ["supplier"] },
+      { to: "/", label: "Overview", i18n: "shell.overview", icon: LayoutDashboard, roles: "all" },
+      { to: "/portal", label: "My invoices", i18n: "shell.my_invoices", icon: Wallet, roles: ["supplier"] },
       { to: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["clerk", "approver", "auditor", "admin"] },
       { to: "/queue", label: "Work queue", icon: ListChecks, roles: ["clerk", "approver", "auditor", "admin"] },
       {
@@ -50,7 +55,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
         icon: FileText,
         roles: ["clerk", "approver", "auditor", "admin"],
       },
-      { to: "/upload", label: "Upload invoice", icon: Upload, roles: ["supplier", "clerk"] },
+      { to: "/upload", label: "Upload invoice", i18n: "shell.upload", icon: Upload, roles: ["supplier", "clerk"] },
       { to: "/assistant", label: "Payment assistant", icon: MessageCircle, roles: ["clerk"] },
       { to: "/receiving", label: "Receiving", icon: PackageCheck, roles: ["stores"] },
       { to: "/approvals", label: "Approvals", icon: Stamp, roles: ["approver"] },
@@ -82,16 +87,23 @@ export function AppShell() {
   const { me, logout } = useAuth();
   const navigate = useNavigate();
   const health = useQuery({ queryKey: ["health"], queryFn: () => api<Health>("/health"), refetchInterval: 30_000 });
+  const { i18n } = useTranslation();
   if (!me) return null;
+  // Suppliers get the shell in their chosen language; staff screens are English.
+  const supplier = me.role === "supplier";
+  const t = i18n.getFixedT(supplier ? i18n.language : "en");
 
   const entity = me.supplier ? me.supplier.name : "Plant X Polymers Pvt Ltd · Dahej";
   const sections = NAV.map((s) => ({
     ...s,
-    items: s.items.filter((i) => i.roles === "all" || i.roles.includes(me.role)),
+    section: s.section === "Workspace" ? t("shell.workspace") : s.section,
+    items: s.items
+      .filter((i) => i.roles === "all" || i.roles.includes(me.role))
+      .map((i) => ({ ...i, label: i.i18n ? t(i.i18n) : i.label })),
   })).filter((s) => s.items.length > 0);
 
   return (
-    <div className="shell">
+    <div className="shell" lang={supplier && i18n.language === "hi" ? "hi" : "en"}>
       <a href="#main" className="skip-link">
         Skip to content
       </a>
@@ -120,7 +132,14 @@ export function AppShell() {
             </div>
           ))}
         </nav>
-        <p className="sidebar-foot">Plant X is a fictional company. Synthetic data only.</p>
+        <p className="sidebar-foot">
+          {t("shell.footer")}{" "}
+          {me.role === "supplier" || me.role === "stores" ? (
+            <span>{t("shell.ai_use")}</span>
+          ) : (
+            <Link to="/trust#ai-use" className="sidebar-foot-link">AI use declared</Link>
+          )}
+        </p>
       </aside>
 
       <header className="topbar">
@@ -129,6 +148,16 @@ export function AppShell() {
           <span>{entity}</span>
         </div>
         <div className="topbar-right">
+          <button
+            type="button"
+            className="btn palette-trigger"
+            onClick={() => window.dispatchEvent(new Event("duly:open-palette"))}
+            aria-keyshortcuts="Control+K Meta+K"
+          >
+            <Search size={15} aria-hidden="true" />
+            <span className="palette-trigger-text">{t("shell.search")}</span>
+            <kbd>Ctrl K</kbd>
+          </button>
           {health.data ? (
             <span className="chip chip-neutral" title={`Policy v${health.data.policy_version ?? "-"}`}>
               <Cpu size={13} aria-hidden="true" />
@@ -149,14 +178,15 @@ export function AppShell() {
             }}
           >
             <LogOut size={16} aria-hidden="true" />
-            <span>Sign out</span>
+            <span>{t("shell.sign_out")}</span>
           </button>
         </div>
       </header>
 
-      <main id="main" className="content" tabIndex={-1}>
+      <main id="main" className="content" tabIndex={0}>
         <Outlet />
       </main>
+      <CommandPalette role={me.role} nav={sections.flatMap((s) => s.items)} />
     </div>
   );
 }

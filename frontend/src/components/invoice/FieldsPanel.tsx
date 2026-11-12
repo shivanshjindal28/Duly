@@ -154,7 +154,7 @@ function FieldRow({ f, threshold, invoiceId, canReview, selected, onSelect }: { 
             type="button"
             className="btn btn-sm btn-ghost"
             onClick={() => setEditing(true)}
-            aria-label={`Correct ${FIELD_LABEL[name] ?? name}`}
+            aria-label={`${low || missing ? "Correct" : "Edit"} ${FIELD_LABEL[name] ?? name}`}
           >
             <Pencil size={13} aria-hidden="true" /> {low || missing ? "Correct" : "Edit"}
           </button>

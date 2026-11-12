@@ -32,6 +32,7 @@
 .heat-2 { background: #B3DDEF; cursor: pointer; }
 .heat-3 { background: #6FC0E0; cursor: pointer; }
 .heat-4 { background: var(--color-cyan-text); cursor: pointer; }
+.heat-2 .heat-dom, .heat-3 .heat-dom { color: var(--color-text); }
 .heat-4 .heat-dom, .heat-4 .heat-count { color: #fff; }
 .heat-overdue { background: var(--color-block-bg); border-color: var(--color-magenta); }
 .heat-overdue .heat-count { color: var(--color-block-text); }

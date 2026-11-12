@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PageSkeleton } from "../components/PageSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { Calculator, Clock, Copy, Gauge, Info, RotateCcw, ShieldCheck, Sparkles, Timer, Zap } from "lucide-react";
 import { api } from "../api/client";
@@ -92,7 +93,7 @@ export function ImpactPage() {
     return out;
   }, [q.data, edits]);
 
-  if (q.isLoading) return <div className="page muted">Loading impact...</div>;
+  if (q.isLoading) return <PageSkeleton blocks={3} label="Loading impact" />;
   if (!q.data) return <div className="page alert alert-error">Could not load the impact data.</div>;
   const m = q.data.measured;
 
@@ -155,6 +156,7 @@ export function ImpactPage() {
             <Tile icon={Sparkles} label="AI fields to review" value={pctText(m.ai_review_rate, 1)} sub={`corrected ${pctText(m.ai_corrected_rate, 2)} of ${num(m.ai_fields)} fields`} />
           </div>
           <h3 className="label impact-sub">Exceptions by root cause ({m.exceptions} invoices ever flagged or blocked)</h3>
+          {m.root_causes.length === 0 ? <p className="muted small">No exceptions yet: every invoice so far matched first time.</p> : null}
           <ul className="causes">
             {m.root_causes.map((r) => (
               <li key={r.key}>

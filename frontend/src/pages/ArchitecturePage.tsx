@@ -63,7 +63,11 @@ export function ArchitecturePage() {
         </section>
       ) : null}
       <section className="panel about-doc">
-        {q.isLoading ? <p className="muted">Loading...</p> : null}
+        {q.isLoading ? (
+          <div className="skeleton-rows" aria-busy="true">
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton-row" />)}
+          </div>
+        ) : null}
         {q.data ? <Markdown source={q.data.markdown} /> : null}
         {q.isError ? <p className="alert alert-error">Could not load the architecture document.</p> : null}
       </section>

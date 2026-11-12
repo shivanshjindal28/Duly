@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 22:50 IST by Aaron (Claude Code)
+Last updated: 2026-11-12 23:40 IST by Aaron (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -15,7 +15,7 @@ python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops 
 cd backend && python -m pytest    # 178 tests (about 90 s; the last file resets via the admin endpoint and runs the demo check)
 cd frontend && npm run typecheck
 python scripts/demo_check.py      # 25-step green/red table, isolated temp DB, AI offline (~45 s); exit 1 on any failure
-cd frontend && npm run e2e        # Playwright demo path (own stack on :8100/:5180); first `npx playwright install chromium` or set PW_CHANNEL=msedge
+cd frontend && npm run e2e        # Playwright: WCAG 2.1 AA scan of 22 screens + demo path (own stack on :8100/:5180, ~2 min); first `npx playwright install chromium` or set PW_CHANNEL=msedge
 python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/manifest.json
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -66,6 +66,12 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
   - Scenario & assumptions (`/assumptions`, `/api/assumptions`): Plant X story, focus user/problem, supplier master table, tolerances, DoA bands, MSME/payments, TDS table and HSN rates, all read from the active policy and master data.
   - Demo controls (`/admin/demo`): "Reset demo data" (`POST /api/admin/reset-demo`, two-click confirm, progress, ~21 s; admin stays signed in; clock back to real time; AI mode kept; `demo.reset` audited) and the AI mode switch (`GET/POST /api/admin/ai-mode`: auto / live / cached / offline / default = back to .env; live refused without a key; persisted in app_settings by `core/runtime.py`, loaded at startup; `demo.ai_mode_changed` audited). Menu section "About Duly" for staff.
   - Checks: DemoCheck now resets through the admin endpoint and tests the AI switch (25 steps); Playwright +2 tests (AI mode badge, About pages) = 7. New tests `test_impact.py`, `test_about.py`.
+- **Phase 4 step 25**: UI polish.
+  - Accessibility: `frontend/e2e/a11y.spec.ts` runs axe-core (@axe-core/playwright 4.14.0, WCAG 2.1 A + AA) on 22 screens across all roles, plus the open command palette, the invoice detail and the Hindi portal; zero violations. Fixed what it found: tooltip icons got `role="img"`; accessible names now contain the visible text (Hindi toggle, heatmap days via sr-only text, Correct/Edit field buttons, palette trigger); heatmap day digits readable on darker cells; deferred payment rows dimmed with a background instead of opacity (contrast); scrollable regions keyboard-focusable (`main` tabIndex 0 with a focus-visible ring, audit chain strip); kv tables wrap instead of scrolling.
+  - Command palette (`components/CommandPalette.tsx`): Ctrl/Cmd+K anywhere or the top-bar "Search and jump to" button; role-aware pages, invoices by number or supplier (from `/api/invoices`), suppliers (opens their queue), actions (verify audit chain = `/audit?verify=1` runs it on arrival, open exceptions, upload, reset demo / AI switch for admin). Combobox + listbox ARIA pattern, arrows / Enter / Esc, focus returns to where it was.
+  - Hindi: the supplier Upload page and the supplier's shell (menu, search button, sign out, footer) follow the chosen language (`upload.*`, `shell.*` keys in en/hi.json; `lang` set on the shell). Staff screens stay English by design.
+  - Footer: "Built for LYB Mumbai Hackathon 2026 · Plant X is a fictional company" + "AI use declared" link to the declaration on the Trust page (`/trust#ai-use`; suppliers and stores see a one-line statement instead).
+  - Empty / loading states: shared `PageSkeleton` on Impact, Trust, Assumptions, Architecture; Receiving empty state; Impact "no exceptions yet". Shared styles in theme/common.css.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -73,8 +79,8 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 4 step 25: UI polish pass: spacing, empty states, focus rings, contrast check, Hindi strings, Lighthouse accessibility >= 95 on main screens; command palette (Ctrl/Cmd+K) from spec section 9 is not built yet; footer link to the AI declaration.
-2. Phase 4 step 26: docs from spec section 13: ASSUMPTIONS.md, CONTROLS.md, AI_DECLARATION.md, DEMO_SCRIPT.md (follow `demo/manifest.json` stories and next steps; the chatbot demo is two turns: "When will I get paid for the bearings?" -> "INV/0042"; start with Reset demo data and AI mode offline), QA_PREP.md (25 questions). ARCHITECTURE.md and IMPACT.md exist; keep the Trust and Assumptions pages and the new docs saying the same thing.
+1. Phase 4 step 26: docs from spec section 13: ASSUMPTIONS.md, CONTROLS.md, AI_DECLARATION.md, DEMO_SCRIPT.md (follow `demo/manifest.json` stories and next steps; the chatbot demo is two turns: "When will I get paid for the bearings?" -> "INV/0042"; start with Reset demo data and AI mode offline), QA_PREP.md (25 questions). ARCHITECTURE.md and IMPACT.md exist; keep the Trust and Assumptions pages and the new docs saying the same thing.
+2. Optional polish left from step 25: run Lighthouse itself once (axe already passes, Lighthouse's accessibility score is built on axe-core); translate the supplier Overview page (it stays English; suppliers land on My invoices).
 3. Phase 5 (only if time remains): supplier risk card (D8), credit-note flow, clerk "reject a blocked invoice" action.
 
 ## Key decisions
@@ -150,6 +156,9 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - "Touchless" on the Impact page is stricter than on the dashboard: approved by policy P-01 AND no field review AND no override.
 - Reset demo data keeps the admin's AI mode override (re-written after the tables are recreated) and resets the demo clock; the reset itself is the first event of the new audit chain after `system.seeded`.
 - Shared `.btn-danger`, `.alert-success`, `.spin` moved into theme/common.css (they lived in single pages' CSS and only worked because every page is imported eagerly).
+- Command palette is our own small component (combobox + listbox) rather than the `cmdk` package named in spec section 9: one fewer dependency, and it reuses the role-aware nav list so it can never offer a page the role cannot open.
+- Accessibility is checked with axe-core in Playwright instead of Lighthouse runs: same rule engine, repeatable in CI and on every laptop, and it fails the test on any WCAG 2.1 AA violation.
+- Supplier-facing chrome follows the supplier's language; staff screens are English only (the AP team works in English).
 
 ## Known bugs
 - OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
@@ -160,7 +169,7 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.
 
 ## Demo status (which demo scenarios work end to end)
-`python scripts/demo_check.py`: 25/25 green (reset via the admin button, all 12 scenarios + follow-ups, chatbot offline, AI kill switch, chain + tamper). Playwright demo path: 7/7 in Edge. All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset`. Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
+`python scripts/demo_check.py`: 25/25 green (reset via the admin button, all 12 scenarios + follow-ups, chatbot offline, AI kill switch, chain + tamper). Playwright: 9/9 in Edge (axe WCAG 2.1 AA scan with zero violations + demo path). All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset`. Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
 - S2 price variance: works (FLAG, exact ₹39,680).
 - S3 qty exceeds GR: works (BLOCK, cumulative view).
 - S4 missing GR: works end to end (BLOCK, stores posts GR live, auto re-match releases it).

@@ -191,7 +191,7 @@ export function SupplierPortalPage() {
             type="button"
             className="btn"
             onClick={() => setLanguage(hindi ? "en" : "hi")}
-            aria-label={t("portal.lang_label")}
+            aria-label={`${t("portal.lang_toggle")}: ${t("portal.lang_label")}`}
             lang={hindi ? "en" : "hi"}
           >
             <Languages size={16} aria-hidden="true" /> {t("portal.lang_toggle")}

@@ -219,11 +219,14 @@ export function DashboardPage() {
                   type="button"
                   className={`heat-day heat-${level}${past && x.count ? " heat-overdue" : ""}${x.day === today ? " heat-today" : ""}`}
                   title={`${fmtDate(x.day)}: ${x.count} invoice(s), ${inr(x.value)}`}
-                  aria-label={`${fmtDate(x.day)}: ${x.count} MSME invoices due${past && x.count ? ", overdue" : ""}`}
                   onClick={() => x.count && go({ status: "all", msme_due_within: Math.max(0, Math.round((Date.parse(x.day) - Date.parse(today)) / 86400000)) })}
                 >
                   <span className="heat-dom">{x.day.slice(8, 10)}</span>
+                  <span className="sr-only"> {fmtDate(x.day).slice(3)}: </span>
                   {x.count ? <span className="heat-count">{x.count}</span> : null}
+                  <span className="sr-only">
+                    {x.count ? ` MSME invoice${x.count === 1 ? "" : "s"} due${past ? ", overdue" : ""}` : "no MSME invoices due"}
+                  </span>
                 </button>
               </li>
             );

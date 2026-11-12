@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link2, Link2Off, ShieldCheck, ShieldX } from "lucide-react";
 import { api } from "../api/client";
@@ -74,6 +74,14 @@ export function AuditPage() {
     queryKey: ["audit-events", filter],
     queryFn: () => api<AuditEvent[]>(`/audit/events?limit=200${filter ? `&action=${encodeURIComponent(filter)}` : ""}`),
   });
+  // Opened as /audit?verify=1 (e.g. from the command palette): run the check straight away, once.
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (params.get("verify") === "1") {
+      setParams({}, { replace: true });
+      verify.mutate();
+    }
+  }, [params, setParams, verify]);
   const v = verify.data;
   const all = events.data ?? [];
   // Chain view: the 10 most recent blocks, or the neighbourhood of the break.
@@ -124,7 +132,7 @@ export function AuditPage() {
       ) : null}
 
       {chain.length > 0 ? (
-        <section className="chain" aria-label="Chain of blocks">
+        <section className="chain" aria-label="Chain of blocks" tabIndex={0}>
           {chain.map((e, i) => {
             const broken = v && !v.ok && v.broken_at_id !== null && e.id >= v.broken_at_id;
             const first = v && !v.ok && e.id === v.broken_at_id;
