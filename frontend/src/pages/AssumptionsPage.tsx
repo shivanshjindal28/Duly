@@ -144,7 +144,7 @@ export function AssumptionsPage() {
         <section className="panel" aria-labelledby="tol-title">
           <h2 id="tol-title" className="label about-table-title">Matching tolerances (SAP-style keys)</h2>
           <Rows rows={[
-            ["PP price: flag above", `${p.tolerances.PP.flag_pct}% and ${inr(p.tolerances.PP.flag_abs_inr)}`, "Smaller differences are info only"],
+            ["PP price: flag above", `${p.tolerances.PP.flag_pct}% or ${inr(p.tolerances.PP.flag_abs_inr)} on the line`, "Within both, information only"],
             ["PP price: block above", `${p.tolerances.PP.block_pct}%`],
             ["DQ quantity: goods", `${p.tolerances.DQ.default_pct}%`, "Nothing billed beyond what was received"],
             ["DQ quantity: bulk in MT", `${p.tolerances.DQ.bulk_mt_pct}%`, "Weighbridge allowance"],

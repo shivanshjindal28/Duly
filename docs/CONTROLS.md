@@ -1,0 +1,92 @@
+# Responsible AI, security and data controls
+
+The in-app **Trust & controls** page (`/trust`) shows each control below with live evidence from the database and
+the audit chain. The auditor's **Controls report** (`/controls`, PDF too) tests controls C-01 to C-10 on the data for
+a period. This file says how each control works, where it lives in the code, and which test proves it.
+
+## 1. AI never decides
+- The rules engine (`backend/app/engine/decide.py`) decides APPROVE / FLAG / BLOCK. It is pure: no I/O, no
+  database, no AI. `tests/test_engine.py` fails if anything under `app/engine/` imports `app.ai`, the ORM or SQLAlchemy.
+- AI does two things only: extract fields from the invoice (`app/ai/`) and answer supplier questions through
+  read-only tools (`app/chat/`).
+- Every match is audited with `ai_decided: false` and actor `system`; the Trust page counts decisions made by AI
+  (always 0).
+
+## 2. Confidence and human review
+- Every extracted field has a confidence, the page and the bounding box it came from, and its source (PDF text,
+  OCR, AI, rule). Fields below the policy threshold (85%), unread key fields and unread HSN codes go to review
+  (`pending_review` in `app/ingestion/pipeline.py`); the decision is held until review is done.
+- When AI and the PDF text layer disagree, the text layer wins and the field goes to review (`app/ai/extract.py`).
+- Reviews are append-only: a correction adds a row with the old value, old confidence, reviewer and reason
+  (`app/workflow/review.py`). Bank account numbers are masked even in the review log. Tests: `test_review.py`.
+
+## 3. Prompt-injection defence (D2)
+- Before any AI reads a PDF, `app/ingestion/injection.py` finds white or near-white, tiny (< 3.5 pt) and off-page
+  text, PDF metadata, and instruction-like phrasing. Hidden words never reach the parser.
+- If anything is found, the AI's reading is quarantined: stored and shown to the clerk next to the hidden text,
+  never used. The AI's own `suspicious_text` report also quarantines. Engine reason `INJECTION_ATTEMPT` (FLAG).
+- Extraction uses a fixed system prompt, a strict JSON schema output and no tools.
+- Chatbot: the supplier id comes from the session, never from the model; other suppliers named in a question are
+  refused before any model call and logged (`security.chat_cross_tenant_refused`); injection phrases are stripped
+  and logged (`app/chat/guardrails.py`). Tests: `test_injection.py`, `test_chat.py`.
+
+## 4. Access
+- Six roles with server-side checks on every route (`require_roles`); suppliers see only their own rows
+  (`get_scope`; other suppliers' invoices return 404, not 403). Tests: `test_rbac_scoping.py`, `test_auth.py`.
+- Segregation of duties (`app/workflow/approvals.py`): no approving an invoice you processed, a PO you created, or
+  two steps of one invoice; clerks cannot approve; the bank-change maker cannot be the checker. Refusals are
+  audited (`security.sod_refused`).
+- MFA (TOTP) for approvals above ₹10 lakh, checked against real time. Overrides of a FLAG need a written
+  justification and two approval levels; a BLOCK can never be overridden.
+- Sessions: signed JWT in an httpOnly, SameSite=strict cookie, 60 minutes sliding; logout revokes all tokens.
+  Double-submit CSRF token. Argon2id password hashes. Five failed logins lock an account for 15 minutes; login
+  rate limit 10 per minute per IP; unknown e-mails get the same error and timing.
+
+## 5. Privacy and data minimisation
+- Only the invoice itself (page images and the text read from them) goes to the AI provider. Never the vendor
+  master or its bank records, never other invoices. Chatbot tool results carry no bank data.
+- Vendor and invoice bank accounts are encrypted at rest (AES-GCM, key from the environment) and masked everywhere
+  (XXXXXX4417), including logs and audit events. Chat transcripts are stored with digits redacted.
+- Synthetic data only; every master record is flagged `is_synthetic`.
+- AI kill switch: AI mode **offline** (admin Demo controls, or `AI_MODE=offline`) runs everything on local OCR and
+  rules; **cached** replays earlier AI readings with no network. The demo runs fully offline.
+
+## 6. Security
+- Upload hardening (`app/ingestion/hardening.py`): extension must match the file's magic bytes; 10 MB and 20
+  pages maximum; PDFs with JavaScript, launch actions or embedded files are refused (including hex-obfuscated
+  names); images are re-encoded to strip metadata. Files are stored under random names outside any web root and
+  fingerprinted (SHA-256). Tests: `test_hardening.py`.
+- Tamper-evident audit trail (`app/core/audit.py`): each event's hash covers the previous hash; the head is signed
+  with Ed25519; events are written only after the business transaction commits. `GET /api/audit/verify`
+  pinpoints an edited row, a broken link or a truncated tail. Tests: `test_audit.py`, `test_zz_chain_integrity.py`.
+- Bank-detail fraud (D3): a different account or IFSC on an invoice is BLOCK `BANK_MISMATCH` plus a security
+  alert; changes go through a call-back checklist, maker-checker and a 72-hour cooling period.
+- Security headers on API responses (CSP `default-src 'none'`, X-Frame-Options DENY, nosniff, no-referrer,
+  no-store). Secrets only in environment variables (`.env` is git-ignored; empty secrets are generated into the
+  git-ignored `backend/data/keys/`). All dependencies pinned to exact versions; `npm audit` clean.
+
+## 7. Transparency
+- The AI mode badge is always in the top bar. Each extracted field stores the extractor, model and prompt version;
+  each AI fallback to offline is recorded with its reason in the upload's audit event.
+- Each decision shows reason codes, evidence values, where on the page each value came from, the policy version
+  and the engine version (see docs/DECISION_ENGINE.md), and who did what (approval timeline, audit trail).
+
+## 8. Model card (summary; full text on the Trust page)
+- **Does:** reads invoice pages into fields with confidence and the line they came from; answers supplier
+  questions with five read-only, supplier-scoped tools.
+- **Does not:** approve, flag, block, route or pay; see vendor master data, bank records or other suppliers' data;
+  use tools during extraction.
+- **Known failure modes:** misreads on blurred or tilted photos (also confident ones; see Known bugs in
+  PROGRESS.md), instructions hidden in documents, API outages. Mitigations: confidence threshold, arithmetic and
+  GSTIN check-digit rules, the injection shield, automatic offline fallback.
+- **Humans in control:** review of low-confidence fields, approvals under delegation of authority with MFA, the
+  kill switch.
+
+## 9. Generative AI use
+See docs/AI_DECLARATION.md.
+
+## Not built (production path)
+- Data retention setting and automated deletion of documents and chat transcripts after the retention period.
+- Single sign-on via the company identity provider (demo uses local accounts and demo personas).
+- Real IRP public key for e-invoice QRs (demo uses a local Sandbox IRP key).
+- Penetration test and DPIA; Postgres with backups instead of SQLite; secrets in a vault.

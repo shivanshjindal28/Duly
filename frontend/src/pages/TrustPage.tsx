@@ -127,7 +127,7 @@ export function TrustPage() {
         ]} />
 
         <Control icon={FileLock2} title="Privacy and data minimisation" how={[
-          "Only the invoice document (page images and its text) goes to the AI provider; never the vendor master, bank data or other invoices.",
+          "Only the invoice itself (page images and the text read from them) goes to the AI provider; never the vendor master with its bank records, and never other invoices.",
           "Bank accounts are encrypted at rest (AES-GCM) and masked everywhere (XXXXXX4417), also in logs.",
           "Synthetic data only. The AI kill switch (AI mode: offline) runs everything on local OCR and rules.",
         ]} evidence={[
@@ -174,7 +174,7 @@ export function TrustPage() {
             <h3>What it does not do</h3>
             <ul>
               <li>Approve, flag, block, route or pay anything.</li>
-              <li>See vendor master data, bank details or other suppliers' invoices.</li>
+              <li>See vendor master data (incl. bank records), other invoices or other suppliers' data.</li>
               <li>Use tools during extraction.</li>
             </ul>
           </div>

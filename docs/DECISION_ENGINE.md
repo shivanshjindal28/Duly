@@ -4,7 +4,7 @@ Code: `backend/app/engine/decide.py` (rules), `engine/policy.py` (tolerances), `
 
 ## Principles
 - **Deterministic and pure.** No I/O, no database, no AI. A unit test fails if anything under `app/engine/` imports `app.ai`, the ORM or SQLAlchemy.
-- **AI never decides.** AI (Phase 2) only extracts fields and writes explanations *from* the reason codes. The decision is always this engine.
+- **AI never decides.** AI only extracts fields (and powers the supplier chatbot). The decision is always this engine.
 - **Outcome.** Any BLOCK reason means **BLOCK** (cannot be paid until the cause is fixed; BLOCKs cannot be overridden). Otherwise any FLAG reason means **FLAG** (an AP clerk must review; overriding needs a written justification and a second approver). Otherwise the outcome is **APPROVE**, and the invoice goes to the approval workflow (small clean invoices are approved by policy P-01).
 - **Every reason carries evidence.** That means the values compared, the tolerance used, the line number, and the SAP-style payment block and transaction.
 - **Versioned.** Every match result stores `engine_version`, `policy_version`, what triggered it (upload, GR posted, correction) and a snapshot of the match matrix.
@@ -39,7 +39,21 @@ Invoice (after extraction and human corrections), PO with lines, goods receipts 
 | INVOICE_NO_INVALID | flag | Invoice number not 1 to 16 chars of letters, digits, `/` and `-` (GST rule) | none | MIRO reference |
 | DATE_INVALID | flag | Invoice date missing, in the future, or before the previous financial year | none | MIRO date |
 
-Coming in later phases: `DUPLICATE` / `POSSIBLE_DUPLICATE` (B1), `QR_MISMATCH` (D1), `INJECTION_ATTEMPT` (D2).
+### Reasons computed outside the engine
+These come from modules that need other data (earlier invoices, the signed QR, the injection scan). They are
+passed into `decide(..., extra_reasons)` so the engine itself stays pure, and they count like any other reason.
+
+| Code | Severity | Rule | SAP equivalent |
+|---|---|---|---|
+| DUPLICATE | block | Same supplier and same normalised invoice number in the same FY (`INV/0042` = `INV-42`), or same IRN, or same file SHA-256, as an earlier non-rejected invoice (`duplicates/detector.py`) | Block A · MIRO duplicate check (M8108) |
+| POSSIBLE_DUPLICATE | flag | Combined probability ≥ 0.6 from a near-match (same supplier, total within 0.5%, dated within 30 days, ≥ 80% of items and quantities identical) and the page-1 perceptual hash (corroboration only) | Block R · MIRO duplicate check |
+| BANK_ACCOUNT_SHARED | flag | The bank account on the invoice appears on invoices of another supplier | Block A · XK03 / FBL1N |
+| QR_MISMATCH | block | Signed e-invoice QR verified, but the printed GSTINs, number, date or total differ from the signed values (`ingestion/qr.py`) | Block A · J1IG / IRP |
+| QR_SIGNATURE_INVALID | block | A QR is present but not signed by a trusted IRP key | Block A · J1IG / IRP |
+| EINVOICE_QR_MISSING | flag | Supplier is above the e-invoice threshold but no readable signed QR was found | Block R · J1IG |
+| EINVOICE_VERIFIED | info | Signed QR verified and matches the printed invoice | J1IG |
+| EINVOICE_NOT_APPLICABLE | info | Supplier below the e-invoice threshold | J1IG |
+| INJECTION_ATTEMPT | flag | Hidden or instruction-like text found in the document; the AI's reading is quarantined (`ingestion/injection.py`) | None (Duly control) |
 
 All tolerances are policy data (`backend/app/core/policy_defaults.py`, stored versioned in the `policies` table). They are assumptions, editable by admin, and every change is audited.
 
@@ -47,3 +61,6 @@ All tolerances are policy data (`backend/app/core/policy_defaults.py`, stored ve
 - **Scenario 2:** PO price ₹620.00/kg, invoice ₹639.84/kg on 2,000 kg. That is +3.20% and ₹39,680.00 more, which is above the PP tolerance and under the 5% hard limit, so the result is **FLAG PRICE_VARIANCE**.
 - **Scenario 3:** 100 bearings billed, 80 received, 0 invoiced before. Excess 20 = 25% of received, so the result is **BLOCK QTY_EXCEEDS_GR**. With 60 already invoiced, a bill for 20 is clean, 21 flags and 25 blocks.
 - **Scenario 4:** no GR gives **BLOCK MISSING_GR**. Stores posts the GR, the engine re-runs, and the result is **APPROVE**.
+- **Scenario 8:** the signed QR says ₹5,01,500, the edited PDF prints ₹5,19,500: **BLOCK QR_MISMATCH** (and MATH_ERROR, since the printed total no longer adds up).
+
+All 12 scenarios with their expected reason codes: `demo/manifest.json`; checked end to end by `python scripts/demo_check.py`.

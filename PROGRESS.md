@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 23:40 IST by Aaron (Claude Code)
+Last updated: 2026-11-13 00:30 IST by Aaron (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,10 +12,11 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset   # ~25 s incl. ~250 historical invoices; --no-history for a bare DB
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 178 tests (about 90 s; the last file resets via the admin endpoint and runs the demo check)
+cd backend && python -m pytest    # 180 tests (about 90 s; the last file resets via the admin endpoint and runs the demo check)
 cd frontend && npm run typecheck
 python scripts/demo_check.py      # 25-step green/red table, isolated temp DB, AI offline (~45 s); exit 1 on any failure
 cd frontend && npm run e2e        # Playwright: WCAG 2.1 AA scan of 22 screens + demo path (own stack on :8100/:5180, ~2 min); first `npx playwright install chromium` or set PW_CHANNEL=msedge
+python scripts/demo_prestage.py --reset   # stage DB: reset + background scenarios S02 S03 S09a/b S10 S11 S12 (see docs/DEMO_SCRIPT.md)
 python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/manifest.json
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -72,6 +73,11 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
   - Hindi: the supplier Upload page and the supplier's shell (menu, search button, sign out, footer) follow the chosen language (`upload.*`, `shell.*` keys in en/hi.json; `lang` set on the shell). Staff screens stay English by design.
   - Footer: "Built for LYB Mumbai Hackathon 2026 · Plant X is a fictional company" + "AI use declared" link to the declaration on the Trust page (`/trust#ai-use`; suppliers and stores see a one-line statement instead).
   - Empty / loading states: shared `PageSkeleton` on Impact, Trust, Assumptions, Architecture; Receiving empty state; Impact "no exceptions yet". Shared styles in theme/common.css.
+- **Phase 4 step 26**: documentation (spec section 13).
+  - New: `docs/ASSUMPTIONS.md`, `docs/CONTROLS.md` (each control, where in code, which test, what is not built), `docs/AI_DECLARATION.md`, `docs/DEMO_SCRIPT.md` (pre-stage checklist, run sheet with three presenter slots, cut list, recovery), `docs/QA_PREP.md` (25 questions). Updated: `docs/DECISION_ENGINE.md` (all reason codes incl. duplicates, e-invoice, injection), README (features, demo, docs index, troubleshooting).
+  - `scripts/demo_prestage.py`: reset (optional) + upload the background scenarios through the same checks as demo_check; the live demo then uploads S01 and S04-S08 (verified: Asha can upload S04-S08 on the suppliers' behalf, supplier identified from the GSTIN, same results).
+  - **Bug fixed (live AI):** `anthropic.Anthropic()` read the key from `os.environ`, but our settings read it from `.env`, so live AI never had a key and every upload crashed with a TypeError (the fallback only caught API errors). Both clients now get `api_key` from settings, and extraction and chat fall back to offline on any AI error. Tests added in `test_ai_extraction.py`.
+  - Wording fixes found while documenting: PP tolerance is "flag above 1% OR ₹500" (Assumptions page said "and"); Trust page privacy line now says exactly what goes to the AI (the invoice itself, never the vendor master or other invoices).
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -79,9 +85,10 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 4 step 26: docs from spec section 13: ASSUMPTIONS.md, CONTROLS.md, AI_DECLARATION.md, DEMO_SCRIPT.md (follow `demo/manifest.json` stories and next steps; the chatbot demo is two turns: "When will I get paid for the bearings?" -> "INV/0042"; start with Reset demo data and AI mode offline), QA_PREP.md (25 questions). ARCHITECTURE.md and IMPACT.md exist; keep the Trust and Assumptions pages and the new docs saying the same thing.
-2. Optional polish left from step 25: run Lighthouse itself once (axe already passes, Lighthouse's accessibility score is built on axe-core); translate the supplier Overview page (it stays English; suppliers land on My invoices).
-3. Phase 5 (only if time remains): supplier risk card (D8), credit-note flow, clerk "reject a blocked invoice" action.
+1. Team rehearsal with docs/DEMO_SCRIPT.md: fill in presenter names, time each beat, enrol MFA for Rohan and Kavita after the final reset.
+2. Live AI once with a real key (it was broken until step 26: the key from `.env` never reached the client; fixed and unit-tested, but not yet run against the real API). Upload the 13 demo files once with AI mode live to fill `backend/data/ai_cache/`, then demo in AI mode cached or offline.
+3. Optional, from the spec: a `jobs.enqueue` hook for OCR / AI work (spec 14; uploads are processed inside the request today), Lighthouse run, supplier Overview page in Hindi.
+4. Phase 5 (only if time remains): supplier risk card (D8), credit-note flow, clerk "reject a blocked invoice" action, deterministic demo-mode MFA secrets so approvers do not re-scan after every reset (needs a team decision: weaker demo accounts).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -162,8 +169,9 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 
 ## Known bugs
 - OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
+- Approver MFA secrets are random per seed: after every reset, approvers must scan the Overview QR again (in DEMO_SCRIPT.md).
 - History: a few old duplicates stay BLOCKED forever (there is no clerk "reject a blocked invoice" action), so the 45+ day age bucket is never empty. Realistic, but a reject action for blocked invoices would be a small useful addition.
-- Live Claude extraction is untested against the real API on this laptop (no key). Before the demo: set ANTHROPIC_API_KEY, upload the demo invoices once (fills the cache), then consider AI_MODE=cached.
+- Live Claude extraction and chat have still not been run against the real API (step 26 fixed the missing key; see Next).
 - The browser pane in this environment is narrower than a laptop screen, so the three-pane layout was checked via DOM measurements at 1600 px (grid 488/390/390 px) and visually only in the stacked narrow layout.
 - None known. Visual layout has been checked through the accessibility tree and DOM, not by eye (the browser pane could not take screenshots this session). Have a quick look at the login page and shell on first run.
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.

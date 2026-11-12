@@ -71,6 +71,9 @@ def chat(db: Session, user: User, supplier_id: int, message: str, lang: str, ses
                 result.mode = "live"
             except llm.ChatUnavailable as e:
                 log.warning("Chat AI unavailable, using offline assistant: %s", e)
+            except Exception:  # noqa: BLE001 - never leave a supplier without an answer over AI
+                log.exception("Chat AI failed, using offline assistant")
+                result.answer, calls = "", []
         if not result.answer:
             result.answer, calls = offline.answer(db, supplier_id, scr.text, lang)
         result.tools = _tool_chips(lang, calls)

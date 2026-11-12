@@ -133,6 +133,9 @@ def extract(sha256: str, tokens: list[Token], method: str, images_fn, quarantine
     except AIUnavailable as e:
         log.warning("AI extraction unavailable, using offline parser: %s", e)
         return det, "offline", str(e), None
+    except Exception as e:  # noqa: BLE001 - e.g. client misconfiguration: never fail the upload over AI
+        log.exception("AI extraction failed, using offline parser")
+        return det, "offline", f"AI error ({type(e).__name__})", None
     if quarantine or data.get("suspicious_text"):
         det.suspicious_text = data.get("suspicious_text")
         return det, used, "AI output quarantined (possible prompt injection)", data

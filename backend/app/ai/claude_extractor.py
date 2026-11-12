@@ -64,7 +64,7 @@ def _image_blocks(images) -> list[dict]:
 
 def call_claude(images, lines_text: str, model: str) -> dict:
     """One structured-output request. Raises AIUnavailable on any API problem or refusal."""
-    client = anthropic.Anthropic(timeout=90.0, max_retries=1)
+    client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key or None, timeout=90.0, max_retries=1)
     extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"} if model in _FALLBACK_MODELS else {}
     try:
         response = client.beta.messages.create(

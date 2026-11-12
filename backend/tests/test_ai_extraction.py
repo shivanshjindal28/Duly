@@ -126,3 +126,33 @@ def test_cached_mode_never_calls_the_api(pdf, monkeypatch):
     tokens, method = acquire_tokens(pdf, "pdf")
     ex, mode, reason, _quarantined = extract("nocache", tokens, method, lambda: [])
     assert mode == "offline" and "No cached" in reason
+
+
+def test_unexpected_ai_error_falls_back_to_offline(monkeypatch):
+    """A misconfigured client (e.g. no key reaching it) must never fail an upload."""
+    def broken(images, lines_text, model):
+        raise TypeError("Could not resolve authentication method")
+
+    monkeypatch.setattr(claude_extractor, "call_claude", broken)
+    monkeypatch.setattr(get_settings(), "ai_mode", "live")
+    pdf = render_invoice_pdf(bearings_invoice())
+    tokens, method = acquire_tokens(pdf, "pdf")
+    ex, mode, reason, quarantined = extract("sha-broken", tokens, method, lambda: [])
+    assert mode == "offline" and reason == "AI error (TypeError)" and quarantined is None
+    assert ex.header["invoice_number"].value == "KES/26-27/0042"
+
+
+def test_api_key_from_settings_reaches_the_client(monkeypatch):
+    """The key is read from .env by our settings, not from os.environ: it must be passed explicitly."""
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, **kw):
+            seen.update(kw)
+            raise RuntimeError("stop here")
+
+    monkeypatch.setattr(claude_extractor.anthropic, "Anthropic", FakeClient)
+    monkeypatch.setattr(get_settings(), "anthropic_api_key", "sk-test-not-real")
+    with pytest.raises(RuntimeError):
+        claude_extractor.call_claude([], "", "claude-sonnet-5-5")
+    assert seen["api_key"] == "sk-test-not-real"

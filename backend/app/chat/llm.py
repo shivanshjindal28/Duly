@@ -36,7 +36,7 @@ class ChatUnavailable(RuntimeError):
 def answer(db: Session, supplier_id: int, supplier_name: str, history: list[dict], message: str,
            lang: str) -> tuple[str, list[ToolCall]]:
     model = get_settings().anthropic_model
-    client = anthropic.Anthropic(timeout=60.0, max_retries=1)
+    client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key or None, timeout=60.0, max_retries=1)
     extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"} if model in _FALLBACK_MODELS else {}
     language = "Hindi (Devanagari script)" if lang == "hi" else "English"
     system = f"{SYSTEM}\n\nThe supplier is {supplier_name}. Reply in {language}."
