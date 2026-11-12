@@ -1,0 +1,32 @@
+.verify-result { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; }
+.verify-result h2 { font-size: 17px; margin-bottom: 4px; }
+.verify-result p { font-size: 13px; }
+.verify-result.is-ok { background: var(--color-approve-bg); border-color: #BFE5CF; color: var(--color-approve-text); }
+.verify-result.is-broken { background: var(--color-block-bg); border-color: #F3BCD6; color: var(--color-block-text); }
+.verify-result .muted { color: var(--color-text-secondary); }
+.verify-hashes { margin-top: 4px; }
+.verify-meta { margin-top: 6px; font-size: 11.5px !important; }
+
+.chain { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 4px 2px 8px; }
+.chain-item { display: flex; align-items: center; flex: none; }
+.chain-link { color: var(--color-approve-text); margin: 0 4px; flex: none; }
+.chain-link.is-broken { color: var(--color-magenta); }
+.block {
+  width: 132px; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--color-surface); border: 1px solid var(--color-border-strong);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.block.is-ok { border-color: #7CC79C; }
+.block.is-broken { border-color: #F3BCD6; background: #FFF7FA; }
+.block.is-first-broken { border: 2px solid var(--color-magenta); background: var(--color-block-bg); }
+.block-id { font-size: 11px; color: var(--color-text-secondary); }
+.block-action { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-hash { font-size: 11px; }
+.block-prev { font-size: 10.5px; color: var(--color-text-secondary); }
+
+.audit-filter { padding: 10px 12px; border-bottom: 1px solid var(--color-border); max-width: 320px; }
+.audit-details { font-size: 12.5px; max-width: 420px; }
+.row-broken td { background: var(--color-block-bg); }
+.audit-trail { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.audit-trail li { display: grid; grid-template-columns: 130px 170px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 12.5px; }
+.audit-trail li:last-child { border-bottom: none; }

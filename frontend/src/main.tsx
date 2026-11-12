@@ -13,6 +13,7 @@ import "./theme/common.css";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./layout/AppShell";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
+import { AuditPage } from "./pages/AuditPage";
 import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
               { path: "/receiving", element: <ReceivingPage /> },
               { path: "/approvals", element: <ApprovalsPage /> },
               { path: "/admin/demo", element: <DemoControlsPage /> },
+              { path: "/audit", element: <AuditPage /> },
             ],
           },
         ],

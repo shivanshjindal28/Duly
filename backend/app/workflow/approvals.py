@@ -25,7 +25,7 @@ import pyotp
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.core import clock
+from app.core import audit, clock
 from app.core.crypto import decrypt_str
 from app.core.enums import Decision, InvoiceStatus, Role, StepStatus
 from app.models import ApprovalStep, Delegation, Invoice, Policy, PurchaseOrder, User
@@ -86,6 +86,8 @@ def _open_route(db: Session, inv: Invoice, override: bool) -> None:
                             decided_at=now, comment=f"Clean match at or below the touchless limit "
                                                     f"(Rs {policy['doa']['touchless_max_inr']:,})."))
         inv.status, inv.current_owner = InvoiceStatus.APPROVED, "Approved by policy P-01; awaiting payment run"
+        audit.queue(db, "approval.by_policy", "invoice", inv.id,
+                    after={"policy": "P-01", "total": inv.total, "touchless_max": policy["doa"]["touchless_max_inr"]}, actor=audit.SYSTEM)
         return
     sla = timedelta(hours=policy.get("sla_hours", 48))
     for i, level in enumerate(levels, start=1):
@@ -93,6 +95,9 @@ def _open_route(db: Session, inv: Invoice, override: bool) -> None:
                             due_at=now + sla if i == 1 else None))
     inv.status = InvoiceStatus.PENDING_APPROVAL
     inv.current_owner = f"Awaiting {LEVEL_TITLE[levels[0]]}"
+    audit.queue(db, "approval.routed", "invoice", inv.id,
+                after={"levels": levels, "total": inv.total, "override": override,
+                       "sla_hours": sla.total_seconds() / 3600}, actor=audit.SYSTEM)
 
 
 def _cancel_open_steps(db: Session, inv: Invoice, why: str) -> None:
@@ -120,6 +125,8 @@ def override_flag(db: Session, inv: Invoice, clerk: User, justification: str) ->
         raise ApprovalError("Only a flagged invoice can be routed with an override.")
     if len(justification.strip()) < 15:
         raise ApprovalError("Write a justification of at least 15 characters; it is shown to approvers and auditors.")
+    audit.queue(db, "invoice.flag_overridden", "invoice", inv.id,
+                before={"decision": inv.decision, "status": inv.status}, after={"justification": justification.strip()})
     inv.override_by_user_id, inv.override_justification, inv.override_at = clerk.id, justification.strip(), clock.now()
     inv.processed_by_user_id = clerk.id
     _open_route(db, inv, override=True)
@@ -139,6 +146,9 @@ def escalate_overdue(db: Session) -> int:
             s.escalated_at = now
             inv = db.get(Invoice, s.invoice_id)
             inv.current_owner = _owner_for(s)
+            audit.queue(db, "approval.escalated", "invoice", inv.id,
+                        after={"level": s.level, "to_level": s.level + 1, "due_at": s.due_at},
+                        actor=audit.SYSTEM)
             n += 1
     if n:
         db.commit()
@@ -226,6 +236,9 @@ def approve(db: Session, inv: Invoice, user: User, comment: str, totp: str | Non
     now = clock.now()
     step.status, step.approver_user_id, step.decided_at = StepStatus.APPROVED, user.id, now
     step.delegated_from_user_id, step.comment = auth.via_delegation_from, comment.strip() or None
+    audit.queue(db, "approval.approved", "invoice", inv.id,
+                after={"level": step.level, "mfa": step.mfa_verified, "delegated_from": auth.via_delegation_from,
+                       "comment": step.comment, "total": inv.total})
     nxt = current_step(db, inv.id)
     if nxt is None:
         inv.status, inv.current_owner = InvoiceStatus.APPROVED, "Approved; awaiting payment run"
@@ -241,6 +254,7 @@ def reject(db: Session, inv: Invoice, user: User, reason: str) -> None:
     step, auth = _actionable(db, inv, user)
     step.status, step.approver_user_id, step.decided_at = StepStatus.REJECTED, user.id, clock.now()
     step.delegated_from_user_id, step.comment = auth.via_delegation_from, reason.strip()
+    audit.queue(db, "approval.rejected", "invoice", inv.id, after={"level": step.level, "reason": reason.strip()})
     _cancel_open_steps(db, inv, "Cancelled: invoice rejected")
     inv.status, inv.current_owner = InvoiceStatus.REJECTED, "Rejected"
     db.commit()
@@ -252,6 +266,7 @@ def send_back(db: Session, inv: Invoice, user: User, comment: str) -> None:
     step, auth = _actionable(db, inv, user)
     step.status, step.approver_user_id, step.decided_at = StepStatus.SKIPPED, user.id, clock.now()
     step.delegated_from_user_id, step.comment = auth.via_delegation_from, f"Sent back to AP clerk: {comment.strip()}"
+    audit.queue(db, "approval.sent_back", "invoice", inv.id, after={"level": step.level, "comment": comment.strip()})
     _cancel_open_steps(db, inv, "Cancelled: sent back to AP clerk")
     inv.status, inv.current_owner = InvoiceStatus.FLAGGED, f"AP clerk (sent back by {LEVEL_TITLE[step.level][:2]})"
     db.commit()
@@ -263,6 +278,8 @@ def request_info(db: Session, inv: Invoice, user: User, question: str) -> None:
     step, _auth = _actionable(db, inv, user)
     step.comment = f"Information requested from supplier: {question.strip()}"
     inv.current_owner = "Supplier (information requested)"
+    audit.queue(db, "approval.info_requested", "invoice", inv.id,
+                after={"level": step.level, "question": question.strip()})
     db.commit()
 
 
@@ -280,6 +297,9 @@ def add_delegation(db: Session, user: User, to_user_id: int, days: int, reason: 
     d = Delegation(from_user_id=user.id, to_user_id=target.id, starts_at=now, ends_at=now + timedelta(days=days),
                    reason=reason.strip())
     db.add(d)
+    db.flush()
+    audit.queue(db, "approval.delegated", "delegation", d.id,
+                after={"to_user_id": target.id, "days": days, "reason": reason.strip(), "ends_at": d.ends_at})
     db.commit()
     return d
 

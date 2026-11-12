@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import audit
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.passwords import hash_password, verify_password
@@ -88,8 +89,12 @@ def login(request: Request, response: Response, body: LoginIn, db: Session = Dep
     now = datetime.now(UTC)
     user = _find_user(db, body.email)
 
+    ip = request.client.host if request.client else None
     if user is None or not user.is_active:
         verify_password(_DUMMY_HASH, body.password)
+        audit.queue(db, "auth.login_failed", "user", None, after={"email": body.email[:200], "why": "unknown user"},
+                    actor=(None, None, ip))
+        db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, _INVALID)
 
     locked_until = as_utc(user.locked_until)
@@ -105,18 +110,24 @@ def login(request: Request, response: Response, body: LoginIn, db: Session = Dep
         if user.failed_logins >= settings.lockout_threshold:
             user.locked_until = now + timedelta(minutes=settings.lockout_minutes)
             user.failed_logins = 0
+            audit.queue(db, "auth.account_locked", "user", user.id,
+                        after={"locked_until": user.locked_until, "failed_attempts": settings.lockout_threshold},
+                        actor=(user.id, user.role, ip))
             db.commit()
             raise HTTPException(
                 status.HTTP_423_LOCKED,
                 f"Account locked after {settings.lockout_threshold} failed attempts. "
                 f"Try again in {settings.lockout_minutes} min.",
             )
+        audit.queue(db, "auth.login_failed", "user", user.id, after={"why": "wrong password",
+                    "failed_attempts": user.failed_logins}, actor=(user.id, user.role, ip))
         db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, _INVALID)
 
     user.failed_logins = 0
     user.locked_until = None
     user.last_login_at = now
+    audit.queue(db, "auth.login", "user", user.id, after={"method": "password"}, actor=(user.id, user.role, ip))
     db.commit()
     issue_session(response, user, request)
     return _me(user)
@@ -126,6 +137,7 @@ def login(request: Request, response: Response, body: LoginIn, db: Session = Dep
 def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
     # get_current_user and this handler share the request's DB session (FastAPI caches get_db).
     user.token_version += 1  # revokes every outstanding session token for this user
+    audit.queue(db, "auth.logout", "user", user.id)
     db.commit()
     out = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session(out)
@@ -156,6 +168,8 @@ def demo_login(request: Request, response: Response, body: DemoLoginIn, db: Sess
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown demo persona")
     user.last_login_at = datetime.now(UTC)
+    audit.queue(db, "auth.login", "user", user.id, after={"method": "demo persona"},
+                actor=(user.id, user.role, request.client.host if request.client else None))
     db.commit()
     issue_session(response, user, request)
     return _me(user)

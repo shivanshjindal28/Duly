@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core import clock
+from app.core import audit, clock
 from app.core.enums import Decision, InvoiceStatus
 from app.models import GoodsReceipt, GRLine, Invoice, POLine, PurchaseOrder, ServiceEntrySheet, User
 from app.workflow.matching import run_match
@@ -96,6 +96,9 @@ def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tupl
     for line_id, qty in lines:
         db.add(GRLine(gr_id=gr.id, po_line_id=line_id, qty=qty, uom=po_lines[line_id].uom))
     db.flush()
+    audit.queue(db, "gr.posted", "goods_receipt", gr.gr_number,
+                after={"po": po.po_number, "movement_type": "101",
+                       "lines": [{"po_line_id": i, "qty": q} for i, q in lines]})
     results = rematch_waiting(db, po, trigger=f"gr_posted:{gr.gr_number}")
     db.commit()
     return gr, results
@@ -118,6 +121,8 @@ def post_service_entry(db: Session, user: User, po_number: str, po_line_id: int,
                             posted_by_user_id=user.id, posted_at=clock.now())
     db.add(ses)
     db.flush()
+    audit.queue(db, "ses.posted", "service_entry", ses.ses_number,
+                after={"po": po.po_number, "po_line_id": pl.id, "value": value})
     results = rematch_waiting(db, po, trigger=f"ses_posted:{ses.ses_number}")
     db.commit()
     return ses, results

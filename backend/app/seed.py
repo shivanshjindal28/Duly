@@ -139,6 +139,10 @@ def seed(db: Session) -> dict[str, int]:
     db.add(Policy(version=1, name="Default policy (assumptions)", data=DEFAULT_POLICY, is_active=True))
     db.flush()
     counts = seed_procurement(db)
+    from app.core import audit
+
+    audit.queue(db, "system.seeded", "database", None, after={"synthetic": True, **counts},
+                actor=audit.SYSTEM)
     db.commit()
     return {
         "organisations": 1,

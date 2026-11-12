@@ -8,6 +8,8 @@ import { DulyRail } from "../components/DulyRail";
 import { ApprovalPanel } from "../components/invoice/ApprovalPanel";
 import { DecisionPanel } from "../components/invoice/DecisionPanel";
 import { DocumentViewer } from "../components/invoice/DocumentViewer";
+import { InvoiceAuditTrail } from "../components/invoice/InvoiceAuditTrail";
+import { useAuth } from "../auth/AuthContext";
 import { FieldsPanel } from "../components/invoice/FieldsPanel";
 import { MatchMatrix } from "../components/invoice/MatchMatrix";
 import { StatusChip } from "../components/StatusChip";
@@ -19,6 +21,7 @@ const AI_MODE: Record<string, string> = { live: "AI: live", cached: "AI: cached"
 /** The hero screen: document | extracted fields | decision, with the match matrix below. */
 export function InvoiceDetailPage() {
   const { id } = useParams();
+  const { me } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
   const q = useQuery({ queryKey: ["invoice", id], queryFn: () => api<InvoiceDetail>(`/invoices/${id}`) });
 
@@ -179,6 +182,18 @@ export function InvoiceDetailPage() {
         </div>
         <MatchMatrix match={inv.match} isService={isService} />
       </section>
+
+      {me && me.role !== "supplier" ? (
+        <section className="panel detail-matrix" aria-labelledby="trail-title">
+          <div className="pane-head">
+            <h2 id="trail-title" className="label">
+              Audit trail
+            </h2>
+            <span className="muted pane-hint">Hash-chained, append-only</span>
+          </div>
+          <InvoiceAuditTrail invoiceId={inv.id} />
+        </section>
+      ) : null}
     </div>
   );
 }

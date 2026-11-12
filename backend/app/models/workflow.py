@@ -52,7 +52,7 @@ class AppSetting(Base):
     __tablename__ = "app_settings"
 
     key: Mapped[str] = mapped_column(String(60), primary_key=True)
-    value: Mapped[str] = mapped_column(String(200))
+    value: Mapped[str] = mapped_column(String(400))
 
 
 class Payment(Base):

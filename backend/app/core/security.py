@@ -18,6 +18,7 @@ import jwt
 from fastapi import Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core import audit
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.models import User
@@ -86,6 +87,8 @@ def get_current_user(request: Request, response: Response, db: Session = Depends
         sent = request.headers.get(CSRF_HEADER, "")
         if not sent or not hmac.compare_digest(sent, claims["csrf"]):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing or invalid CSRF token")
+
+    audit.set_actor(db, user.id, user.role, request.client.host if request.client else None)
 
     # Sliding expiry: re-issue the cookie when the token is older than a few minutes.
     issued = datetime.fromtimestamp(claims["iat"], UTC)

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core import clock
+from app.core import audit, clock
 from app.core.db import get_db
 from app.core.enums import Role
 from app.core.security import SupplierScope, get_scope, require_roles
@@ -102,6 +102,10 @@ def _act(fn, invoice_id: int, scope: SupplierScope, db: Session, *args):
         fn(db, inv, scope.user, *args)
     except wf.ApprovalError as e:
         db.rollback()
+        if e.sod:  # segregation-of-duties refusals are security events
+            audit.queue(db, "security.sod_refused", "invoice", inv.id,
+                        after={"action": fn.__name__, "reason": str(e)})
+            db.commit()
         raise _refuse(e) from e
     return {"status": inv.status, "current_owner": inv.current_owner}
 

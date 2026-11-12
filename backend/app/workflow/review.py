@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
 
+from app.core import audit
 from app.core.crypto import encrypt_str
 from app.core.enums import InvoiceStatus
 from app.ingestion.pipeline import latest_fields, normalise_invoice_number, pending_review
@@ -103,6 +104,11 @@ def review_field(db: Session, inv: Invoice, user: User, path: str, value: str | 
     else:
         new_value = _apply(inv, path, value)
 
+    audit.queue(db, "field.reviewed", "invoice", inv.id,
+                before={"field": path, "value": current.value, "confidence": current.confidence,
+                        "source": current.source},
+                after={"field": path, "value": new_value, "action": "confirmed" if value is None else "corrected",
+                       "reason": reason[:300]})
     current.corrected = True
     db.add(ExtractionResult(
         invoice_id=inv.id, field=path, value=new_value, confidence=1.0, page=current.page, bbox=current.bbox,

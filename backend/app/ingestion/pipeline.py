@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.ai import offline_parser
 from app.ai.schema import ExtractedInvoice
+from app.core import audit
 from app.core.crypto import encrypt_str
 from app.ingestion.extract_text import acquire_tokens
 from app.ingestion.hardening import harden
@@ -151,6 +152,12 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         invoice.status, invoice.current_owner = InvoiceStatus.NEEDS_REVIEW, "AP clerk (review)"
     db.flush()
     db.refresh(invoice)  # load lines for the engine
+    audit.queue(db, "invoice.uploaded", "invoice", invoice.id, after={
+        "invoice_number": number, "supplier": supplier.code, "file": filename[:120], "sha256": doc.sha256,
+        "pages": doc.pages, "text_source": extracted.method, "extractor": extracted.extractor_version,
+        "ai_mode": "offline", "fields": len(extracted.all_fields()),
+        "needs_review": pending_review(db, invoice.id),
+    })
     run_match(db, invoice, trigger="upload")
     db.commit()
     db.refresh(invoice)

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, FastForward, RotateCcw } from "lucide-react";
-import { api } from "../api/client";
+import { Clock, FastForward, RotateCcw, ShieldX } from "lucide-react";
+import { api, ApiError } from "../api/client";
 import { fmtDateTime } from "../lib/format";
 
 interface ClockOut {
@@ -23,6 +23,10 @@ export function DemoControlsPage() {
   const reset = useMutation({
     mutationFn: () => api<ClockOut>("/admin/clock/reset", { method: "POST" }),
     onSuccess: (c) => qc.setQueryData(["clock"], c),
+  });
+  const tamper = useMutation({
+    mutationFn: (op: "tamper-demo" | "tamper-restore") =>
+      api<{ event_id: number; change?: string; restored?: boolean }>(`/admin/${op}`, { method: "POST" }),
   });
   const last = advance.data;
   return (
@@ -56,6 +60,34 @@ export function DemoControlsPage() {
           <p className="alert alert-info" role="status">
             Clock advanced. {last.escalated} overdue approval step{last.escalated === 1 ? "" : "s"} escalated to the next
             level.
+          </p>
+        ) : null}
+      </section>
+      <section className="panel" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+        <h2 className="label">Tamper demo</h2>
+        <p className="muted">
+          Edits one audit row directly in the database, bypassing Duly (what an insider with DB access could do). Then
+          open Audit chain and press Verify: Duly shows the exact event where the chain breaks. Same as{" "}
+          <span className="mono">python scripts/tamper_demo.py</span>.
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" className="btn btn-danger" disabled={tamper.isPending} onClick={() => tamper.mutate("tamper-demo")}>
+            <ShieldX size={15} aria-hidden="true" /> Run tamper demo
+          </button>
+          <button type="button" className="btn" disabled={tamper.isPending} onClick={() => tamper.mutate("tamper-restore")}>
+            <RotateCcw size={15} aria-hidden="true" /> Restore original row
+          </button>
+        </div>
+        {tamper.data ? (
+          <p className="alert alert-info" role="status">
+            {tamper.data.restored
+              ? `Event #${tamper.data.event_id} restored. The chain verifies again.`
+              : `Event #${tamper.data.event_id} edited directly in the database (${tamper.data.change}).`}
+          </p>
+        ) : null}
+        {tamper.isError ? (
+          <p className="alert alert-error" role="alert">
+            {tamper.error instanceof ApiError ? tamper.error.message : "Failed."}
           </p>
         ) : null}
       </section>

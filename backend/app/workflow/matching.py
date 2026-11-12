@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core import clock
+from app.core import audit, clock
 from app.core.crypto import decrypt_str
 from app.core.enums import Decision, InvoiceStatus
 from app.engine.catalog import info
@@ -132,6 +132,11 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     if outcome.decision == Decision.APPROVE and po is not None:
         inv.accepted_at = _acceptance_time(db, po)
     db.flush()
+    audit.queue(db, "invoice.matched", "invoice", inv.id, after={
+        "decision": outcome.decision, "reasons": [f"{r.code}:{r.severity}" for r in outcome.reasons],
+        "trigger": trigger, "policy_version": outcome.policy_version, "engine": outcome.engine_version,
+        "status": inv.status, "ai_decided": False,
+    }, actor=audit.SYSTEM)  # the rules engine decided, not the person whose action triggered it
     sync_after_match(db, inv)  # open (or close) the approval route
     db.flush()
     return outcome
