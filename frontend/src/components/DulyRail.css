@@ -1,0 +1,63 @@
+.duly-rail {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.duly-rail-stop {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+/* Connector line from this dot to the next. */
+.duly-rail-stop:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 22px;
+  right: 4px;
+  height: 2px;
+  background: var(--rail-line);
+}
+.duly-rail-stop.is-done:not(:last-child)::after { background: var(--rail-done); }
+
+.duly-rail-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--rail-line);
+  background: var(--rail-bg);
+  color: #fff;
+}
+.is-done .duly-rail-dot { background: var(--rail-done); border-color: var(--rail-done); }
+.is-current .duly-rail-dot { border-color: var(--rail-current); box-shadow: 0 0 0 3px var(--rail-current-halo); }
+
+.duly-rail-text { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.duly-rail-name { color: var(--rail-text); white-space: nowrap; }
+.duly-rail-name strong { font-weight: 600; }
+.duly-rail-doc { font-size: 11px; color: var(--rail-subtle); font-family: var(--font-mono); }
+
+.duly-rail-light {
+  --rail-line: var(--color-border-strong);
+  --rail-done: var(--color-approve-text);
+  --rail-current: var(--color-primary);
+  --rail-current-halo: var(--color-primary-soft);
+  --rail-bg: var(--color-surface);
+  --rail-text: var(--color-text);
+  --rail-subtle: var(--color-text-secondary);
+}
+.duly-rail-dark {
+  --rail-line: #3A5285;
+  --rail-done: var(--color-cyan);
+  --rail-current: var(--color-cyan);
+  --rail-current-halo: rgba(19, 163, 198, 0.25);
+  --rail-bg: var(--color-navy);
+  --rail-text: #FFFFFF;
+  --rail-subtle: var(--color-navy-text);
+}

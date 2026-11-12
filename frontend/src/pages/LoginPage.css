@@ -1,0 +1,65 @@
+.login {
+  display: grid;
+  grid-template-columns: minmax(360px, 5fr) 7fr;
+  min-height: 100vh;
+}
+
+.login-brand {
+  background: var(--color-navy);
+  color: #fff;
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+}
+.login-brand-top { display: flex; align-items: center; gap: 10px; }
+.login-wordmark { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.login-brand-body { display: flex; flex-direction: column; gap: 16px; max-width: 520px; }
+.login-eyebrow { color: var(--color-cyan); }
+.login-tagline { font-size: 34px; line-height: 1.15; font-weight: 600; }
+.login-lede { color: var(--color-navy-text); font-size: 15px; margin-bottom: 20px; }
+.login-foot { color: var(--color-navy-text); font-size: 12px; }
+
+.login-main {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 56px 32px;
+  overflow-y: auto;
+}
+.login-card { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 6px; }
+.login-form { display: flex; flex-direction: column; gap: 14px; margin: 18px 0 28px; }
+.login-form .btn { height: 38px; }
+
+.login-personas { border-top: 1px solid var(--color-border); padding-top: 20px; display: flex; flex-direction: column; gap: 14px; }
+.login-personas-head { display: flex; align-items: center; justify-content: space-between; }
+.persona-role { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px; }
+.persona-group ul {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.persona {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  text-align: left;
+  padding: 8px 10px;
+  font: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.persona:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+.persona-name { font-weight: 600; font-size: 13px; }
+.persona-sub { grid-row: 2; font-size: 12px; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.persona-go { grid-row: 1 / span 2; grid-column: 2; align-self: center; color: var(--color-primary); }
+
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+  .login-brand { padding: 28px 24px; }
+  .persona-group ul { grid-template-columns: 1fr; }
+}

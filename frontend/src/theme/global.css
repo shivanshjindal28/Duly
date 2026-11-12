@@ -1,0 +1,107 @@
+/* Global styles. All colours come from tokens.ts via CSS variables (applyTokens). */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
+  background: var(--color-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: 22px; }
+h2 { font-size: 16px; }
+h3 { font-size: 14px; }
+p { margin: 0; }
+
+a { color: var(--color-primary); }
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.mono, .num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Deck-style section label: small spaced caps. */
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-cyan-text);
+}
+
+.muted { color: var(--color-text-secondary); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 34px; padding: 0 14px;
+  font: inherit; font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface); color: var(--color-text);
+  cursor: pointer;
+}
+.btn:hover { background: var(--color-canvas); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.btn-primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+.btn-ghost { border-color: transparent; background: transparent; }
+
+/* Inputs */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+.input {
+  height: 36px; padding: 0 10px;
+  font: inherit; color: var(--color-text);
+  border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; border-color: var(--color-focus); }
+
+/* Panels */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Status chips: always icon + text, never colour alone. */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 22px; padding: 0 8px;
+  font-size: 12px; font-weight: 600;
+  border-radius: 11px; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.chip-approve { color: var(--color-approve-text); background: var(--color-approve-bg); border-color: #BFE5CF; }
+.chip-flag { color: var(--color-flag-text); background: var(--color-flag-bg); border-color: #F7D9A4; }
+.chip-block { color: var(--color-block-text); background: var(--color-block-bg); border-color: #F3BCD6; }
+.chip-info { color: var(--color-primary-hover); background: var(--color-primary-soft); border-color: #C6D8F0; }
+.chip-neutral { color: var(--color-text-secondary); background: var(--color-canvas); border-color: var(--color-border); }
+
+.alert {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.alert-error { background: var(--color-block-bg); color: var(--color-block-text); border: 1px solid #F3BCD6; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
