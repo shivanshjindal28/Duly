@@ -47,7 +47,18 @@ def render_pages(data: bytes, kind: str, dpi: int = RENDER_DPI) -> list[Image.Im
 def _ocr_engine():
     from rapidocr_onnxruntime import RapidOCR  # heavy import: load once, lazily
 
-    return RapidOCR()
+    from app.core.config import get_settings
+
+    engine = RapidOCR()
+    cap = get_settings().ocr_det_max_side
+    if cap:
+        # rapidocr-onnxruntime 1.4 ignores Det.limit_side_len for large images (it picks 960/1500/2000 by
+        # size), so cap the detector's input here; text recognition still crops the full-size image.
+        from rapidocr_onnxruntime.ch_ppocr_det.utils import DetPreProcess
+
+        det = engine.text_det
+        det.get_preprocess = lambda max_wh: DetPreProcess(cap, "max", det.mean, det.std)
+    return engine
 
 
 def _page_slope(result) -> float:

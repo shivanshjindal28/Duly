@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     ai_mode: str = "auto"  # auto | live | cached | offline (offline = AI kill switch)
     anthropic_model: str = "claude-sonnet-5-5"
     frontend_origin: str = "http://localhost:5173"
+    # Cap on the OCR text-detector input (longest side, px); 0 = library default (up to 2000 px).
+    # Detection dominates memory: on the demo photos peak OCR memory was ~530 MB uncapped vs ~310 MB at
+    # 1280, so 1280 lets photo uploads fit the Render free plan (512 MB). Recognition still reads the
+    # full-size image.
+    ocr_det_max_side: int = 0
 
     @property
     def resolved_database_url(self) -> str:
