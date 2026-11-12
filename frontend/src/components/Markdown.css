@@ -1,0 +1,10 @@
+.md { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.55; }
+.md h2 { font-size: 16px; font-weight: 600; margin: 14px 0 0; }
+.md h3 { font-size: 14px; font-weight: 600; margin: 8px 0 0; }
+.md p { margin: 0; max-width: 90ch; }
+.md ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; max-width: 95ch; }
+.md code { font-size: 12.5px; background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: 3px; padding: 0 4px; }
+.md-pre { background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px; overflow-x: auto; font-size: 12px; margin: 0; }
+.md-diagram { margin: 4px 0; padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; overflow-x: auto; display: flex; justify-content: center; }
+.md-diagram svg { max-width: 100%; height: auto; }
+.md-diagram-loading { min-height: 160px; align-items: center; }

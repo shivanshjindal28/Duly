@@ -26,6 +26,9 @@ import { QueuePage } from "./pages/QueuePage";
 import { SupplierPortalPage } from "./pages/SupplierPortalPage";
 import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { ImpactPage } from "./pages/ImpactPage";
+import { ArchitecturePage } from "./pages/ArchitecturePage";
+import { AssumptionsPage } from "./pages/AssumptionsPage";
+import { TrustPage } from "./pages/TrustPage";
 import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
@@ -84,6 +87,9 @@ const router = createBrowserRouter([
               { path: "/portal", element: <SupplierPortalPage /> },
               { path: "/assistant", element: <AssistantPage /> },
               { path: "/impact", element: <ImpactPage /> },
+              { path: "/architecture", element: <ArchitecturePage /> },
+              { path: "/trust", element: <TrustPage /> },
+              { path: "/assumptions", element: <AssumptionsPage /> },
             ],
           },
         ],

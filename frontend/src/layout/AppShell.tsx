@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Banknote,
   BarChart3,
+  BookOpen,
   Building2,
   Clock,
   Cpu,
@@ -14,6 +15,7 @@ import {
   ListChecks,
   LogOut,
   MessageCircle,
+  Network,
   PackageCheck,
   ShieldCheck,
   Stamp,
@@ -63,6 +65,9 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "About Duly",
     items: [
       { to: "/impact", label: "Impact", icon: TrendingUp, roles: ["clerk", "approver", "auditor", "admin"] },
+      { to: "/trust", label: "Trust & controls", icon: ShieldCheck, roles: ["clerk", "approver", "auditor", "admin"] },
+      { to: "/architecture", label: "Architecture", icon: Network, roles: ["clerk", "approver", "auditor", "admin"] },
+      { to: "/assumptions", label: "Scenario & assumptions", icon: BookOpen, roles: ["clerk", "approver", "auditor", "admin"] },
     ],
   },
 ];
