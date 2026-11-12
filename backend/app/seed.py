@@ -7,6 +7,7 @@ fixed random seed; bank names and IFSC prefixes are invented. Every record is fl
 from __future__ import annotations
 
 import random
+from decimal import Decimal
 from dataclasses import dataclass
 
 import pyotp
@@ -53,33 +54,36 @@ class SupplierSeed:
     city: str
     user_name: str
     user_email: str
+    tds_section: str = "none"
+    early_discount_pct: str = "0"
+    early_discount_days: int = 0
 
 
 SUPPLIERS: list[SupplierSeed] = [
     SupplierSeed("V100101", "Sahyadri Catalysts & Additives Ltd", "Catalysts & additives", "27", "C",
                  MsmeCategory.NONE, None, EnterpriseType.MANUFACTURER, True, 60, True,
                  "Sahyog Bank (fictional)", "SHYG", "Navi Mumbai, Maharashtra",
-                 "Anil Joshi", "billing@sahyadri-catalysts.example"),
+                 "Anil Joshi", "billing@sahyadri-catalysts.example", "goods", "1.00", 10),
     SupplierSeed("V100102", "Navrang Packaging Works", "Packaging", "24", "P",
                  MsmeCategory.MICRO, "UDYAM-GJ-24-0012345", EnterpriseType.MANUFACTURER, False, 45, True,
                  "Narmada Co-operative Bank (fictional)", "NRMD", "Vapi, Gujarat",
-                 "Hetal Shah", "accounts@navrang-pack.example"),
+                 "Hetal Shah", "accounts@navrang-pack.example", "goods"),
     SupplierSeed("V100103", "Kesar Engineering Spares", "MRO spares", "24", "F",
                  MsmeCategory.SMALL, "UDYAM-GJ-07-0045678", EnterpriseType.MANUFACTURER, False, 45, True,
                  "Sahyog Bank (fictional)", "SHYG", "Ankleshwar, Gujarat",
-                 "Dinesh Patel", "invoices@kesar-spares.example"),
+                 "Dinesh Patel", "invoices@kesar-spares.example", "goods"),
     SupplierSeed("V100104", "Tapti Turnaround Services", "Maintenance services", "24", "F",
                  MsmeCategory.SMALL, "UDYAM-GJ-22-0078901", EnterpriseType.SERVICES, False, 45, True,
                  "Narmada Co-operative Bank (fictional)", "NRMD", "Surat, Gujarat",
-                 "Farhan Qureshi", "billing@tapti-services.example"),
+                 "Farhan Qureshi", "billing@tapti-services.example", "contractor"),
     SupplierSeed("V100105", "Konkan Bulk Carriers", "Freight", "27", "C",
                  MsmeCategory.NONE, None, EnterpriseType.SERVICES, False, 30, True,
                  "Sahyog Bank (fictional)", "SHYG", "Panvel, Maharashtra",
-                 "Swati Kamat", "freight@konkan-bulk.example"),
+                 "Swati Kamat", "freight@konkan-bulk.example", "contractor"),
     SupplierSeed("V100106", "Dakshin Calibration Labs", "Lab & QC calibration", "29", "F",
                  MsmeCategory.MICRO, "UDYAM-KR-03-0023456", EnterpriseType.SERVICES, False, 30, False,
                  "Kaveri Gramin Bank (fictional)", "KVRG", "Bengaluru, Karnataka",
-                 "Lakshmi Rao", "lab@dakshin-cal.example"),
+                 "Lakshmi Rao", "lab@dakshin-cal.example", "technical"),
 ]
 
 # (email, full name, title, role, approver level)
@@ -121,7 +125,8 @@ def seed(db: Session) -> dict[str, int]:
             payment_terms_days=s.terms, written_agreement=s.written_agreement,
             bank_account_enc=encrypt_str(account), bank_account_last4=account[-4:],
             bank_ifsc=f"{s.ifsc_prefix}0{_rng.randint(100000, 999999)}", bank_name=s.bank_name,
-            contact_email=s.user_email,
+            contact_email=s.user_email, tds_section=s.tds_section,
+            early_discount_pct=Decimal(s.early_discount_pct), early_discount_days=s.early_discount_days,
         )
         db.add(supplier)
         db.flush()

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Banknote,
   BarChart3,
   Building2,
   Clock,
@@ -50,6 +51,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/assistant", label: "Payment assistant", icon: MessageCircle, roles: ["clerk"] },
       { to: "/receiving", label: "Receiving", icon: PackageCheck, roles: ["stores"] },
       { to: "/approvals", label: "Approvals", icon: Stamp, roles: ["approver"] },
+      { to: "/payments", label: "Payments", icon: Banknote, roles: ["clerk", "approver", "auditor", "admin"] },
       { to: "/bank-changes", label: "Bank changes", icon: Landmark, roles: ["clerk", "approver", "auditor", "admin"] },
       { to: "/controls", label: "Controls report", icon: FileCheck2, roles: ["auditor", "admin"] },
       { to: "/audit", label: "Audit chain", icon: Link2, roles: ["auditor", "admin"] },

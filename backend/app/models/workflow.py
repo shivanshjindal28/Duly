@@ -63,9 +63,13 @@ class Payment(Base):
     payment_run_id: Mapped[str | None] = mapped_column(String(20))
     gross_amount: Mapped[Decimal] = mapped_column(Money)
     tds_amount: Mapped[Decimal] = mapped_column(Money, default=0)
+    tds_section: Mapped[str] = mapped_column(String(15), default="none")
+    tds_rate_pct: Mapped[Decimal] = mapped_column(Money, default=0)
     discount_amount: Mapped[Decimal] = mapped_column(Money, default=0)
     net_amount: Mapped[Decimal] = mapped_column(Money)
     utr: Mapped[str] = mapped_column(String(22))  # simulated
+    released_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reason: Mapped[str | None] = mapped_column(String(200))  # why it was in this run
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

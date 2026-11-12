@@ -20,6 +20,7 @@ from app.core.enums import Decision, InvoiceStatus, Role, StepStatus
 from app.models import (ApprovalStep, AuditEvent, BankChangeRequest, ExtractionResult, Invoice, MatchResult, Payment,
                         Policy, PurchaseOrder, ReasonCode, User)
 from app.models.base import as_utc
+from app.payments.msme import interest as msme_interest
 from app.workflow.approvals import required_levels
 
 FINAL = (InvoiceStatus.APPROVED, InvoiceStatus.PAID)
@@ -197,13 +198,13 @@ def build(db: Session, period_from: date, period_to: date) -> ControlsReport:
     late_paid = [i for i in msme if i.id in pays and as_utc(pays[i.id].paid_at).astimezone(clock.IST).date() > i.msme_due_date]
     overdue = [i for i in msme if i.id not in pays and i.status != InvoiceStatus.REJECTED and i.msme_due_date < today]
     rate = Decimal(str(policy.get("msme", {}).get("rbi_bank_rate_pct", 6.5))) * 3 / 100
-    exposure = sum((i.total * (((1 + rate / 12) ** ((today - i.msme_due_date).days / 30)) - 1) for i in overdue), Decimal(0))
+    exposure = sum((msme_interest(i.total, i.msme_due_date, today, rate * 100 / 3) for i in overdue), Decimal(0))
     paid_msme = [i for i in msme if i.id in pays]
     controls.append(ControlResult(
         "C-08", "MSME payments on time",
         "Micro and small suppliers are paid within 45 days of acceptance (15 without a written agreement).",
         "Statutory due date computed at acceptance; countdown on the dashboard and supplier portal; payment run "
-        "prioritises MSMEs (D5, Phase 3).",
+        "prioritises MSMEs by due date (D5).",
         f"Checked {len(msme)} MSME invoices: {len(paid_msme)} paid, {len(overdue)} unpaid past the due date.",
         _result(len(msme), late_paid + overdue),
         len(msme), [ev(i, "paid after the MSME due date") for i in late_paid] +

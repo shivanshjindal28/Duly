@@ -29,6 +29,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { PaymentsPage } from "./pages/PaymentsPage";
 import { ReceivingPage } from "./pages/ReceivingPage";
 import { UploadPage } from "./pages/UploadPage";
 
@@ -76,6 +77,7 @@ const router = createBrowserRouter([
               { path: "/audit", element: <AuditPage /> },
               { path: "/controls", element: <ControlsReportPage /> },
               { path: "/bank-changes", element: <BankChangesPage /> },
+              { path: "/payments", element: <PaymentsPage /> },
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/queue", element: <QueuePage /> },
               { path: "/portal", element: <SupplierPortalPage /> },

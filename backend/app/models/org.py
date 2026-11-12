@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from decimal import Decimal
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -40,6 +42,10 @@ class Supplier(Base):
     e_invoice_applicable: Mapped[bool] = mapped_column(Boolean, default=False)
     payment_terms_days: Mapped[int] = mapped_column(Integer, default=60)
     written_agreement: Mapped[bool] = mapped_column(Boolean, default=True)
+    tds_section: Mapped[str] = mapped_column(String(15), default="none")  # contractor|technical|professional|goods|none
+    # Early-payment discount offered by the supplier (e.g. 1% if paid within 10 days of the invoice date).
+    early_discount_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
+    early_discount_days: Mapped[int] = mapped_column(Integer, default=0)
     # Bank details: account number encrypted at rest (AES-GCM); last 4 kept for masking.
     bank_account_enc: Mapped[str] = mapped_column(String(200))
     bank_account_last4: Mapped[str] = mapped_column(String(4))

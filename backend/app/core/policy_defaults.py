@@ -27,4 +27,19 @@ DEFAULT_POLICY: dict = {
     # rbi_bank_rate_pct is an editable assumption; verify the current RBI bank rate before use.
     "msme": {"max_term_days": 45, "no_agreement_days": 15, "rbi_bank_rate_pct": 5.75},
     "bank_change_cooling_hours": 72,
+    # Payment run (D5). ASSUMPTIONS: cost of funds and run interval are finance inputs.
+    "payments": {"cost_of_funds_pct": 9.0, "run_interval_days": 7, "msme_buffer_days": 7},
+    # Tax-deduction-at-risk display only (D4). ASSUMPTION: confirm with the tax team.
+    "corporate_tax_rate_pct": 25.17,
+    # TDS under Income-tax Act 2025 s.393 (formerly 194C / 194J / 194Q). ASSUMPTION: verify with the tax team.
+    "tds": {
+        "contractor": {"label": "Contractor (s.393; formerly 194C)", "rate_individual_pct": 1, "rate_other_pct": 2,
+                       "single_threshold_inr": 30000, "annual_threshold_inr": 100000},
+        "technical": {"label": "Fees for technical services (s.393; formerly 194J)", "rate_pct": 2,
+                      "annual_threshold_inr": 50000},
+        "professional": {"label": "Professional fees (s.393; formerly 194J)", "rate_pct": 10,
+                         "annual_threshold_inr": 50000},
+        "goods": {"label": "Purchase of goods (s.393; formerly 194Q)", "rate_pct": 0.1,
+                  "annual_threshold_inr": 5000000},
+    },
 }

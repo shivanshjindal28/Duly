@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 04:15 IST by Shivansh (Claude Code)
+Last updated: 2026-11-13 06:10 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -41,6 +41,7 @@ cd frontend && npm run typecheck
 - **Phase 3 step 17 (D1)**: signed e-invoice QR. `samples/sandbox_irp.py` signs IRP-shaped JWTs (RS256, `data` claim with SellerGstin, BuyerGstin, DocNo, DocDt, TotInvVal, ItemCnt, MainHsnCode, Irn, IrnDt; IRN = SHA-256 of GSTIN+FY+type+number) with a local key in `backend/data/keys/`; `with_einvoice(spec)` prints a vector QR. `ingestion/qr.py` decodes (zxing-cpp, OpenCV fallback), verifies RS256 against the trusted key (`IRP_PUBLIC_KEY_PATH`, default the sandbox key), stores status/payload on the invoice; `einvoice_reasons` (pure) feeds the engine: QR_MISMATCH / QR_SIGNATURE_INVALID block, EINVOICE_QR_MISSING flags for e-invoice suppliers, EINVOICE_VERIFIED / NOT_APPLICABLE info. Detail API `einvoice` + panel (printed vs signed, sandbox note). Scenario 8 verified live (edited total blocked with both amounts).
 - **Phase 3 step 18 (D2)**: prompt-injection shield (`ingestion/injection.py`). Before any AI reads a PDF: finds white / near-white, tiny (< 3.5 pt) and off-page text runs, PDF metadata, and instruction-like phrasing (override instructions, addressed to an AI, approve the invoice, change payment details, bypass controls, ...); for images, visible OCR text. Hidden words are dropped from the parser's tokens (hidden text cannot change extracted values). If found, the AI's reading is quarantined (stored, shown, never used); the AI's own `suspicious_text` report also quarantines. Engine reason `INJECTION_ATTEMPT` (flag) with findings as evidence. UI: injection panel on the invoice (hidden text verbatim, where, what it tries to do; quarantined AI values vs values used). Scenario 7 verified live.
 - **Phase 3 step 19 (D3)**: bank-detail fraud. BANK_MISMATCH block (engine) now also raises `security.bank_mismatch_alert`. Bank change workflow (`workflow/bank_changes.py`, `/api/bank-changes`): supplier requests -> AP clerk proposes after the out-of-band call-back checklist (number on file, known contact, bank proof) -> cooling period (policy `bank_change_cooling_hours`, 72) -> finance approver (not maker/requester) approves -> vendor master updated (AES-GCM), blocked/flagged invoices re-matched (trigger `bank_change_approved:<id>`). Every step audited; accounts masked everywhere. UI: bank card in supplier portal (en/hi), staff `/bank-changes` page. Controls report C-06 now tests real requests.
+- **Phase 3 step 20 (D4 + D5)**: MSME guardian and smart payment run. `payments/msme.py`: statutory due date, MSMED s.16 interest (3 x RBI bank rate, monthly rests, pro-rated by 30-day months), tax deduction at risk (s.43B(h) / s.37(2)(g), assumed tax rate, rule text in a tooltip), half-year periods. `payments/tds.py`: TDS under s.393 (formerly 194C/194J/194Q) from the policy table "verify with tax team" (contractor 1%/2% with 30k single / 1L yearly thresholds, technical 2%, professional 10%, goods 0.1% above 50L). `payments/run.py`: proposal (overdue first, then MSME due before next run + 7-day buffer, then early-payment discounts whose annualised return beats the 9% cost of funds, then contract-term invoices due before the next run; everything else deferred with the reason), cash kept / days-payable effect, release by a finance approver only (simulated UTR `DULYN...`, TDS withheld, invoice -> paid, audit `payment.released`), MSME rows and the half-yearly "MSME dues outstanding beyond 45 days" (Form I data). API `/api/payments/run`, `/run/release`, `/history`, `/msme`. UI `/payments`. Supplier portal + chatbot show the payment and UTR. Controls C-08 reuses the same interest function. Suppliers got `tds_section` and an early-payment discount (Sahyadri 1% in 10 days).
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -48,23 +49,9 @@ cd frontend && npm run typecheck
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 1 step 7: human review flow for low-confidence fields with logged corrections.
-
-2. Phase 1 step 8: stores GR/SES posting + automatic re-match (call `run_match(db, inv, trigger="gr_posted")` for open invoices on that PO).
-2. Phase 1 step 9: DoA workflow, approvals, SoD, overrides, MFA step-up, SLA escalation.
-2. Phase 1 step 10: audit chain (hash + signed head) + verify endpoint + auditor view; then wire login, upload, review, decision events into it.
-2. Phase 1 step 11: exceptions dashboard (type, supplier, age, drill-down) + work queue with keyboard shortcuts.
-2. Phase 1 step 12: supplier portal (invoice list with Duly rail, owner, plain-language block reasons, MSME countdown).
-2. Phase 2 step 13: Claude extraction with structured output, per-field confidence and boxes, response cache by SHA-256, AI mode badge (offline parser stays the fallback).
-2. Phase 2 step 14: duplicate detection (5 signals) + side-by-side compare.
-2. Phase 2 step 15: "Where is my payment?" chatbot with scoped tools, guardrails, offline intent fallback, English/Hindi (the portal footer currently says "coming soon"; update it when done).
-2. Phase 2 step 16: controls report for auditors (screen + PDF via reportlab).
-2. Phase 3 step 17: Sandbox IRP signing + signed-QR verification (D1).
-2. Phase 3 step 18: prompt-injection shield for documents (D2): hidden-text scan + quarantine (`suspicious_text` from the AI is already captured).
-2. Phase 3 step 19: bank-detail fraud block exists (BANK_MISMATCH); add maker-checker bank change requests with 72 h cooling + call-back checklist (feeds control C-06).
-2. Phase 3 step 20: MSME guardian (interest, tax-deduction exposure, half-yearly summary) + payment run with TDS (D4/D5).
-2. Phase 3 step 21: SAP posting preview + `erp_adapter` (LocalErpAdapter, S4HanaAdapterStub) + SAP tooltips (D6).
-3. Phase 4 step 22: invoice generator script for all 12 scenarios + image variants into `demo/invoices/` with `demo/manifest.json`; seed ~250 historical invoices.
+1. Phase 3 step 21: SAP posting preview + `erp/` adapter (ErpAdapter, LocalErpAdapter, S4HanaAdapterStub building the supplier-invoice OData payload) + SAP tooltips (D6).
+2. Phase 4 step 22: invoice generator script for all 12 scenarios + image variants into `demo/invoices/` with `demo/manifest.json`; seed ~250 historical invoices (incl. some approved / paid so the payment run, MSME guardian and dashboard have data).
+3. Phase 4 step 23: `scripts/demo_check.py` running every scenario end to end; Playwright smoke test.
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -116,6 +103,9 @@ cd frontend && npm run typecheck
 - Only invoices in pending_approval/approved/paid count as "already invoiced" for the cumulative quantity check (blocked or flagged invoices do not consume GR quantity).
 - A match on an invoice in `needs_review` is stored but does not change its status until review is done.
 - Validation result types live in `engine/types.py` (shared with the step 5 engine); `workflow/matching.py` maps ORM rows to them.
+- Payment run: releasing is an approver (finance manager) action; clerks, auditors and admins can see the proposal. MSME invoices go into a run if their statutory due date is before the next run plus `payments.msme_buffer_days` (7). Non-MSME invoices are never paid early unless the discount's annualised return beats `payments.cost_of_funds_pct`. All three numbers are policy assumptions.
+- TDS base is the taxable value (excl. GST). PAN 4th character P/H = individual/HUF (1% contractor rate), others 2%. Yearly thresholds use taxable value already paid to that supplier this FY. A labelled assumption, not tax advice.
+- Tax deduction at risk uses an assumed corporate tax rate of 25.17% (policy `corporate_tax_rate_pct`) only to show the size of the effect.
 - Runtime data (`backend/data/*.db`, uploads, keys, ai_cache) is git-ignored; demo invoices under `demo/invoices/` will be tracked.
 
 ## Known bugs
@@ -129,7 +119,8 @@ Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they a
 - S2 price variance: works (FLAG, exact ₹39,680).
 - S3 qty exceeds GR: works (BLOCK, cumulative view).
 - S4 missing GR: works end to end (BLOCK, stores posts GR live, auto re-match releases it).
-- S11 services with SES: APPROVE works; TDS is Phase 3.
+- S11 services with SES: APPROVE works; TDS (contractor 2% = ₹8,400) computed in the payment run.
+- S10 MSME jumbo bags (GR 41 days ago): top of the payment run with countdown; release gives a UTR visible in the supplier portal. Exposure (interest, deduction at risk) shows once an MSME invoice is past due (advance the demo clock).
 - S12 blurry photo: works end to end (review, logged corrections, APPROVE).
 - S1 Rs 15 lakh catalyst: APPROVE -> L1 then L2 with MFA works end to end (tested in API tests and browser).
 - S6, S9 decisions are covered by engine tests; generated demo PDFs come in Phase 4.

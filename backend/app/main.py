@@ -9,7 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app import __version__
-from app.api import admin, approvals, audit, auth, bank_changes, chat, dashboard, health, invoices, portal, reports, stores, suppliers
+from app.api import admin, approvals, audit, auth, bank_changes, chat, dashboard, health, invoices, payments, portal, reports, stores, suppliers
 from app.core.config import get_settings
 from app.core import clock
 from app.core.db import SessionLocal, create_all
@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api")
     app.include_router(reports.router, prefix="/api")
     app.include_router(bank_changes.router, prefix="/api")
+    app.include_router(payments.router, prefix="/api")
     return app
 
 
