@@ -30,8 +30,9 @@ class ExtractedInvoice(BaseModel):
     header: dict[str, ExtractedField]
     lines: list[dict[str, ExtractedField]]
     method: str  # "text" or "ocr"
-    extractor: str  # e.g. "offline-regex"
-    extractor_version: str
+    extractor: str  # e.g. "offline-regex" or the Claude model id
+    extractor_version: str  # parser version or prompt version
+    suspicious_text: str | None = None  # instruction-like text the AI noticed (prompt-injection signal)
 
     def get(self, name: str) -> str | None:
         f = self.header.get(name)

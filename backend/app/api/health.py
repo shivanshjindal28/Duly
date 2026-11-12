@@ -6,6 +6,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app import __version__
+from app.ai.extract import ai_mode_setting
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.models import Policy
@@ -27,6 +28,7 @@ def health(db: Session = Depends(get_db)) -> dict:
         "version": __version__,
         "db": "ok" if db_ok else "error",
         "demo_mode": settings.demo_mode,
-        "ai_mode": "live" if settings.anthropic_api_key else "offline",
+        "ai_mode": ai_mode_setting(),
+        "ai_model": settings.anthropic_model if ai_mode_setting() != "offline" else None,
         "policy_version": policy.version if policy else None,
     }

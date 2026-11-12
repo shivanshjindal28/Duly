@@ -12,11 +12,12 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai import offline_parser
+from app.ai.claude_extractor import IMAGE_DPI
+from app.ai.extract import extract as ai_extract
 from app.ai.schema import ExtractedInvoice
 from app.core import audit
 from app.core.crypto import encrypt_str
-from app.ingestion.extract_text import acquire_tokens
+from app.ingestion.extract_text import acquire_tokens, render_pages
 from app.ingestion.hardening import harden
 from app.ingestion.storage import sha256, store
 from app.core.enums import InvoiceStatus, Role
@@ -98,12 +99,14 @@ def _date(value: str | None) -> date | None:
 def process_upload(db: Session, user: User, filename: str, data: bytes, supplier_id: int | None = None) -> Invoice:
     clean = harden(filename, data)
     tokens, method = acquire_tokens(clean.data, clean.kind)
-    extracted = offline_parser.parse(tokens, method)
+    file_hash = sha256(clean.data)
+    extracted, ai_mode, ai_fallback = ai_extract(file_hash, tokens, method,
+                                                 lambda: render_pages(clean.data, clean.kind, dpi=IMAGE_DPI))
     supplier = _resolve_supplier(db, user, supplier_id, extracted)
 
     doc = Document(
         original_filename=filename[:255], stored_name=store(clean.data, clean.kind), mime_type=clean.mime,
-        size_bytes=len(clean.data), sha256=sha256(clean.data), pages=clean.pages, uploaded_by_user_id=user.id,
+        size_bytes=len(clean.data), sha256=file_hash, pages=clean.pages, uploaded_by_user_id=user.id,
     )
     db.add(doc)
     db.flush()
@@ -123,7 +126,7 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         igst=dec(h["igst"].value), total=dec(h["total"].value),
         bank_account_enc=encrypt_str(account) if account else None,
         bank_account_last4=account[-4:] if account else None, bank_ifsc=h["bank_ifsc"].value,
-        ai_mode="offline", processed_by_user_id=user.id if user.role == Role.CLERK else None,
+        ai_mode=ai_mode, processed_by_user_id=user.id if user.role == Role.CLERK else None,
     )
     db.add(invoice)
     db.flush()
@@ -155,7 +158,8 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
     audit.queue(db, "invoice.uploaded", "invoice", invoice.id, after={
         "invoice_number": number, "supplier": supplier.code, "file": filename[:120], "sha256": doc.sha256,
         "pages": doc.pages, "text_source": extracted.method, "extractor": extracted.extractor_version,
-        "ai_mode": "offline", "fields": len(extracted.all_fields()),
+        "ai_mode": ai_mode, "ai_model": extracted.extractor, "ai_fallback_reason": ai_fallback,
+        "suspicious_text": extracted.suspicious_text, "fields": len(extracted.all_fields()),
         "needs_review": pending_review(db, invoice.id),
     })
     run_match(db, invoice, trigger="upload")

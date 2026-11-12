@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 22:30 IST by Shivansh (Claude Code)
+Last updated: 2026-11-12 23:15 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,7 +12,7 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 122 tests (about 15 s; OCR model loads once)
+cd backend && python -m pytest    # 128 tests (about 15 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -34,6 +34,7 @@ cd frontend && npm run typecheck
 - **Phase 1 step 10**: tamper-evident audit trail (`core/audit.py`). `hash = SHA256(prev_hash + canonical_json(event))`, head (id:hash) signed with an Ed25519 key in `backend/data/keys/audit_ed25519.pem`. Events are queued on the request session (`audit.queue`) and written only after that transaction commits (SQLAlchemy after_commit hook, process lock) so rolled-back actions leave no entry. Recorded: logins (ok/failed/locked), logout, upload+extraction summary, every match (actor `system`, `ai_decided: false`), field reviews (before/after, reason), routing, approvals (level, MFA, delegation), rejections, send-backs, info requests, overrides, escalations, SoD refusals (`security.sod_refused`), GR/SES postings, demo clock changes, chain verifications, seeding. `GET /api/audit/verify` pinpoints the first broken event (edited content or broken link) and detects truncation via the signed head. `scripts/tamper_demo.py [--restore]` and admin "Run tamper demo / Restore" edit a row with raw SQL. UI: `/audit` (auditor, admin) with Verify, chain-of-blocks view (broken block highlighted), filterable event table; invoice detail shows that invoice's audit trail for staff. Verified live: tamper -> "Chain broken at event #24" -> restore -> verified.
 - **Phase 1 step 11**: exceptions dashboard + work queue (`api/dashboard.py`, all numbers computed live). KPIs: in queue, value on hold, touchless rate (approved by P-01 / all approved), avg cycle time (upload -> final approval), MSME due <= 7 days (+ overdue), duplicates prevented (counts DUPLICATE/POSSIBLE_DUPLICATE reasons; 0 until B1). Open exceptions by type (Recharts bar, block vs flag colour + legend), by age buckets, by supplier (value at risk, oldest), MSME due-date heatmap (-7..+30 days, overdue highlighted). Every chart/tile drills down to `/queue?...`. Queue: URL filters (status, reason, supplier, age, MSME due), sortable columns, saved views (localStorage), CSV export, keyboard J/K/Enter, A approve (approvers, no-MFA invoices), R/F open. Contract and statutory MSME due dates now set at acceptance (GR/SES) in `run_match` via `payments/msme.py`. A test proves each dashboard count equals its drill-down queue length.
 - **Phase 1 step 12**: supplier portal (`/portal`, `GET /api/portal`, supplier only, own data). Header with MSME status, Udyam no., terms (MSME: paid within N days of acceptance), masked bank account; tiles (open, need your action, next expected payment, paid so far); a card per invoice with Duly rail, supplier-friendly stage, expected payment date, MSME statutory due date + countdown, "What you need to do" (e.g. exact credit-note amount = excess qty x PO price x (1 + GST)) and "What Plant X is doing" (e.g. waiting for GR, re-checked automatically); payment history table (UTRs appear with the Phase 3 payment run). English / Hindi via i18next with reviewed JSON files (`frontend/src/i18n/en.json`, `hi.json`), IBM Plex Sans Devanagari bundled for offline. Suppliers' nav: My invoices + Upload (generic Invoices list now staff only). Verified in the browser in both languages.
+- **Phase 2 step 13**: Claude extraction (`ai/claude_extractor.py`, `ai/extract.py`, prompt `ai/prompts/extraction.py` = `extract-v1`). Page images (150 dpi, max 5 pages) + numbered text lines -> structured output (`output_config.format` JSON schema: value, confidence, cited line id per field; `suspicious_text` for injection signals). Model from `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`, effort medium) with server-side refusal fallback (`fallbacks: "default"`). Merge with the deterministic parser: agree -> max confidence; disagree -> PDF-text value kept (or AI's for OCR) at reduced confidence so a human reviews it; boxes from our tokens on the cited line. Cache by SHA-256 + model + prompt version in `backend/data/ai_cache/`. `AI_MODE` auto | live | cached | offline; any AI failure falls back to offline with the reason in the audit event. Model + prompt version stored per field. Tested with a mocked client (no key on this laptop: the live path has NOT been run against the real API yet).
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -50,7 +51,8 @@ cd frontend && npm run typecheck
 2. Phase 1 step 12: supplier portal (invoice list with Duly rail, owner, plain-language block reasons, MSME countdown).
 2. Phase 2 step 13: Claude extraction with structured output, per-field confidence and boxes, response cache by SHA-256, AI mode badge (offline parser stays the fallback).
 2. Phase 2 step 14: duplicate detection (5 signals) + side-by-side compare.
-3. Phase 2 step 15: "Where is my payment?" chatbot with scoped tools, guardrails, offline intent fallback, English/Hindi (the portal footer currently says "coming soon"; update it when done).
+2. Phase 2 step 15: "Where is my payment?" chatbot with scoped tools, guardrails, offline intent fallback, English/Hindi (the portal footer currently says "coming soon"; update it when done).
+3. Phase 2 step 16: controls report for auditors (screen + PDF via reportlab).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -72,6 +74,8 @@ cd frontend && npm run typecheck
 - Extraction results are append-only: a human correction adds a new row with source=manual; the latest row per field wins.
 - Bank account numbers are masked in `extraction_results`; the full number is only stored encrypted on the invoice.
 - HSN/SAC rate table (`validation/hsn.py`) is a labelled assumption; ambiguous codes list every allowed rate.
+- AI bounding boxes come from our own positioned tokens on the line Claude cites, not model-estimated coordinates (more reliable highlights). On disagreement with the exact PDF text layer, the PDF text wins and the field goes to review.
+- `AI_MODE=cached` lets the team pre-warm `backend/data/ai_cache/` with a key once and then demo with live-quality extraction fully offline.
 - Supplier to-dos are message codes + params from the server, rendered from i18n files; no internal data (approver names, SAP refs) is sent to suppliers. Language choice is a per-browser preference (localStorage).
 - MSME clock starts at acceptance (GR/SES date) whatever the match outcome; traders excluded; no written agreement = 15 days.
 - Dashboard data is sparse until Phase 4 seeds ~250 historical invoices; charts and KPIs are already live queries, not placeholders.
@@ -93,6 +97,7 @@ cd frontend && npm run typecheck
 - Runtime data (`backend/data/*.db`, uploads, keys, ai_cache) is git-ignored; demo invoices under `demo/invoices/` will be tracked.
 
 ## Known bugs
+- Live Claude extraction is untested against the real API on this laptop (no key). Before the demo: set ANTHROPIC_API_KEY, upload the demo invoices once (fills the cache), then consider AI_MODE=cached.
 - The browser pane in this environment is narrower than a laptop screen, so the three-pane layout was checked via DOM measurements at 1600 px (grid 488/390/390 px) and visually only in the stacked narrow layout.
 - None known. Visual layout has been checked through the accessibility tree and DOM, not by eye (the browser pane could not take screenshots this session). Have a quick look at the login page and shell on first run.
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.

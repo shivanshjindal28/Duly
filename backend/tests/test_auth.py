@@ -58,7 +58,14 @@ def test_me_requires_session(client):
 def test_tampered_token_rejected(client):
     login(client, CLERK)
     token = client.cookies.get("duly_session")
-    client.cookies.set("duly_session", token[:-2] + ("AA" if not token.endswith("AA") else "BB"))
+    header, payload, signature = token.split(".")
+    # Flip a character in the middle of the payload (the last base64 char of a signature can carry
+    # ignored padding bits, so tampering there is not guaranteed to change the bytes).
+    i = len(payload) // 2
+    forged = payload[:i] + ("A" if payload[i] != "A" else "B") + payload[i + 1:]
+    client.cookies.delete("duly_session")  # replace, do not add a second cookie of the same name
+    client.cookies.set("duly_session", f"{header}.{forged}.{signature}")
+    assert [c.value for c in client.cookies.jar if c.name == "duly_session"] == [f"{header}.{forged}.{signature}"]
     assert client.get("/api/auth/me").status_code == 401
 
 
