@@ -128,8 +128,8 @@ invoice (about 1.5 pages per call; check current pricing). It is an editable inp
 
 **25. What would you need for production?**
 SSO via the company identity provider, the real IRP public key, S/4HANA integration through BTP, Postgres with
-backups, a worker queue for OCR and AI, a data-retention setting, secrets in a vault, a penetration test and a
-DPIA. All are listed in docs/CONTROLS.md.
+backups, a worker behind the existing job queue for OCR and AI, a nightly retention schedule with legal hold (the
+retention policy itself is built), secrets in a vault, a penetration test and a DPIA. All are listed in docs/CONTROLS.md.
 
 **Bonus: How did you build it so fast? Can you explain the code?**
 With Claude Code as a pair programmer, in small tested steps (docs/AI_DECLARATION.md). Each module has a docstring

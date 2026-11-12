@@ -50,6 +50,13 @@ a period. This file says how each control works, where it lives in the code, and
 - Vendor and invoice bank accounts are encrypted at rest (AES-GCM, key from the environment) and masked everywhere
   (XXXXXX4417), including logs and audit events. Chat transcripts are stored with digits redacted.
 - Synthetic data only; every master record is flagged `is_synthetic`.
+- Data retention (`backend/app/workflow/retention.py`, Policy page, test `test_retention.py`): the original file and
+  page images of a **paid or rejected** invoice are deleted once older than `retention.documents_years` (default 8,
+  minimum 6: assumption based on CGST Act s.36 and Companies Act s.128(5), confirm with legal); payment-assistant
+  chats after `chat_days` (180); AP-mailbox email text after `email_body_days` (365). Open invoices keep their files.
+  Never deleted: the audit trail, invoice data, payments, the extraction / review log, and the file's SHA-256 and
+  pHash (so duplicate detection keeps working). Run by an admin from the Policy page (a scheduler in production);
+  each run is audited (`retention.run`, counts only); a deleted file returns HTTP 410 and the invoice says why.
 - AI kill switch: AI mode **offline** (admin Demo controls, or `AI_MODE=offline`) runs everything on local OCR and
   rules; **cached** replays earlier AI readings with no network. The demo and judging setup is offline.
 
@@ -88,7 +95,7 @@ a period. This file says how each control works, where it lives in the code, and
 See docs/AI_DECLARATION.md.
 
 ## Not built (production path)
-- Data retention setting and automated deletion of documents and chat transcripts after the retention period.
+- A scheduled (nightly) retention run and legal hold; today retention is applied by an admin on demand.
 - Single sign-on via the company identity provider (demo uses local accounts and demo personas).
 - Real IRP public key for e-invoice QRs (demo uses a local Sandbox IRP key).
 - Penetration test and DPIA; Postgres with backups instead of SQLite; secrets in a vault.

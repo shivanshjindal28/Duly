@@ -70,6 +70,13 @@ FIELDS: tuple[Field, ...] = (
           "MSME invoices due before the next run plus this buffer are paid in this run."),
     Field("corporate_tax_rate_pct", "Payments", "Tax rate for 'deduction at risk'", "%", 0, 50,
           help="Display only. Confirm with the tax team."),
+    Field("retention.documents_years", "Data retention", "Keep invoice documents for", "years", 6, 20, True,
+          "Original PDFs and photos of paid or rejected invoices are deleted after this. The invoice data, its file "
+          "hash and the audit trail are kept. Law sets the minimum (assumption: 8 years, confirm with legal)."),
+    Field("retention.chat_days", "Data retention", "Keep payment-assistant chats for", "days", 30, 730, True,
+          "Chat transcripts are already redacted; they are deleted after this."),
+    Field("retention.email_body_days", "Data retention", "Keep email message text for", "days", 90, 3650, True,
+          "The text of emails to the AP mailbox is deleted after this; sender, subject and the invoices stay."),
     Field("tds.contractor.rate_other_pct", "TDS (verify with tax team)", "Contractor rate (companies, firms)", "%", 0, 30),
     Field("tds.contractor.rate_individual_pct", "TDS (verify with tax team)", "Contractor rate (individuals, HUF)", "%", 0, 30),
     Field("tds.contractor.single_threshold_inr", "TDS (verify with tax team)", "Contractor single-bill threshold", "INR", 0, 10_000_000, True),
@@ -99,7 +106,7 @@ def _set(data: dict, path: str, value) -> None:
     parts = path.split(".")
     node = data
     for part in parts[:-1]:
-        node = node[int(part)] if isinstance(node, list) else node[part]
+        node = node[int(part)] if isinstance(node, list) else node.setdefault(part, {})
     last = parts[-1]
     if isinstance(node, list):
         node[int(last)] = value
@@ -159,7 +166,10 @@ def change(db: Session, user: User, changes: dict[str, float], reason: str) -> P
             if value != int(value):
                 raise PolicyError(f"{f.label}: must be a whole number.")
             value = int(value)
-        old = _get(data, path)
+        try:
+            old = _get(data, path)
+        except (KeyError, IndexError, TypeError):
+            old = None  # value added to the policy after this version was written
         if old is None or float(old) != float(value):
             diff[path] = {"from": old, "to": value}
             _set(data, path, value)

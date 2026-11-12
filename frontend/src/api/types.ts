@@ -117,7 +117,7 @@ export interface InvoiceDetail extends InvoiceSummary {
     sender_status: "verified" | "internal" | "lookalike" | "unknown";
   } | null;
   lines: InvoiceLine[];
-  document: { original_filename: string; mime_type: string; pages: number; sha256: string; size_bytes: number } | null;
+  document: { original_filename: string; mime_type: string; pages: number; sha256: string; size_bytes: number; purged_at: string | null } | null;
   fields: ExtractedFieldOut[];
   confidence_threshold: number;
   pending_review: string[];

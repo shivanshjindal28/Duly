@@ -29,7 +29,13 @@ interface TrustOut {
     chat_refusals: number;
     chat_injection_flags: number;
   };
-  data: { bank_accounts_encrypted: number; bank_alerts: number; synthetic: boolean };
+  data: {
+    bank_accounts_encrypted: number;
+    bank_alerts: number;
+    synthetic: boolean;
+    retention: { documents_years: number; chat_days: number; email_body_days: number };
+    retention_runs: number;
+  };
   audit: { ok: boolean; events: number; signed_head: boolean };
 }
 
@@ -130,11 +136,14 @@ export function TrustPage() {
           "Only the invoice itself (page images and the text read from them) goes to the AI provider; never the vendor master with its bank records, and never other invoices.",
           "Bank accounts are encrypted at rest (AES-GCM) and masked everywhere (XXXXXX4417), also in logs.",
           "Synthetic data only. The AI kill switch (AI mode: offline) runs everything on local OCR and rules.",
+          "Data retention (Policy page): files of closed invoices, chat transcripts and email text are deleted after set periods; the audit trail, invoice data and file hashes are kept.",
         ]} evidence={[
           ["AI mode now", mode],
           ["Vendor bank accounts encrypted", n(t.data.bank_accounts_encrypted)],
           ["Bank-detail fraud alerts", n(t.data.bank_alerts)],
           ["All master data synthetic", t.data.synthetic ? "yes" : "NO"],
+          ["Retention: files / chats / email text", `${t.data.retention.documents_years} years / ${t.data.retention.chat_days} days / ${t.data.retention.email_body_days} days`],
+          ["Retention runs", n(t.data.retention_runs)],
         ]} />
 
         <Control icon={Link2} title="Tamper-evident audit trail" how={[

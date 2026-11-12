@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, History, Lock, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
 import { api, ApiError } from "../api/client";
+import { RetentionPanel } from "../components/RetentionPanel";
 import { fmtDateTime, inr } from "../lib/format";
 import "./PolicyPage.css";
 
@@ -9,7 +10,7 @@ interface FieldDef {
   path: string;
   section: string;
   label: string;
-  unit: "%" | "INR" | "hours" | "days" | "ratio";
+  unit: "%" | "INR" | "hours" | "days" | "years" | "ratio";
   min: number;
   max: number;
   integer: boolean;
@@ -186,6 +187,8 @@ export function PolicyPage() {
           </div>
         ) : null}
       </form>
+
+      <RetentionPanel />
 
       <section className="panel table-panel" aria-labelledby="pol-hist">
         <h2 id="pol-hist" className="panel-title">

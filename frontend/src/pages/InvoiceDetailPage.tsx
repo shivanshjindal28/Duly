@@ -129,13 +129,23 @@ export function InvoiceDetailPage() {
             <h2 id="doc-title" className="label">
               Document
             </h2>
-            {inv.document ? (
+            {inv.document && !inv.document.purged_at ? (
               <a className="pane-link" href={`/api/invoices/${inv.id}/document`} target="_blank" rel="noreferrer">
                 <FileText size={13} aria-hidden="true" /> Original
               </a>
             ) : null}
           </div>
-          {inv.document ? (
+          {inv.document?.purged_at ? (
+            <div className="ers-note">
+              <p>
+                <strong>Original file deleted under the data retention policy</strong> on {fmtDate(inv.document.purged_at)}.
+              </p>
+              <p className="muted">
+                The invoice data, review log, decision and audit trail are kept. The file's SHA-256 is kept too, so a
+                resubmitted copy is still caught as a duplicate: <span className="mono">{inv.document.sha256.slice(0, 16)}...</span>
+              </p>
+            </div>
+          ) : inv.document ? (
             <DocumentViewer
               invoiceId={inv.id}
               pages={inv.document.pages}

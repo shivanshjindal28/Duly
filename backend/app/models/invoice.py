@@ -25,6 +25,8 @@ class Document(Base):
     phash: Mapped[str | None] = mapped_column(String(32), index=True)
     uploaded_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Set when the file was deleted under the retention policy; the row (hash, pHash, pages) stays.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Invoice(Base):

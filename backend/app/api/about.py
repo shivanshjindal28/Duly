@@ -111,6 +111,9 @@ def trust(db: Session = Depends(get_db)) -> dict:
                                                  .where(Supplier.bank_account_enc.is_not(None))) or 0,
             "bank_alerts": _count(db, "security.bank_mismatch_alert"),
             "synthetic": all(s.is_synthetic for s in db.scalars(select(Supplier))),
+            "retention": {**{"documents_years": 8, "chat_days": 180, "email_body_days": 365},
+                          **((_policy(db).data.get("retention") or {}) if _policy(db) else {})},
+            "retention_runs": _count(db, "retention.run"),
         },
         "audit": {"ok": v.ok, "events": v.events, "signed_head": v.head_signature_ok},
     }

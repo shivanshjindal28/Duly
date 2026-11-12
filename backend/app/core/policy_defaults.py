@@ -27,6 +27,9 @@ DEFAULT_POLICY: dict = {
     # rbi_bank_rate_pct is an editable assumption; verify the current RBI bank rate before use.
     "msme": {"max_term_days": 45, "no_agreement_days": 15, "rbi_bank_rate_pct": 5.75},
     "bank_change_cooling_hours": 72,
+    # Data retention. ASSUMPTION, confirm with legal: GST law keeps accounts 72 months after the annual
+    # return (CGST Act s.36) and the Companies Act 8 years (s.128(5)), so invoice documents are kept 8 years.
+    "retention": {"documents_years": 8, "chat_days": 180, "email_body_days": 365},
     # Payment run (D5). ASSUMPTIONS: cost of funds and run interval are finance inputs.
     "payments": {"cost_of_funds_pct": 9.0, "run_interval_days": 7, "msme_buffer_days": 7},
     # Tax-deduction-at-risk display only (D4). ASSUMPTION: confirm with the tax team.

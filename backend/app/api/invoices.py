@@ -122,6 +122,7 @@ class DocumentOut(BaseModel):
     pages: int
     sha256: str
     size_bytes: int
+    purged_at: datetime | None = None
 
 
 class StepOut(BaseModel):
@@ -424,6 +425,8 @@ def _document(invoice_id: int, scope: SupplierScope, db: Session) -> Document:
     doc = db.get(Document, inv.document_id) if inv.document_id else None
     if doc is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No document for this invoice")
+    if doc.purged_at is not None:
+        raise HTTPException(status.HTTP_410_GONE, "The document was deleted under the data retention policy")
     return doc
 
 
