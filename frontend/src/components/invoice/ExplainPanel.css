@@ -1,0 +1,21 @@
+.explain { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.explain-body { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-canvas); font-size: 13px; }
+.explain-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--color-border); }
+.explain-tabs button, .explain-lang button { font: inherit; font-size: 12.5px; background: none; border: none; padding: 5px 8px; cursor: pointer; color: var(--color-text-secondary); border-bottom: 2px solid transparent; }
+.explain-tabs button.on { color: var(--color-text); border-bottom-color: var(--color-primary); font-weight: 600; }
+.explain-lang { display: flex; gap: 4px; }
+.explain-lang button { border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.explain-lang button.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.explain-headline { font-weight: 600; }
+.explain-points { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.explain-point { padding-left: 4px; }
+.explain-point p { margin: 2px 0; }
+.explain-point.sev-block .explain-title { color: var(--color-block-text); }
+.explain-point.sev-flag .explain-title { color: var(--color-flag-text); }
+.explain-title { font-weight: 600; }
+.explain-k { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); margin-right: 4px; }
+.explain-who { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--color-text-secondary); }
+.explain-notes summary { cursor: pointer; font-size: 12.5px; }
+.explain-notes ul, .explain-supplier { margin: 4px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 6px; }
+.explain-supplier { list-style: none; padding-left: 0; }
+.explain-footer { display: flex; gap: 5px; align-items: flex-start; font-size: 11.5px; color: var(--color-text-secondary); border-top: 1px solid var(--color-border); padding-top: 6px; }

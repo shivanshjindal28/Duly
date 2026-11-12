@@ -3,6 +3,7 @@ import type { MatchOut, ReasonOut, Severity } from "../../api/types";
 import { fmtDateTime } from "../../lib/format";
 import { DecisionChip, SeverityIcon } from "../StatusChip";
 import { SapTerm } from "../SapTerm";
+import { ExplainPanel } from "./ExplainPanel";
 
 const ORDER: Record<Severity, number> = { block: 0, flag: 1, info: 2 };
 
@@ -43,7 +44,7 @@ function ReasonItem({ r, onLine, invoiceId }: { r: ReasonOut; onLine?: (line: nu
 }
 
 /** Decision card: the engine's outcome, every reason with evidence, and how it was produced. */
-export function DecisionPanel({ match, onLine, invoiceId }: { match: MatchOut | null; onLine?: (line: number) => void; invoiceId?: number }) {
+export function DecisionPanel({ match, onLine, invoiceId, canExplain }: { match: MatchOut | null; onLine?: (line: number) => void; invoiceId?: number; canExplain?: boolean }) {
   if (!match) return <p className="muted">Not matched yet.</p>;
   const reasons = [...match.reasons].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
   const actionable = reasons.filter((r) => r.severity !== "info");
@@ -80,6 +81,7 @@ export function DecisionPanel({ match, onLine, invoiceId }: { match: MatchOut | 
           </ul>
         </details>
       ) : null}
+      {canExplain && invoiceId ? <ExplainPanel key={invoiceId} invoiceId={invoiceId} matchKey={match.created_at} /> : null}
       <p className="decision-prov muted">
         Decided by the rules engine ({match.engine_version}, policy v{match.policy_version}), trigger:{" "}
         {match.trigger.replace("_", " ")}, {fmtDateTime(match.created_at)}. AI does not make this decision.

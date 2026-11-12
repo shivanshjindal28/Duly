@@ -202,7 +202,7 @@ export function InvoiceDetailPage() {
               Decision
             </h2>
           </div>
-          <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} />
+          <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} canExplain={!!me && me.role !== "supplier" && me.role !== "stores"} />
           <CreditNotePanel inv={inv} />
           <div className="pane-head pane-head-sub">
             <h2 className="label">e-invoice (signed QR)</h2>

@@ -100,8 +100,9 @@ def compare(new: DupView, old: DupView) -> Match | None:
         days = abs((new.invoice_date - old.invoice_date).days)
         j = jaccard(new.lines, old.lines)
         if diff_pct <= NEAR_TOTAL_PCT and days <= NEAR_DAYS and j >= NEAR_JACCARD:
-            sig.append(Signal("near_match", round(0.75 * j, 2), f"Total within {diff_pct:.2f}%, dated {days} days "
-                              f"apart, {round(j * 100)}% of items and quantities identical"))
+            sig.append(Signal("near_match", round(0.75 * j, 2), f"Total within {diff_pct:.2f}%, "
+                              f"{'same date' if days == 0 else 'dated 1 day apart' if days == 1 else f'dated {days} days apart'}, "
+                              f"{round(j * 100)}% of items and quantities identical"))
     d = phash_distance(new.phash, old.phash)
     if same_supplier and d is not None and d <= PHASH_MAX_DISTANCE:
         # Corroboration only: invoices printed from one supplier template look alike to pHash

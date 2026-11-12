@@ -590,3 +590,24 @@ def sap_preview(invoice_id: int, user: User = Depends(require_roles(Role.CLERK, 
             "note": "Duly runs beside SAP S/4HANA (for example as an SAP BTP extension); SAP stays the system of record. "
                     "This request is built, not sent. Company code, plant, tax codes and withholding tax types are "
                     "fictional configuration."}
+
+
+@router.get("/{invoice_id}/explain")
+def explain_decision(invoice_id: int, user: User = Depends(require_roles(Role.CLERK, Role.APPROVER, Role.AUDITOR, Role.ADMIN)),
+                     db: Session = Depends(get_db)) -> dict:
+    """Plain-language explanation of the latest decision, from its reason codes only (spec C3)."""
+    from app.api.portal import _todos
+    from app.workflow.explain import ReasonFact, explain
+
+    inv = db.get(Invoice, invoice_id)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    m = latest_match(db, inv.id)
+    if m is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This invoice has not been checked yet.")
+    reasons = db.scalars(select(ReasonCode).where(ReasonCode.match_result_id == m.id).order_by(ReasonCode.id)).all()
+    facts = [ReasonFact(r.code, str(r.severity), r.message, r.line_no) for r in reasons]
+    out = asdict(explain(str(m.decision), str(inv.status), facts, m.engine_version, m.policy_version))
+    # What the supplier is told about the same decision (rendered in English or Hindi from the reviewed i18n files).
+    out["supplier_view"] = [t.model_dump() for t in _todos(db, inv, [])]
+    return out
