@@ -70,6 +70,9 @@ class Payment(Base):
 
 
 class BankChangeRequest(Base):
+    """Vendor bank detail change: supplier requests, clerk proposes after a call-back (maker),
+    72 h cooling period, finance manager approves (checker). Account numbers encrypted."""
+
     __tablename__ = "bank_change_requests"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -77,12 +80,17 @@ class BankChangeRequest(Base):
     new_account_enc: Mapped[str] = mapped_column(String(200))
     new_account_last4: Mapped[str] = mapped_column(String(4))
     new_ifsc: Mapped[str] = mapped_column(String(11))
-    status: Mapped[BankChangeStatus] = mapped_column(String(10), default=BankChangeStatus.PROPOSED)
+    new_bank_name: Mapped[str] = mapped_column(String(100))
+    reason: Mapped[str] = mapped_column(String(300))
+    status: Mapped[BankChangeStatus] = mapped_column(String(10), default=BankChangeStatus.REQUESTED)
     requested_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     proposed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # maker
     approved_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # checker
     callback_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    callback: Mapped[dict | None] = mapped_column(JSON)  # the out-of-band checklist as completed
     cooling_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(String(300))
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

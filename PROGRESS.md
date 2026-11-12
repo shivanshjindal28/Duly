@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 03:30 IST by Shivansh (Claude Code)
+Last updated: 2026-11-13 04:15 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,7 +12,7 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 157 tests (about 25 s; OCR model loads once)
+cd backend && python -m pytest    # 159 tests (about 25 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -40,6 +40,7 @@ cd frontend && npm run typecheck
 - **Phase 2 step 16**: controls report (`reports/controls.py`, `reports/pdf.py`, `GET /api/reports/controls` + `.pdf`, auditor/admin). C-01..C-10 each TESTED on live data for the period (objective, how enforced, test performed, result effective / exceptions / no_activity, figures, exceptions with invoice links, evidence), overrides list, one-line opinion. Generation is audited. UI `/controls` with period picker and PDF download. C-06 (bank change maker-checker) and C-08 payments report "no activity" until D3/D5 exist: honest, not a pass.
 - **Phase 3 step 17 (D1)**: signed e-invoice QR. `samples/sandbox_irp.py` signs IRP-shaped JWTs (RS256, `data` claim with SellerGstin, BuyerGstin, DocNo, DocDt, TotInvVal, ItemCnt, MainHsnCode, Irn, IrnDt; IRN = SHA-256 of GSTIN+FY+type+number) with a local key in `backend/data/keys/`; `with_einvoice(spec)` prints a vector QR. `ingestion/qr.py` decodes (zxing-cpp, OpenCV fallback), verifies RS256 against the trusted key (`IRP_PUBLIC_KEY_PATH`, default the sandbox key), stores status/payload on the invoice; `einvoice_reasons` (pure) feeds the engine: QR_MISMATCH / QR_SIGNATURE_INVALID block, EINVOICE_QR_MISSING flags for e-invoice suppliers, EINVOICE_VERIFIED / NOT_APPLICABLE info. Detail API `einvoice` + panel (printed vs signed, sandbox note). Scenario 8 verified live (edited total blocked with both amounts).
 - **Phase 3 step 18 (D2)**: prompt-injection shield (`ingestion/injection.py`). Before any AI reads a PDF: finds white / near-white, tiny (< 3.5 pt) and off-page text runs, PDF metadata, and instruction-like phrasing (override instructions, addressed to an AI, approve the invoice, change payment details, bypass controls, ...); for images, visible OCR text. Hidden words are dropped from the parser's tokens (hidden text cannot change extracted values). If found, the AI's reading is quarantined (stored, shown, never used); the AI's own `suspicious_text` report also quarantines. Engine reason `INJECTION_ATTEMPT` (flag) with findings as evidence. UI: injection panel on the invoice (hidden text verbatim, where, what it tries to do; quarantined AI values vs values used). Scenario 7 verified live.
+- **Phase 3 step 19 (D3)**: bank-detail fraud. BANK_MISMATCH block (engine) now also raises `security.bank_mismatch_alert`. Bank change workflow (`workflow/bank_changes.py`, `/api/bank-changes`): supplier requests -> AP clerk proposes after the out-of-band call-back checklist (number on file, known contact, bank proof) -> cooling period (policy `bank_change_cooling_hours`, 72) -> finance approver (not maker/requester) approves -> vendor master updated (AES-GCM), blocked/flagged invoices re-matched (trigger `bank_change_approved:<id>`). Every step audited; accounts masked everywhere. UI: bank card in supplier portal (en/hi), staff `/bank-changes` page. Controls report C-06 now tests real requests.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -62,7 +63,8 @@ cd frontend && npm run typecheck
 2. Phase 3 step 18: prompt-injection shield for documents (D2): hidden-text scan + quarantine (`suspicious_text` from the AI is already captured).
 2. Phase 3 step 19: bank-detail fraud block exists (BANK_MISMATCH); add maker-checker bank change requests with 72 h cooling + call-back checklist (feeds control C-06).
 2. Phase 3 step 20: MSME guardian (interest, tax-deduction exposure, half-yearly summary) + payment run with TDS (D4/D5).
-3. Phase 3 step 21: SAP posting preview + `erp_adapter` (LocalErpAdapter, S4HanaAdapterStub) + SAP tooltips (D6).
+2. Phase 3 step 21: SAP posting preview + `erp_adapter` (LocalErpAdapter, S4HanaAdapterStub) + SAP tooltips (D6).
+3. Phase 4 step 22: invoice generator script for all 12 scenarios + image variants into `demo/invoices/` with `demo/manifest.json`; seed ~250 historical invoices.
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -84,6 +86,7 @@ cd frontend && npm run typecheck
 - Extraction results are append-only: a human correction adds a new row with source=manual; the latest row per field wins.
 - Bank account numbers are masked in `extraction_results`; the full number is only stored encrypted on the invoice.
 - HSN/SAC rate table (`validation/hsn.py`) is a labelled assumption; ambiguous codes list every allowed rate.
+- Bank change maker is the AP clerk, checker is an approver (finance manager or above); the requesting supplier and the maker can never be the checker. Approval is impossible before the cooling period ends (use Demo controls to advance the clock in a demo).
 - INJECTION_ATTEMPT is a FLAG (a person looks), not a BLOCK: the text has no power over the decision anyway; if the same invoice also has a real problem (e.g. bank change in the text AND on the invoice) the BANK_MISMATCH block still applies.
 - QR decoding uses **zxing-cpp** (pip wheel, no system packages) with OpenCV as fallback. Measured: OpenCV failed to decode some IRP-size (version 21) QRs even from a perfect image, depending on the payload; zxing-cpp decoded 12/12 rendered invoices at 150-300 dpi plus a tilted, blurred photo. Deviation from spec section 5 C2 (OpenCV QRCodeDetector), recorded for reliability.
 - Sample e-invoice QR is drawn as vectors (reportlab QR widget) in a clear bottom-left block; overlapping text had corrupted both the QR and text extraction.
@@ -133,6 +136,7 @@ Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they a
 - Separate logins for all 6 roles, cross-tenant denial: works.
 - S5 duplicate photo with reformatted number: works end to end (BLOCK DUPLICATE, side-by-side compare).
 - S8 catalyst PDF with edited total + original signed QR: works (BLOCK QR_MISMATCH). S1 now uses a signed e-invoice (EINVOICE_VERIFIED).
+- S6 bank details differ: works (BLOCK BANK_MISMATCH + security alert; change via maker-checker + cooling releases it).
 - S7 hidden white-text instruction: works (FLAG INJECTION_ATTEMPT, AI output quarantined when AI is on).
 - B3 controls report (screen + PDF): works.
 - B2 chatbot demo (precise answer + logged refusal), en/hi, offline: works.

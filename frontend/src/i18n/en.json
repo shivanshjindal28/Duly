@@ -121,5 +121,25 @@
       "get_block_reason": "hold reasons for {{ref}}",
       "get_msme_due_date": "MSME due date for {{ref}}"
     }
+  },
+  "bank": {
+    "title": "Bank details",
+    "current": "Payments go to {{account}} ({{ifsc}}).",
+    "change": "Request a change",
+    "why_slow": "For your protection, bank changes are confirmed by a call from Plant X to the phone number we already have, then wait 72 hours before they take effect.",
+    "account": "New account number",
+    "ifsc": "IFSC",
+    "bank_name": "Bank name",
+    "reason": "Reason for the change",
+    "submit": "Send request",
+    "cancel": "Cancel",
+    "status": {
+      "requested": "Requested: Plant X will call you to confirm",
+      "cooling": "Confirmed by phone; takes effect after the safety period",
+      "approved": "Approved: new account is active",
+      "rejected": "Rejected"
+    },
+    "hours_left": "about {{hours}} hours left",
+    "to": "to {{account}} ({{ifsc}})"
   }
 }

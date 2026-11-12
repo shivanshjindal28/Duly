@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./layout/AppShell";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { AssistantPage } from "./pages/AssistantPage";
+import { BankChangesPage } from "./pages/BankChangesPage";
 import { AuditPage } from "./pages/AuditPage";
 import { ComparePage } from "./pages/ComparePage";
 import { ControlsReportPage } from "./pages/ControlsReportPage";
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
               { path: "/admin/demo", element: <DemoControlsPage /> },
               { path: "/audit", element: <AuditPage /> },
               { path: "/controls", element: <ControlsReportPage /> },
+              { path: "/bank-changes", element: <BankChangesPage /> },
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/queue", element: <QueuePage /> },
               { path: "/portal", element: <SupplierPortalPage /> },

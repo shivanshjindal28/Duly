@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { BadgeCheck, CalendarClock, CircleAlert, Hourglass, Languages, Landmark, Upload, Wallet } from "lucide-react";
 import { api } from "../api/client";
 import type { InvoiceStatus } from "../api/types";
+import { BankDetailsCard } from "../components/BankDetailsCard";
 import { ChatDock } from "../components/ChatDock";
+import "./BankChangesPage.css";
 import { DulyRail } from "../components/DulyRail";
 import { StatusChip } from "../components/StatusChip";
 import { setLanguage } from "../i18n";
@@ -40,6 +42,7 @@ interface Portal {
   payment_terms_days: number;
   written_agreement: boolean;
   bank_account_masked: string;
+  bank_ifsc: string;
   today: string;
   invoices: PortalInvoice[];
   payments: { invoice_number: string; paid_at: string; gross: string; tds: string; net: string; utr: string }[];
@@ -226,6 +229,8 @@ export function SupplierPortalPage() {
           <InvoiceCard key={inv.id} inv={inv} msme={p.msme_eligible} />
         ))}
       </div>
+
+      <BankDetailsCard account={p.bank_account_masked} ifsc={p.bank_ifsc} />
 
       <section className="panel table-panel" aria-labelledby="pay-title">
         <h2 id="pay-title" className="label panel-title">

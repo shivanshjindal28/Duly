@@ -79,6 +79,7 @@ class PortalOut(BaseModel):
     payment_terms_days: int
     written_agreement: bool
     bank_account_masked: str
+    bank_ifsc: str
     today: date
     invoices: list[PortalInvoice]
     payments: list[PortalPayment]
@@ -159,5 +160,5 @@ def build_portal(db: Session, supplier_id: int) -> PortalOut:
     return PortalOut(
         supplier_name=s.name, supplier_code=s.code, msme_category=s.msme_category, msme_eligible=eligible,
         udyam_no=s.udyam_no, payment_terms_days=s.payment_terms_days, written_agreement=s.written_agreement,
-        bank_account_masked="XXXXXX" + s.bank_account_last4, today=today, invoices=invoices, payments=payments,
+        bank_account_masked="XXXXXX" + s.bank_account_last4, bank_ifsc=s.bank_ifsc, today=today, invoices=invoices, payments=payments,
     )

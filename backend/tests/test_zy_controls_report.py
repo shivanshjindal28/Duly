@@ -29,7 +29,7 @@ def test_controls_report_tests_every_control_on_live_data(client):
     assert by["C-03"]["metrics"]["caught"] >= 1 and by["C-03"]["result"] == "effective"
     assert by["C-04"]["result"] == "effective" and by["C-04"]["metrics"]["touchless"] >= 1
     assert by["C-05"]["result"] == "effective" and by["C-05"]["metrics"]["sod_refusals_logged"] >= 1
-    assert by["C-06"]["result"] == "no_activity"  # bank change workflow arrives with D3
+    assert by["C-06"]["result"] == "effective"  # bank changes went through maker-checker (test_bank_changes)
     assert by["C-07"]["result"] == "effective"
     assert by["C-09"]["metrics"]["ai_approvals"] == 0
     assert by["C-10"]["result"] == "effective" and len(by["C-10"]["metrics"]["users"]) == 14

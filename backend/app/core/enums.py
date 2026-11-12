@@ -57,6 +57,7 @@ class StepStatus(StrEnum):
 
 
 class BankChangeStatus(StrEnum):
+    REQUESTED = "requested"  # by the supplier
     PROPOSED = "proposed"
     COOLING = "cooling"
     APPROVED = "approved"

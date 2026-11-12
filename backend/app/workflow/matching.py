@@ -181,6 +181,9 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
         "trigger": trigger, "policy_version": outcome.policy_version, "engine": outcome.engine_version,
         "status": inv.status, "ai_decided": False,
     }, actor=audit.SYSTEM)  # the rules engine decided, not the person whose action triggered it
+    bank = next((r for r in outcome.reasons if r.code == "BANK_MISMATCH"), None)
+    if bank is not None and trigger == "upload":  # D3: possible payment-redirection fraud
+        audit.queue(db, "security.bank_mismatch_alert", "invoice", inv.id, after=bank.evidence, actor=audit.SYSTEM)
     sync_after_match(db, inv)  # open (or close) the approval route
     db.flush()
     return outcome
