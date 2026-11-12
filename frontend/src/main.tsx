@@ -14,6 +14,8 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./layout/AppShell";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { AuditPage } from "./pages/AuditPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { QueuePage } from "./pages/QueuePage";
 import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
@@ -63,6 +65,8 @@ const router = createBrowserRouter([
               { path: "/approvals", element: <ApprovalsPage /> },
               { path: "/admin/demo", element: <DemoControlsPage /> },
               { path: "/audit", element: <AuditPage /> },
+              { path: "/dashboard", element: <DashboardPage /> },
+              { path: "/queue", element: <QueuePage /> },
             ],
           },
         ],

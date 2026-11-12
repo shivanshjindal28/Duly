@@ -1,0 +1,45 @@
+.dashboard { max-width: 1280px; }
+.as-of { font-size: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.kpi {
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+  padding: 12px 14px; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); font: inherit; color: inherit;
+}
+.kpi-link { cursor: pointer; }
+.kpi-link:hover { border-color: var(--color-primary); }
+.kpi-label { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary); }
+.kpi-value { font-size: 22px; font-weight: 600; line-height: 1.2; }
+.kpi-sub { font-size: 11.5px; color: var(--color-text-secondary); }
+
+.dash-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; }
+.chart-panel { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.panel-title { padding: 12px 12px 4px; }
+.legend { list-style: none; margin: 0; padding: 0; display: flex; gap: 16px; font-size: 12px; color: var(--color-text-secondary); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.link-btn { font: inherit; color: var(--color-primary); background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+.link-btn:hover { text-decoration: underline; }
+
+.heat-note { font-size: 12px; }
+.heat { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(19, minmax(0, 1fr)); gap: 4px; }
+.heat-day {
+  width: 100%; aspect-ratio: 1; min-height: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 3px; border: 1px solid var(--color-border); background: var(--color-surface); font: inherit; cursor: default; padding: 0;
+}
+.heat-dom { font-size: 10px; color: var(--color-text-secondary); }
+.heat-count { font-size: 12px; font-weight: 700; }
+.heat-1 { background: #E1F1FA; cursor: pointer; }
+.heat-2 { background: #B3DDEF; cursor: pointer; }
+.heat-3 { background: #6FC0E0; cursor: pointer; }
+.heat-4 { background: var(--color-cyan-text); cursor: pointer; }
+.heat-4 .heat-dom, .heat-4 .heat-count { color: #fff; }
+.heat-overdue { background: var(--color-block-bg); border-color: var(--color-magenta); }
+.heat-overdue .heat-count { color: var(--color-block-text); }
+.heat-today { outline: 2px solid var(--color-text); outline-offset: 1px; }
+.dash-foot { font-size: 11.5px; display: flex; gap: 6px; align-items: center; }
+
+@media (max-width: 1100px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dash-grid { grid-template-columns: 1fr; }
+  .heat { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+}

@@ -1,6 +1,21 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Clock, Cpu, Link2, FileText, LayoutDashboard, LogOut, PackageCheck, ShieldCheck, Stamp, Upload, type LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  Building2,
+  Clock,
+  Cpu,
+  FileText,
+  LayoutDashboard,
+  Link2,
+  ListChecks,
+  LogOut,
+  PackageCheck,
+  ShieldCheck,
+  Stamp,
+  Upload,
+  type LucideIcon,
+} from "lucide-react";
 import { api, type Health } from "../api/client";
 import { roleBadge, useAuth, type Role } from "../auth/AuthContext";
 import "./AppShell.css";
@@ -18,6 +33,8 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "Workspace",
     items: [
       { to: "/", label: "Overview", icon: LayoutDashboard, roles: "all" },
+      { to: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["clerk", "approver", "auditor", "admin"] },
+      { to: "/queue", label: "Work queue", icon: ListChecks, roles: ["clerk", "approver", "auditor", "admin"] },
       {
         to: "/invoices",
         label: "Invoices",

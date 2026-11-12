@@ -1,0 +1,16 @@
+.queue-actions { display: flex; gap: 8px; }
+.queue-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 12px 14px; }
+.queue-filters .field { min-width: 170px; }
+.clear-btn { height: 36px; }
+.kbd-help { display: flex; align-items: center; gap: 4px; font-size: 12px; flex-wrap: wrap; }
+kbd {
+  font-family: var(--font-mono); font-size: 11px; padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--color-border-strong); background: var(--color-surface);
+}
+.sort-btn {
+  display: inline-flex; align-items: center; gap: 3px; font: inherit; font-size: inherit; font-weight: inherit;
+  letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer;
+}
+.queue-table tbody tr { cursor: default; }
+.queue-table tbody tr.is-cursor { background: var(--color-primary-soft); box-shadow: inset 3px 0 0 var(--color-primary); }
+.reason-cell { font-size: 11.5px; max-width: 240px; }
