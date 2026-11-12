@@ -137,3 +137,30 @@
   background: var(--color-primary-soft); border: 1px solid #C6D8F0; color: var(--color-primary-hover);
 }
 .review-banner p { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+/* Approvals */
+.approvals { display: flex; flex-direction: column; gap: 10px; }
+.approvals-empty { font-size: 13px; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+.step:last-child { border-bottom: none; }
+.step-icon { flex: none; margin-top: 2px; }
+.step-approved .step-icon { color: var(--color-approve-text); }
+.step-rejected .step-icon { color: var(--color-block-text); }
+.step-skipped .step-icon { color: var(--color-text-secondary); }
+.step-pending .step-icon { color: var(--color-primary); }
+.step-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.step-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.step-chip { height: 18px; font-size: 10.5px; padding: 0 6px; }
+.step-meta { font-size: 12px; color: var(--color-text-secondary); }
+.step-comment { font-size: 12px; font-style: italic; }
+.override-note { display: flex; gap: 8px; padding: 8px 10px; background: var(--color-flag-bg); border: 1px solid #F7D9A4; border-radius: var(--radius-sm); font-size: 12.5px; color: var(--color-flag-text); }
+.override-note svg { flex: none; margin-top: 2px; }
+.action-box { display: flex; flex-direction: column; gap: 10px; padding: 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-canvas); }
+.action-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.textarea { height: auto; padding: 8px 10px; resize: vertical; font: inherit; }
+.totp { width: 140px; letter-spacing: 0.3em; font-size: 16px; }
+.btn-danger { color: var(--color-block-text); border-color: #F3BCD6; }
+.btn-danger:hover { background: var(--color-block-bg); }
+.field > span svg { vertical-align: -2px; }
+.pane-head-sub { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--color-border); }

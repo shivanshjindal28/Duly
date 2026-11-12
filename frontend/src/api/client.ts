@@ -7,6 +7,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Structured refusal flags from the server, e.g. { sod: true } or { mfa: true }. */
+    public info: { sod?: boolean; mfa?: boolean } = {},
   ) {
     super(message);
   }
@@ -29,13 +31,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, { ...init, method, headers, credentials: "same-origin" });
   if (!res.ok) {
     let detail = res.statusText;
+    let info = {};
     try {
       const body = await res.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      if (typeof body.detail === "string") detail = body.detail;
+      else if (body.detail && typeof body.detail.message === "string") {
+        detail = body.detail.message;
+        info = { sod: !!body.detail.sod, mfa: !!body.detail.mfa };
+      } else detail = JSON.stringify(body.detail);
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, detail, info);
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }

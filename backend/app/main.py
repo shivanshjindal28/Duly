@@ -9,9 +9,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app import __version__
-from app.api import auth, health, invoices, stores, suppliers
+from app.api import admin, approvals, auth, health, invoices, stores, suppliers
 from app.core.config import get_settings
-from app.core.db import create_all
+from app.core import clock
+from app.core.db import SessionLocal, create_all
 from app.core.ratelimit import limiter
 
 _DOCS_PATHS = ("/api/docs", "/api/openapi.json")
@@ -57,12 +58,19 @@ def create_app() -> FastAPI:
     app.include_router(invoices.router, prefix="/api")
     app.include_router(suppliers.router, prefix="/api")
     app.include_router(stores.router, prefix="/api")
+    app.include_router(approvals.router, prefix="/api")
+    app.include_router(admin.router, prefix="/api")
     return app
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     create_all()
+    db = SessionLocal()
+    try:
+        clock.load_offset(db)  # demo clock offset survives restarts
+    finally:
+        db.close()
     yield
 
 

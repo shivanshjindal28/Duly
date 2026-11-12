@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Lock, XCircle } from "lucide-react";
 import { api, type Health } from "../api/client";
 import { roleBadge, useAuth } from "../auth/AuthContext";
 import { DulyRail } from "../components/DulyRail";
+import { MfaCard } from "../components/MfaCard";
 import "./OverviewPage.css";
 
 /** Landing page per role: who you are, what your role can and cannot do (from the server), system status. */
@@ -21,6 +22,8 @@ export function OverviewPage() {
           {me.supplier ? ` · Vendor ${me.supplier.code}` : " · Plant X Polymers Pvt Ltd"}
         </p>
       </header>
+
+      {me.role === "approver" && health.data?.demo_mode ? <MfaCard /> : null}
 
       <section className="panel overview-rail" aria-labelledby="rail-title">
         <h2 id="rail-title" className="label">

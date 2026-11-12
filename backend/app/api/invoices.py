@@ -22,9 +22,12 @@ from app.ingestion.hardening import MAX_BYTES, UploadRejected
 from app.ingestion.pages import page_png
 from app.ingestion.pipeline import UploadError, confidence_threshold, process_upload
 from app.ingestion.storage import path_of
-from app.core.enums import Role
+from app.core import clock
+from app.core.enums import InvoiceStatus, Role
 from app.engine.catalog import info
 from app.models import Document, Invoice, MatchResult, ReasonCode, Supplier, User
+from app.models.base import as_utc
+from app.workflow import approvals as wf
 from app.workflow.lifecycle import rail_progress
 from app.workflow.matching import latest_match
 from app.ingestion.pipeline import latest_fields, pending_review
@@ -116,6 +119,35 @@ class DocumentOut(BaseModel):
     size_bytes: int
 
 
+class StepOut(BaseModel):
+    sequence: int
+    level: int
+    title: str
+    status: str
+    approver: str | None
+    delegated_from: str | None
+    comment: str | None
+    by_policy: str | None
+    mfa_verified: bool
+    due_at: datetime | None
+    escalated_at: datetime | None
+    decided_at: datetime | None
+    overdue: bool
+
+
+class WorkflowOut(BaseModel):
+    steps: list[StepOut]
+    override_by: str | None
+    override_at: datetime | None
+    override_justification: str | None
+    # What the current user may do right now (the server re-checks on every action).
+    can_approve: bool
+    approve_blocked_reason: str | None
+    approve_blocked_sod: bool
+    mfa_required: bool
+    can_override: bool
+
+
 class InvoiceDetail(InvoiceSummary):
     supplier_gstin: str | None
     buyer_gstin: str | None
@@ -136,6 +168,34 @@ class InvoiceDetail(InvoiceSummary):
     pending_review: list[str]
     can_review: bool  # filled per request: clerk and invoice still editable
     match: MatchOut | None
+    workflow: WorkflowOut
+
+
+def _workflow(db: Session, inv: Invoice, user: User) -> WorkflowOut:
+    wf.escalate_overdue(db)
+    steps = wf.steps_of(db, inv.id)
+    names = {u.id: u.full_name for u in db.scalars(select(User).where(User.role.in_([Role.APPROVER, Role.CLERK])))}
+    now = clock.now()
+    step = wf.current_step(db, inv.id)
+    auth = wf.authority(db, inv, step, user) if step and inv.status == InvoiceStatus.PENDING_APPROVAL else None
+    show_approve = user.role == Role.APPROVER and auth is not None
+    return WorkflowOut(
+        steps=[StepOut(sequence=s.sequence, level=s.level,
+                       title="Policy P-01 (touchless)" if s.by_policy else wf.LEVEL_TITLE[s.level],
+                       status=s.status, approver=names.get(s.approver_user_id),
+                       delegated_from=names.get(s.delegated_from_user_id), comment=s.comment, by_policy=s.by_policy,
+                       mfa_verified=s.mfa_verified, due_at=s.due_at, escalated_at=s.escalated_at,
+                       decided_at=s.decided_at,
+                       overdue=s.status == "pending" and s.due_at is not None and as_utc(s.due_at) < now)
+               for s in steps],
+        override_by=names.get(inv.override_by_user_id), override_at=inv.override_at,
+        override_justification=inv.override_justification,
+        can_approve=bool(show_approve and auth.allowed),
+        approve_blocked_reason=auth.reason if show_approve and not auth.allowed else None,
+        approve_blocked_sod=bool(show_approve and auth.sod),
+        mfa_required=wf.mfa_required(db, inv),
+        can_override=user.role == Role.CLERK and inv.status == InvoiceStatus.FLAGGED,
+    )
 
 
 def _summary_kwargs(inv: Invoice, supplier_name: str | None, codes: set[str]) -> dict:
@@ -199,6 +259,7 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
         pending_review=pending_review(db, inv.id),
         can_review=user.role == Role.CLERK and inv.status in EDITABLE_STATUSES,
         match=match,
+        workflow=_workflow(db, inv, user),
     )
 
 
@@ -287,3 +348,4 @@ def review(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
     db.refresh(inv)
     return _detail(db, inv, user)
+

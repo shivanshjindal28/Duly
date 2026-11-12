@@ -159,3 +159,31 @@ def demo_login(request: Request, response: Response, body: DemoLoginIn, db: Sess
     db.commit()
     issue_session(response, user, request)
     return _me(user)
+
+
+class MfaSetupOut(BaseModel):
+    issuer: str
+    account: str
+    otpauth_uri: str
+    qr_svg: str
+
+
+@router.get("/mfa-setup", response_model=MfaSetupOut, dependencies=[Depends(_require_demo)])
+def mfa_setup(user: User = Depends(get_current_user)) -> MfaSetupOut:
+    """Demo mode only: the signed-in approver's own TOTP enrollment QR, to scan with a phone
+    authenticator on stage. Never exposed for another user, never outside demo mode."""
+    import io
+
+    import pyotp
+    import qrcode
+    import qrcode.image.svg
+
+    from app.core.crypto import decrypt_str
+
+    if user.role != Role.APPROVER or not user.mfa_secret_enc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No authenticator for this account")
+    uri = pyotp.TOTP(decrypt_str(user.mfa_secret_enc)).provisioning_uri(name=user.email, issuer_name="Duly (Plant X demo)")
+    buf = io.BytesIO()
+    qrcode.make(uri, image_factory=qrcode.image.svg.SvgPathImage, box_size=8, border=2).save(buf)
+    return MfaSetupOut(issuer="Duly (Plant X demo)", account=user.email, otpauth_uri=uri,
+                       qr_svg=buf.getvalue().decode("utf-8"))

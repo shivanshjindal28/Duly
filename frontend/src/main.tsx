@@ -12,6 +12,8 @@ import "./theme/global.css";
 import "./theme/common.css";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./layout/AppShell";
+import { ApprovalsPage } from "./pages/ApprovalsPage";
+import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
@@ -57,6 +59,8 @@ const router = createBrowserRouter([
               { path: "/invoices/:id", element: <InvoiceDetailPage /> },
               { path: "/upload", element: <UploadPage /> },
               { path: "/receiving", element: <ReceivingPage /> },
+              { path: "/approvals", element: <ApprovalsPage /> },
+              { path: "/admin/demo", element: <DemoControlsPage /> },
             ],
           },
         ],

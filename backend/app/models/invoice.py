@@ -54,9 +54,13 @@ class Invoice(Base):
     bank_ifsc: Mapped[str | None] = mapped_column(String(11))
     status: Mapped[InvoiceStatus] = mapped_column(String(20), default=InvoiceStatus.RECEIVED, index=True)
     decision: Mapped[Decision | None] = mapped_column(String(7))
-    current_owner: Mapped[str] = mapped_column(String(60), default="AP clerk")
+    current_owner: Mapped[str] = mapped_column(String(80), default="AP clerk")
     ai_mode: Mapped[str | None] = mapped_column(String(10))  # live | cached | offline
     processed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    # A FLAG routed for approval anyway: who, when, and the written justification.
+    override_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    override_justification: Mapped[str | None] = mapped_column(Text)
+    override_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # GR/SES acceptance
     due_date: Mapped[date | None] = mapped_column(Date, index=True)

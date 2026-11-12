@@ -24,9 +24,35 @@ class ApprovalStep(Base):
     delegated_from_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     comment: Mapped[str | None] = mapped_column(Text)
     by_policy: Mapped[str | None] = mapped_column(String(10))  # e.g. "P-01" for touchless
+    mfa_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # SLA missed: next level may act
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()
+
+
+class Delegation(Base):
+    """Time-boxed delegation of an approver's authority (e.g. while on leave)."""
+
+    __tablename__ = "delegations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(200))
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class AppSetting(Base):
+    """Small key-value store for runtime settings (e.g. the demo clock offset)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[str] = mapped_column(String(200))
 
 
 class Payment(Base):

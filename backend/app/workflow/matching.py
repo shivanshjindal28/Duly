@@ -21,6 +21,7 @@ from app.engine.types import DocLine, InvoiceDoc, Reason
 from app.models import (GoodsReceipt, GRLine, Invoice, InvoiceLine, MatchResult, Organisation, Policy, PurchaseOrder,
                         ReasonCode, ServiceEntrySheet, Supplier)
 from app.validation.rules import validate
+from app.workflow.approvals import sync_after_match
 
 # Invoices whose quantities count as "already invoiced" against a PO line.
 _CONSUMING = (InvoiceStatus.PENDING_APPROVAL, InvoiceStatus.APPROVED, InvoiceStatus.PAID)
@@ -130,6 +131,8 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
         inv.status, inv.current_owner = _STATUS[outcome.decision]
     if outcome.decision == Decision.APPROVE and po is not None:
         inv.accepted_at = _acceptance_time(db, po)
+    db.flush()
+    sync_after_match(db, inv)  # open (or close) the approval route
     db.flush()
     return outcome
 

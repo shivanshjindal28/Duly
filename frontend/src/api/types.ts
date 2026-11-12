@@ -114,6 +114,35 @@ export interface InvoiceDetail extends InvoiceSummary {
   pending_review: string[];
   can_review: boolean;
   match: MatchOut | null;
+  workflow: WorkflowOut;
+}
+
+export interface StepOut {
+  sequence: number;
+  level: number;
+  title: string;
+  status: "pending" | "approved" | "rejected" | "skipped";
+  approver: string | null;
+  delegated_from: string | null;
+  comment: string | null;
+  by_policy: string | null;
+  mfa_verified: boolean;
+  due_at: string | null;
+  escalated_at: string | null;
+  decided_at: string | null;
+  overdue: boolean;
+}
+
+export interface WorkflowOut {
+  steps: StepOut[];
+  override_by: string | null;
+  override_at: string | null;
+  override_justification: string | null;
+  can_approve: boolean;
+  approve_blocked_reason: string | null;
+  approve_blocked_sod: boolean;
+  mfa_required: boolean;
+  can_override: boolean;
 }
 
 export interface SupplierOut {

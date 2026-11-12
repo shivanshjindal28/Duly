@@ -1,0 +1,16 @@
+.approvals-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.side-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.side-note { font-size: 12px; }
+.deleg-form { display: flex; flex-direction: column; gap: 10px; }
+.deleg-row { display: grid; grid-template-columns: 70px 1fr; gap: 8px; }
+.deleg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.row-locked td { background: #FAFBFC; }
+.cell-sub { font-size: 11px; }
+.cell-chip { margin-left: 4px; height: 18px; font-size: 10.5px; padding: 0 6px; }
+.cell-note { max-width: 280px; }
+.sod-note { display: inline-flex; gap: 4px; align-items: flex-start; font-size: 12px; color: var(--color-block-text); }
+.sod-note svg { flex: none; margin-top: 2px; }
+.mfa-card { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: center; padding: 18px 20px; }
+.mfa-qr svg { width: 180px; height: 180px; display: block; background: #fff; }
+.mfa-card p { font-size: 13px; }
+@media (max-width: 1000px) { .approvals-grid { grid-template-columns: 1fr; } }

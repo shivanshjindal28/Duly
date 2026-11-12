@@ -5,6 +5,7 @@ import { ArrowLeft, Cpu, Eye, FileText } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import type { InvoiceDetail } from "../api/types";
 import { DulyRail } from "../components/DulyRail";
+import { ApprovalPanel } from "../components/invoice/ApprovalPanel";
 import { DecisionPanel } from "../components/invoice/DecisionPanel";
 import { DocumentViewer } from "../components/invoice/DocumentViewer";
 import { FieldsPanel } from "../components/invoice/FieldsPanel";
@@ -161,6 +162,11 @@ export function InvoiceDetailPage() {
             </h2>
           </div>
           <DecisionPanel match={inv.match} onLine={selectLine} />
+          <div className="pane-head pane-head-sub">
+            <h2 className="label">Approval</h2>
+            <span className="muted pane-hint">Delegation of Authority</span>
+          </div>
+          <ApprovalPanel inv={inv} />
         </section>
       </div>
 

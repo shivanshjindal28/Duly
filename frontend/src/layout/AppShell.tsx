@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Cpu, FileText, LayoutDashboard, LogOut, PackageCheck, ShieldCheck, Upload, type LucideIcon } from "lucide-react";
+import { Building2, Clock, Cpu, FileText, LayoutDashboard, LogOut, PackageCheck, ShieldCheck, Stamp, Upload, type LucideIcon } from "lucide-react";
 import { api, type Health } from "../api/client";
 import { roleBadge, useAuth, type Role } from "../auth/AuthContext";
 import "./AppShell.css";
@@ -26,6 +26,8 @@ const NAV: { section: string; items: NavItem[] }[] = [
       },
       { to: "/upload", label: "Upload invoice", icon: Upload, roles: ["supplier", "clerk"] },
       { to: "/receiving", label: "Receiving", icon: PackageCheck, roles: ["stores"] },
+      { to: "/approvals", label: "Approvals", icon: Stamp, roles: ["approver"] },
+      { to: "/admin/demo", label: "Demo controls", icon: Clock, roles: ["admin"] },
     ],
   },
 ];
