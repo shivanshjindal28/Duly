@@ -40,6 +40,10 @@ class Invoice(Base):
     invoice_date: Mapped[date | None] = mapped_column(Date)
     fiscal_year: Mapped[str | None] = mapped_column(String(9))  # e.g. 2026-27
     irn: Mapped[str | None] = mapped_column(String(64), index=True)
+    # Signed e-invoice QR: none | valid | invalid, the signed payload, and why it failed.
+    qr_status: Mapped[str] = mapped_column(String(10), default="none")
+    qr_payload: Mapped[dict | None] = mapped_column(JSON)
+    qr_error: Mapped[str | None] = mapped_column(String(200))
     supplier_gstin: Mapped[str | None] = mapped_column(String(15))
     buyer_gstin: Mapped[str | None] = mapped_column(String(15))
     place_of_supply: Mapped[str | None] = mapped_column(String(2))

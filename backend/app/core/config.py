@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     data_encryption_key: str = ""
     anthropic_api_key: str = ""
+    irp_public_key_path: str = ""  # trusted IRP signing key (PEM). Empty = the demo Sandbox IRP key.
     ai_mode: str = "auto"  # auto | live | cached | offline (offline = AI kill switch)
     anthropic_model: str = "claude-sonnet-5-5"
     frontend_origin: str = "http://localhost:5173"

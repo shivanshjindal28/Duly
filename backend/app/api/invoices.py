@@ -148,6 +148,43 @@ class WorkflowOut(BaseModel):
     can_override: bool
 
 
+class EInvoiceField(BaseModel):
+    field: str
+    printed: str | None
+    signed: str | None
+    same: bool
+
+
+class EInvoiceOut(BaseModel):
+    status: str  # none | valid | invalid
+    error: str | None
+    applicable: bool  # supplier above the e-invoicing threshold
+    sandbox: bool  # trusted key is the demo Sandbox IRP (production: NIC IRP key)
+    irn: str | None
+    fields: list[EInvoiceField]
+
+
+def _einvoice(inv: Invoice, supplier: Supplier | None) -> EInvoiceOut:
+    from app.core.config import get_settings
+
+    p = inv.qr_payload or {}
+    pairs = [
+        ("Supplier GSTIN", inv.supplier_gstin, p.get("SellerGstin")),
+        ("Buyer GSTIN", inv.buyer_gstin, p.get("BuyerGstin")),
+        ("Invoice number", inv.invoice_number, p.get("DocNo")),
+        ("Invoice date", inv.invoice_date.strftime("%d/%m/%Y") if inv.invoice_date else None, p.get("DocDt")),
+        ("Total", f"{inv.total:.2f}", f"{Decimal(str(p['TotInvVal'])):.2f}" if "TotInvVal" in p else None),
+        ("IRN", inv.irn, p.get("Irn")),
+    ]
+    return EInvoiceOut(
+        status=inv.qr_status or "none", error=inv.qr_error, applicable=bool(supplier and supplier.e_invoice_applicable),
+        sandbox=not get_settings().irp_public_key_path, irn=p.get("Irn") or inv.irn,
+        fields=[EInvoiceField(field=f, printed=a, signed=None if b is None else str(b),
+                              same=a is not None and b is not None and str(a).upper() == str(b).upper())
+                for f, a, b in pairs] if p else [],
+    )
+
+
 class InvoiceDetail(InvoiceSummary):
     supplier_gstin: str | None
     buyer_gstin: str | None
@@ -169,6 +206,7 @@ class InvoiceDetail(InvoiceSummary):
     can_review: bool  # filled per request: clerk and invoice still editable
     match: MatchOut | None
     workflow: WorkflowOut
+    einvoice: EInvoiceOut
 
 
 def _workflow(db: Session, inv: Invoice, user: User) -> WorkflowOut:
@@ -260,6 +298,7 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
         can_review=user.role == Role.CLERK and inv.status in EDITABLE_STATUSES,
         match=match,
         workflow=_workflow(db, inv, user),
+        einvoice=_einvoice(inv, supplier),
     )
 
 

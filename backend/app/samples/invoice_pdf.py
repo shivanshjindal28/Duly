@@ -14,6 +14,9 @@ from decimal import ROUND_HALF_UP, Decimal
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.graphics import renderPDF
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing
 from reportlab.pdfgen import canvas
 
 from app.validation.gstin import STATE_CODES
@@ -77,6 +80,7 @@ class InvoiceSpec:
     force_igst: bool | None = None  # scenario override: True = IGST, False = CGST+SGST
     total_override: Decimal | None = None  # scenario override: printed total differs
     hidden_text: str | None = None  # scenario: white text (prompt injection demo)
+    signed_qr: str | None = None  # IRP-signed e-invoice QR payload (JWT), printed top-right
     extra_notes: list[str] = field(default_factory=list)
 
     @property
@@ -155,6 +159,17 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
     c.drawCentredString(width / 2, y, "TAX INVOICE")
     c.setLineWidth(0.6)
     c.line(left, y - 2.5 * mm, right, y - 2.5 * mm)
+
+    if spec.signed_qr:
+        # Vector QR (crisp modules at any render resolution), bottom-left block clear of all text.
+        widget = QrCodeWidget(spec.signed_qr, barLevel="L", barBorder=4)
+        x0, y0, x1, y1 = widget.getBounds()
+        size = 55 * mm
+        drawing = Drawing(size, size, transform=[size / (x1 - x0), 0, 0, size / (y1 - y0), 0, 0])
+        drawing.add(widget)
+        renderPDF.draw(drawing, c, left, 36 * mm)
+        c.setFont("Helvetica", 6)
+        c.drawString(left + 4 * mm, 34 * mm, "Signed e-invoice QR (IRP)")
 
     # Invoice meta (right) and bill-to (left)
     y -= 9 * mm
@@ -253,3 +268,16 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
     c.showPage()
     c.save()
     return buf.getvalue()
+
+
+def with_einvoice(spec: InvoiceSpec) -> InvoiceSpec:
+    """Register the invoice with the Sandbox IRP: set the IRN and the signed QR from the real totals.
+    (A scenario can then change `total_override` to simulate an edited PDF.)"""
+    from app.samples import sandbox_irp
+
+    comp = compute(InvoiceSpec(**{**spec.__dict__, "total_override": None}))
+    spec.irn = sandbox_irp.irn(spec.supplier.gstin, spec.invoice_number, spec.invoice_date)
+    spec.signed_qr = sandbox_irp.sign(
+        spec.supplier.gstin, spec.buyer.gstin, spec.invoice_number, spec.invoice_date, str(comp.total),
+        len(spec.lines), spec.lines[0].hsn_sac if spec.lines else "", spec.irn)
+    return spec

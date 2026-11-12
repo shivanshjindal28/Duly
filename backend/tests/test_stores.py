@@ -43,7 +43,8 @@ def test_s4_missing_gr_auto_released_when_stores_posts_gr(client, db):
     h = login(client, NAVRANG)
     inv = client.post("/api/invoices/upload", headers=h,
                       files={"file": ("npw.pdf", render_invoice_pdf(spec), "application/pdf")}).json()
-    assert inv["decision"] == "BLOCK" and [r["code"] for r in inv["match"]["reasons"]] == ["MISSING_GR"]
+    assert inv["decision"] == "BLOCK"
+    assert [r["code"] for r in inv["match"]["reasons"] if r["severity"] != "info"] == ["MISSING_GR"]
     assert inv["rail"] == 1  # ordered, not yet received
 
     # Stores receives the goods.

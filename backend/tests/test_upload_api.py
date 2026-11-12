@@ -44,7 +44,7 @@ def test_supplier_upload_extracts_fields_with_locations(client, pdf):
     assert len(body["lines"]) == 2
     # Seeded PO 4500001003: 100 bearings billed, only 80 received -> blocked by the rules.
     assert body["status"] == "blocked" and body["decision"] == "BLOCK"
-    reasons = {(r["code"], r["severity"]) for r in body["match"]["reasons"]}
+    reasons = {(r["code"], r["severity"]) for r in body["match"]["reasons"] if r["severity"] != "info"}
     # Earlier tests upload look-alike bearings invoices, so a POSSIBLE_DUPLICATE flag may also appear.
     assert ("QTY_EXCEEDS_GR", "block") in reasons and reasons <= {("QTY_EXCEEDS_GR", "block"),
                                                                    ("POSSIBLE_DUPLICATE", "flag")}

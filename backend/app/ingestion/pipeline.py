@@ -20,6 +20,7 @@ from app.core import audit
 from app.core.crypto import encrypt_str
 from app.ingestion.extract_text import acquire_tokens, render_pages
 from app.ingestion.hardening import harden
+from app.ingestion.qr import verify as verify_qr
 from app.ingestion.storage import sha256, store
 from app.core.enums import InvoiceStatus, Role
 from app.models import Document, ExtractionResult, Invoice, InvoiceLine, Policy, Supplier, User
@@ -112,6 +113,9 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
     extracted, ai_mode, ai_fallback = ai_extract(file_hash, tokens, method,
                                                  lambda: render_pages(clean.data, clean.kind, dpi=IMAGE_DPI))
     supplier = _resolve_supplier(db, user, supplier_id, extracted)
+    # Signed e-invoice QR on the first pages (photos are used as they are).
+    qr = verify_qr(render_pages(clean.data, clean.kind, dpi=200)[:2] if clean.kind == "pdf"
+                   else render_pages(clean.data, clean.kind))
 
     doc = Document(
         original_filename=filename[:255], stored_name=store(clean.data, clean.kind), mime_type=clean.mime,
@@ -135,6 +139,7 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         igst=dec(h["igst"].value), total=dec(h["total"].value),
         bank_account_enc=encrypt_str(account) if account else None,
         bank_account_last4=account[-4:] if account else None, bank_ifsc=h["bank_ifsc"].value,
+        qr_status=qr.status, qr_payload=qr.payload, qr_error=qr.error,
         ai_mode=ai_mode, processed_by_user_id=user.id if user.role == Role.CLERK else None,
     )
     db.add(invoice)
@@ -169,6 +174,7 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         "pages": doc.pages, "text_source": extracted.method, "extractor": extracted.extractor_version,
         "ai_mode": ai_mode, "ai_model": extracted.extractor, "ai_fallback_reason": ai_fallback,
         "suspicious_text": extracted.suspicious_text, "fields": len(extracted.all_fields()),
+        "einvoice_qr": qr.status, "qr_error": qr.error,
         "needs_review": pending_review(db, invoice.id),
     })
     run_match(db, invoice, trigger="upload")

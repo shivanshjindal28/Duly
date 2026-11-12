@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.core.crypto import decrypt_str
 from app.core.ratelimit import limiter
 from app.models import User
-from app.samples.invoice_pdf import Line, render_invoice_pdf
+from app.samples.invoice_pdf import Line, render_invoice_pdf, with_einvoice
 from tests.fixtures.invoices import seeded_invoice
 
 CLERK = "asha.kulkarni@plantx.example"
@@ -41,9 +41,11 @@ def totp(db, email) -> str:
     return pyotp.TOTP(decrypt_str(u.mfa_secret_enc)).now()
 
 
-def upload(client, db, supplier: str, number: str, po: str, lines: list[Line], **kw) -> dict:
+def upload(client, db, supplier: str, number: str, po: str, lines: list[Line], einvoice: bool = False, **kw) -> dict:
     kw.setdefault("invoice_date", date(2026, 11, 9))
     spec = seeded_invoice(db, supplier, invoice_number=number, po_number=po, lines=lines, **kw)
+    if einvoice:  # supplier above the e-invoicing threshold: IRP-signed QR on the PDF
+        spec = with_einvoice(spec)
     h = login(client, SUPPLIER_EMAIL[supplier])
     r = client.post("/api/invoices/upload", headers=h,
                     files={"file": (f"{number}.pdf", render_invoice_pdf(spec), "application/pdf")})
@@ -73,8 +75,10 @@ def test_touchless_small_clean_invoice_approved_by_policy(client, db):
 
 def test_s1_fifteen_lakh_needs_l1_then_l2_with_mfa(client, db):
     inv = upload(client, db, "Sahyadri Catalysts & Additives Ltd", "SCA/26-27/0901", "4500001001",
-                 [Line("CAT-ZN-01", "Ziegler-Natta catalyst ZN-118", "3815", D("1.5"), "MT", D("850000.00"), D(18))])
+                 [Line("CAT-ZN-01", "Ziegler-Natta catalyst ZN-118", "3815", D("1.5"), "MT", D("850000.00"), D(18))],
+                 einvoice=True)
     assert inv["decision"] == "APPROVE" and D(inv["total"]) == D("1504500.00")
+    assert "EINVOICE_VERIFIED" in {r["code"] for r in inv["match"]["reasons"]}
     assert [s["level"] for s in inv["workflow"]["steps"]] == [1, 2] and inv["workflow"]["mfa_required"]
 
     # L2 cannot jump the queue.

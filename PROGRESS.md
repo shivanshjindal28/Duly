@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 01:45 IST by Shivansh (Claude Code)
+Last updated: 2026-11-13 02:45 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,7 +12,7 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 146 tests (about 20 s; OCR model loads once)
+cd backend && python -m pytest    # 151 tests (about 25 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -38,6 +38,7 @@ cd frontend && npm run typecheck
 - **Phase 2 step 14**: duplicate detection (`duplicates/detector.py`, pure). Signals vs every earlier non-rejected invoice: exact normalised number + same supplier + same FY, same IRN, same file SHA-256 (any -> BLOCK `DUPLICATE`); near-match (same supplier, total +-0.5%, date <= 30 days, item/qty Jaccard >= 0.8) and page-1 pHash (corroboration only) combined into a probability (>= 0.6 -> FLAG `POSSIBLE_DUPLICATE`); same bank account on two suppliers -> FLAG `BANK_ACCOUNT_SHARED`. Reasons enter the engine via `decide(..., extra_reasons)` (engine stays pure); runs on upload and every re-match. `GET /api/invoices/{id}/duplicates` + `/invoices/:id/compare` page (both documents, signals, field-by-field same/differs). Scenario 5 verified in tests and live (photo "INV-42" blocked as duplicate of "INV/0042"). Dashboard "duplicates prevented" now counts real cases.
 - **Phase 2 step 15**: "Where is my payment?" assistant (`app/chat/`, `POST /api/chat`, 20/min). Five server tools (`list_my_invoices`, `get_invoice_status`, `get_payment_schedule`, `get_block_reason`, `get_msme_due_date`); supplier id injected from the session (suppliers) or the clerk's chosen supplier, never a tool parameter. Guardrails before any model call: other supplier named (name/GSTIN) -> refusal + `security.chat_cross_tenant_refused`; injection phrases stripped + `security.chat_injection_flagged`; digits redacted in session log; every turn audited (`chat.message`). Live: Claude manual tool loop (strict tools, effort low, refusal fallback) in en/hi; offline: keyword intent matcher (en/hi/Hinglish) composing answers from the same reviewed i18n files (backend reads `frontend/src/i18n/*.json`). Invoice resolution by number (normalised) or item word ("bearings"), preferring genuine invoices over blocked duplicates. UI: floating chat dock in the supplier portal with "Looked up: ..." chips; clerk `/assistant` page with supplier picker. Verified live: bearings question -> "INV/0042 ... Expected payment 22 Dec 2026"; Navrang request refused and logged.
 - **Phase 2 step 16**: controls report (`reports/controls.py`, `reports/pdf.py`, `GET /api/reports/controls` + `.pdf`, auditor/admin). C-01..C-10 each TESTED on live data for the period (objective, how enforced, test performed, result effective / exceptions / no_activity, figures, exceptions with invoice links, evidence), overrides list, one-line opinion. Generation is audited. UI `/controls` with period picker and PDF download. C-06 (bank change maker-checker) and C-08 payments report "no activity" until D3/D5 exist: honest, not a pass.
+- **Phase 3 step 17 (D1)**: signed e-invoice QR. `samples/sandbox_irp.py` signs IRP-shaped JWTs (RS256, `data` claim with SellerGstin, BuyerGstin, DocNo, DocDt, TotInvVal, ItemCnt, MainHsnCode, Irn, IrnDt; IRN = SHA-256 of GSTIN+FY+type+number) with a local key in `backend/data/keys/`; `with_einvoice(spec)` prints a vector QR. `ingestion/qr.py` decodes (zxing-cpp, OpenCV fallback), verifies RS256 against the trusted key (`IRP_PUBLIC_KEY_PATH`, default the sandbox key), stores status/payload on the invoice; `einvoice_reasons` (pure) feeds the engine: QR_MISMATCH / QR_SIGNATURE_INVALID block, EINVOICE_QR_MISSING flags for e-invoice suppliers, EINVOICE_VERIFIED / NOT_APPLICABLE info. Detail API `einvoice` + panel (printed vs signed, sandbox note). Scenario 8 verified live (edited total blocked with both amounts).
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -58,7 +59,8 @@ cd frontend && npm run typecheck
 2. Phase 2 step 16: controls report for auditors (screen + PDF via reportlab).
 2. Phase 3 step 17: Sandbox IRP signing + signed-QR verification (D1).
 2. Phase 3 step 18: prompt-injection shield for documents (D2): hidden-text scan + quarantine (`suspicious_text` from the AI is already captured).
-3. Phase 3 step 19: bank-detail fraud block exists (BANK_MISMATCH); add maker-checker bank change requests with 72 h cooling + call-back checklist (feeds control C-06).
+2. Phase 3 step 19: bank-detail fraud block exists (BANK_MISMATCH); add maker-checker bank change requests with 72 h cooling + call-back checklist (feeds control C-06).
+3. Phase 3 step 20: MSME guardian (interest, tax-deduction exposure, half-yearly summary) + payment run with TDS (D4/D5).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -80,6 +82,8 @@ cd frontend && npm run typecheck
 - Extraction results are append-only: a human correction adds a new row with source=manual; the latest row per field wins.
 - Bank account numbers are masked in `extraction_results`; the full number is only stored encrypted on the invoice.
 - HSN/SAC rate table (`validation/hsn.py`) is a labelled assumption; ambiguous codes list every allowed rate.
+- QR decoding uses **zxing-cpp** (pip wheel, no system packages) with OpenCV as fallback. Measured: OpenCV failed to decode some IRP-size (version 21) QRs even from a perfect image, depending on the payload; zxing-cpp decoded 12/12 rendered invoices at 150-300 dpi plus a tilted, blurred photo. Deviation from spec section 5 C2 (OpenCV QRCodeDetector), recorded for reliability.
+- Sample e-invoice QR is drawn as vectors (reportlab QR widget) in a clear bottom-left block; overlapping text had corrupted both the QR and text extraction.
 - Controls report results: `no_activity` when nothing in the period could test the control (e.g. no approved invoices); never reported as a pass. C-02 checks "no override of a BLOCK" (overriding a sent-back APPROVE or a FLAG is allowed).
 - Supplier-facing text has one source: `frontend/src/i18n/{en,hi}.json`, read by the backend too (chat offline answers, tool payloads). Add new keys there.
 - Chat cross-supplier refusal is deterministic (before the model) so it works offline and is always logged; the model additionally has no way to reach other suppliers' data.
@@ -125,6 +129,7 @@ Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they a
 - S6, S9 decisions are covered by engine tests; generated demo PDFs come in Phase 4.
 - Separate logins for all 6 roles, cross-tenant denial: works.
 - S5 duplicate photo with reformatted number: works end to end (BLOCK DUPLICATE, side-by-side compare).
+- S8 catalyst PDF with edited total + original signed QR: works (BLOCK QR_MISMATCH). S1 now uses a signed e-invoice (EINVOICE_VERIFIED).
 - B3 controls report (screen + PDF): works.
 - B2 chatbot demo (precise answer + logged refusal), en/hi, offline: works.
 - Supplier can see where each invoice is, why, what to do and when it will be paid (en/hi): works.

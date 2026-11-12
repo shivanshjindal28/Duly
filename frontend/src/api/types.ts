@@ -115,6 +115,16 @@ export interface InvoiceDetail extends InvoiceSummary {
   can_review: boolean;
   match: MatchOut | null;
   workflow: WorkflowOut;
+  einvoice: EInvoiceOut;
+}
+
+export interface EInvoiceOut {
+  status: "none" | "valid" | "invalid";
+  error: string | null;
+  applicable: boolean;
+  sandbox: boolean;
+  irn: string | null;
+  fields: { field: string; printed: string | null; signed: string | null; same: boolean }[];
 }
 
 export interface StepOut {

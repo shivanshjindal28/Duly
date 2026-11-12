@@ -8,6 +8,7 @@ import { DulyRail } from "../components/DulyRail";
 import { ApprovalPanel } from "../components/invoice/ApprovalPanel";
 import { DecisionPanel } from "../components/invoice/DecisionPanel";
 import { DocumentViewer } from "../components/invoice/DocumentViewer";
+import { EInvoicePanel } from "../components/invoice/EInvoicePanel";
 import { InvoiceAuditTrail } from "../components/invoice/InvoiceAuditTrail";
 import { useAuth } from "../auth/AuthContext";
 import { FieldsPanel } from "../components/invoice/FieldsPanel";
@@ -165,6 +166,10 @@ export function InvoiceDetailPage() {
             </h2>
           </div>
           <DecisionPanel match={inv.match} onLine={selectLine} invoiceId={inv.id} />
+          <div className="pane-head pane-head-sub">
+            <h2 className="label">e-invoice (signed QR)</h2>
+          </div>
+          <EInvoicePanel e={inv.einvoice} />
           <div className="pane-head pane-head-sub">
             <h2 className="label">Approval</h2>
             <span className="muted pane-hint">Delegation of Authority</span>
