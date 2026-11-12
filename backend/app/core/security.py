@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.models import User
-from app.models.enums import Role
+from app.core.enums import Role
 
 SESSION_COOKIE = "duly_session"
 CSRF_COOKIE = "duly_csrf"

@@ -41,9 +41,15 @@ def test_supplier_upload_extracts_fields_with_locations(client, pdf):
     body = r.json()
     assert body["invoice_number"] == "KES/26-27/0042"
     assert body["supplier_name"] == "Kesar Engineering Spares"
-    assert len(body["lines"]) == 2 and body["status"] == "received"
-    assert body["validation"] == []
-    assert body["bank_account_masked"] == "XXXXXX7921"
+    assert len(body["lines"]) == 2
+    # Seeded PO 4500001003: 100 bearings billed, only 80 received -> blocked by the rules.
+    assert body["status"] == "blocked" and body["decision"] == "BLOCK"
+    reasons = {(r["code"], r["severity"]) for r in body["match"]["reasons"]}
+    assert reasons == {("QTY_EXCEEDS_GR", "block")}
+    q = next(r for r in body["match"]["reasons"] if r["code"] == "QTY_EXCEEDS_GR")
+    assert q["evidence"]["received"] == "80.000" and q["sap_equivalent"].startswith("Payment block R")
+    assert len(body["match"]["matrix"]) == 2
+    assert body["bank_account_masked"].startswith("XXXXXX")
     fields = {f["field"]: f for f in body["fields"]}
     assert fields["total"]["value"] == "87320.00" and fields["total"]["bbox"]
     assert fields["bank_account"]["value"].startswith("XXXX")  # the extraction log is masked

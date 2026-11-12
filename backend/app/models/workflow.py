@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
 from app.models.base import Money, created_at_col, utcnow
-from app.models.enums import BankChangeStatus, StepStatus
+from app.core.enums import BankChangeStatus, StepStatus
 
 
 class ApprovalStep(Base):

@@ -11,7 +11,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.engine.types import InvoiceDoc, Reason
-from app.models.enums import Severity
+from app.core.enums import Severity
 from app.validation import hsn
 from app.validation.gstin import STATE_CODES, is_valid_gstin
 

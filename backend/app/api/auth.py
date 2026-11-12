@@ -16,7 +16,7 @@ from app.core.rbac import PERMISSIONS
 from app.core.security import clear_session, get_current_user, issue_session
 from app.models import Supplier, User
 from app.models.base import as_utc
-from app.models.enums import Role
+from app.core.enums import Role
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

@@ -22,9 +22,10 @@ from app.ingestion.hardening import MAX_BYTES, UploadRejected
 from app.ingestion.pages import page_png
 from app.ingestion.pipeline import UploadError, confidence_threshold, process_upload
 from app.ingestion.storage import path_of
+from app.core.enums import Role
+from app.engine.catalog import info
 from app.models import Document, ExtractionResult, Invoice, Supplier, User
-from app.models.enums import Role
-from app.workflow.matching import validate_invoice
+from app.workflow.matching import latest_match
 
 router = APIRouter(
     prefix="/invoices",
@@ -74,10 +75,22 @@ class FieldOut(BaseModel):
 
 class ReasonOut(BaseModel):
     code: str
+    title: str
     severity: str
     message: str
     evidence: dict
     line_no: int | None
+    sap_equivalent: str | None
+
+
+class MatchOut(BaseModel):
+    decision: str
+    policy_version: int
+    engine_version: str
+    trigger: str
+    created_at: datetime
+    reasons: list[ReasonOut]
+    matrix: list[dict]
 
 
 class DocumentOut(BaseModel):
@@ -105,7 +118,7 @@ class InvoiceDetail(InvoiceSummary):
     document: DocumentOut | None
     fields: list[FieldOut]
     confidence_threshold: float
-    validation: list[ReasonOut]
+    match: MatchOut | None
 
 
 def _summary_kwargs(inv: Invoice, supplier_name: str | None) -> dict:
@@ -147,8 +160,20 @@ def _detail(db: Session, inv: Invoice) -> InvoiceDetail:
                          and r.confidence < threshold)
                 for r in latest.values()],
         confidence_threshold=threshold,
-        validation=[ReasonOut(code=r.code, severity=r.severity, message=r.message, evidence=r.evidence,
-                              line_no=r.line_no) for r in validate_invoice(db, inv)],
+        match=_match_out(db, inv.id),
+    )
+
+
+def _match_out(db: Session, invoice_id: int) -> MatchOut | None:
+    m = latest_match(db, invoice_id)
+    if m is None:
+        return None
+    return MatchOut(
+        decision=m.decision, policy_version=m.policy_version, engine_version=m.engine_version, trigger=m.trigger,
+        created_at=m.created_at, matrix=m.matrix,
+        reasons=[ReasonOut(code=r.code, title=info(r.code).title, severity=r.severity, message=r.message,
+                           evidence=r.evidence, line_no=r.line_no, sap_equivalent=r.sap_equivalent)
+                 for r in m.reasons],
     )
 
 

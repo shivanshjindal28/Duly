@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 15:10 IST by Shivansh (Claude Code)
+Last updated: 2026-11-12 16:05 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -11,7 +11,7 @@ cd frontend && npm install && cd ..
 cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 67 tests (about 10 s; OCR model loads once)
+cd backend && python -m pytest    # 94 tests (about 10 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -25,15 +25,17 @@ cd frontend && npm run typecheck
 - Step 2 frontend: Vite + React 18 + TS, design tokens (`frontend/src/theme/tokens.ts`, AA-checked), app shell (navy sidebar, top bar with entity, AI mode and role badges, skip link), login page, Duly 5-stop rail component, per-role Overview page (server-reported permissions + system status).
 - Step 3 auth: login/logout/me, JWT in httpOnly SameSite=strict cookie, signed double-submit CSRF, sliding 60-min session, logout revokes all tokens (token_version), lockout after 5 failures (15 min), login rate limit (slowapi, 10/min/IP), generic error + dummy-hash timing for unknown emails, `require_roles` RBAC dependency, `get_scope` supplier row scoping (404 for other suppliers' invoices), demo personas + demo-login (404 when DEMO_MODE=false), `/api/invoices` list/detail (scoped; stores gets 403).
 - **Phase 1 step 4 (backend)**: `POST /api/invoices/upload` (supplier, or clerk on behalf; supplier resolved by GSTIN), upload hardening (`ingestion/hardening.py`: extension vs magic bytes, 10 MB, 20 pages, rejects PDF JavaScript/Launch/EmbeddedFiles incl. hex-obfuscated names, re-encodes images to strip EXIF), random stored names + SHA-256, text layer (pdfplumber) with OCR fallback (RapidOCR, offline), offline regex parser with per-field confidence + page + bbox (`ai/offline_parser.py`), validation layer (`validation/rules.py`: GSTIN check digit, bill-to = Plant X, invoice no <= 16 chars, date not future / not older than previous FY, line and total arithmetic within Rs 1, CGST+SGST vs IGST by place of supply, GST rate vs HSN table), low-confidence fields mark the invoice `needs_review`. Endpoints for the document file and server-rendered page PNGs (scoped). Sample GST invoice renderer `app/samples/invoice_pdf.py`.
+- **Phase 1 step 5**: decision engine `app/engine/decide.py` (pure, deterministic; test proves no `app.ai`/ORM/SQLAlchemy import). All reason codes from spec C3 plus LINE_NOT_ON_PO, SES_VALUE_EXCEEDED, SMALL_DIFFERENCE, LINE_MAPPED; PP/DQ/BD tolerances from versioned policy; cumulative qty check for partial deliveries; kg/MT unit conversion; fuzzy description line mapping (rapidfuzz); SAP block + tcode per code (`engine/catalog.py`). `workflow/matching.run_match` builds PO/GR/SES/invoiced-history views, stores a MatchResult with reasons + matrix snapshot, sets invoice status (blocked / flagged / pending_approval). Runs on every upload. Seed now has 14 scenario POs (4500001001..1013 + closed 4500000990), 10 GRs, 3 SESs (`app/seed.py` PURCHASE_ORDERS lists which scenario each PO serves). `docs/DECISION_ENGINE.md` written.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
 ## In progress
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 1 step 5: decision engine (`backend/app/engine/`, pure functions, no `ai/` import) with all reason codes + PP/DQ/BD tolerances + unit tests per scenario. Seed POs/GRs/SESs needed for the 12 scenarios.
-2. Phase 1 step 6: invoice detail screen (document viewer + highlights, fields with confidence, decision card, match matrix, Duly rail) plus an upload screen (no upload UI exists yet; upload works via API and tests).
-3. Phase 1 step 7: human review flow for low-confidence fields with logged corrections.
+1. Phase 1 step 6: invoice detail screen (document viewer + highlights, fields with confidence, decision card, match matrix, Duly rail) plus an upload screen (no upload UI exists yet; upload works via API and tests).
+2. Phase 1 step 7: human review flow for low-confidence fields with logged corrections.
+
+3. Phase 1 step 8: stores GR/SES posting + automatic re-match (call `run_match(db, inv, trigger="gr_posted")` for open invoices on that PO).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -55,6 +57,10 @@ cd frontend && npm run typecheck
 - Extraction results are append-only: a human correction adds a new row with source=manual; the latest row per field wins.
 - Bank account numbers are masked in `extraction_results`; the full number is only stored encrypted on the invoice.
 - HSN/SAC rate table (`validation/hsn.py`) is a labelled assumption; ambiguous codes list every allowed rate.
+- Enums moved to `app/core/enums.py` so the engine can import them without loading the ORM.
+- QTY_EXCEEDS_GR and SES_VALUE_EXCEEDED: excess within DQ tolerance is info, up to 5% of received flags, above 5% blocks (spec said "flag/block by tolerance"; we added `DQ.block_pct` = 5 to the policy).
+- Only invoices in pending_approval/approved/paid count as "already invoiced" for the cumulative quantity check (blocked or flagged invoices do not consume GR quantity).
+- A match on an invoice in `needs_review` is stored but does not change its status until review is done.
 - Validation result types live in `engine/types.py` (shared with the step 5 engine); `workflow/matching.py` maps ORM rows to them.
 - Runtime data (`backend/data/*.db`, uploads, keys, ai_cache) is git-ignored; demo invoices under `demo/invoices/` will be tracked.
 

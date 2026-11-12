@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 from app.models.base import Money, Qty, created_at_col, utcnow
-from app.models.enums import Decision, InvoiceStatus, Severity
+from app.core.enums import Decision, InvoiceStatus, Severity
 
 
 class Document(Base):
@@ -117,9 +117,11 @@ class MatchResult(Base):
     decision: Mapped[Decision] = mapped_column(String(7))
     policy_version: Mapped[int] = mapped_column(Integer)
     engine_version: Mapped[str] = mapped_column(String(20))
+    trigger: Mapped[str] = mapped_column(String(60), default="upload")  # upload | gr_posted | correction ...
+    matrix: Mapped[list] = mapped_column(JSON, default=list)  # match matrix snapshot for the UI and audit
     created_at: Mapped[datetime] = created_at_col()
 
-    reasons: Mapped[list[ReasonCode]] = relationship(back_populates="match_result")
+    reasons: Mapped[list[ReasonCode]] = relationship(back_populates="match_result", order_by="ReasonCode.id")
 
 
 class ReasonCode(Base):
@@ -129,7 +131,7 @@ class ReasonCode(Base):
     match_result_id: Mapped[int] = mapped_column(ForeignKey("match_results.id"), index=True)
     code: Mapped[str] = mapped_column(String(30), index=True)
     severity: Mapped[Severity] = mapped_column(String(5))
-    message: Mapped[str] = mapped_column(String(400))
+    message: Mapped[str] = mapped_column(String(600))
     evidence: Mapped[dict] = mapped_column(JSON, default=dict)
     sap_equivalent: Mapped[str | None] = mapped_column(String(120))
     line_no: Mapped[int | None] = mapped_column(Integer)

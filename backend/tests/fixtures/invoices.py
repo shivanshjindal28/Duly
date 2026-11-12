@@ -40,11 +40,15 @@ def seeded_invoice(db, supplier_name: str = "Kesar Engineering Spares", **overri
 
     from app.models import Organisation, Supplier
 
+    from app.core.crypto import decrypt_str
+
     s = db.scalar(select(Supplier).where(Supplier.name == supplier_name))
     org = db.scalar(select(Organisation))
     spec = bearings_invoice()
     spec.supplier = Party(s.name, s.gstin, s.address, pan=s.pan)
     spec.buyer = Party(org.name, org.gstin, org.address)
+    spec.po_number = "4500001003"  # seeded: 100 bearings ordered, 80 received; 4 seals received
+    spec.bank_name, spec.bank_account, spec.bank_ifsc = s.bank_name, decrypt_str(s.bank_account_enc), s.bank_ifsc
     for k, v in overrides.items():
         setattr(spec, k, v)
     return spec

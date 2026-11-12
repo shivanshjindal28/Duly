@@ -1,14 +1,35 @@
-"""Bridge between stored invoices and the pure rules: build InvoiceDoc, run validation."""
+"""Bridge between stored data and the pure rules: build engine inputs, run, persist results.
+
+`run_match` is called after upload, after a human correction, and whenever stores posts a
+GR/SES against the invoice's PO (automatic re-match that can release a MISSING_GR block).
+"""
 from __future__ import annotations
 
-from sqlalchemy import select
+from dataclasses import asdict
+from decimal import Decimal
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import clock
 from app.core.crypto import decrypt_str
+from app.core.enums import Decision, InvoiceStatus
+from app.engine.catalog import info
+from app.engine.decide import UOM_FACTORS, MatchOutcome, PoLineView, PoView, SupplierView, decide
+from app.engine.policy import Tolerances
 from app.engine.types import DocLine, InvoiceDoc, Reason
-from app.models import Invoice, Organisation
+from app.models import (GoodsReceipt, GRLine, Invoice, InvoiceLine, MatchResult, Organisation, Policy, PurchaseOrder,
+                        ReasonCode, ServiceEntrySheet, Supplier)
 from app.validation.rules import validate
+
+# Invoices whose quantities count as "already invoiced" against a PO line.
+_CONSUMING = (InvoiceStatus.PENDING_APPROVAL, InvoiceStatus.APPROVED, InvoiceStatus.PAID)
+
+_STATUS = {
+    Decision.BLOCK: (InvoiceStatus.BLOCKED, "Blocked: AP clerk to resolve"),
+    Decision.FLAG: (InvoiceStatus.FLAGGED, "AP clerk (exception)"),
+    Decision.APPROVE: (InvoiceStatus.PENDING_APPROVAL, "Approval workflow"),
+}
 
 
 def invoice_to_doc(inv: Invoice) -> InvoiceDoc:
@@ -31,5 +52,88 @@ def plant_gstin(db: Session) -> str:
     return db.scalar(select(Organisation.gstin).limit(1))
 
 
+def active_policy(db: Session) -> Policy:
+    return db.scalar(select(Policy).where(Policy.is_active.is_(True)))
+
+
 def validate_invoice(db: Session, inv: Invoice) -> list[Reason]:
     return validate(invoice_to_doc(inv), plant_gstin(db), clock.today())
+
+
+def _to_po_unit(qty: Decimal, uom: str, po_uom: str) -> Decimal:
+    u, p = (uom or "").upper(), (po_uom or "").upper()
+    return qty if u == p else qty * UOM_FACTORS.get((u, p), Decimal(1))
+
+
+def build_po_view(db: Session, po: PurchaseOrder, exclude_invoice_id: int | None) -> PoView:
+    supplier = db.get(Supplier, po.supplier_id)
+    lines = []
+    for pl in po.lines:
+        received = db.scalar(select(func.coalesce(func.sum(GRLine.qty), 0)).where(GRLine.po_line_id == pl.id))
+        accepted = db.scalar(select(func.coalesce(func.sum(ServiceEntrySheet.value), 0))
+                             .where(ServiceEntrySheet.po_line_id == pl.id))
+        prior = db.execute(
+            select(InvoiceLine.qty, InvoiceLine.uom, InvoiceLine.taxable_value)
+            .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+            .where(InvoiceLine.po_line_id == pl.id, Invoice.status.in_(_CONSUMING), Invoice.id != (exclude_invoice_id or -1))
+        ).all()
+        lines.append(PoLineView(
+            id=pl.id, line_no=pl.line_no, item_code=pl.item_code, description=pl.description, qty=pl.qty,
+            uom=pl.uom, unit_price=pl.unit_price, gst_rate=pl.gst_rate,
+            received_qty=Decimal(str(received)), accepted_value=Decimal(str(accepted)),
+            invoiced_qty=sum((_to_po_unit(q, u, pl.uom) for q, u, _ in prior), Decimal(0)),
+            invoiced_value=sum((v for _, _, v in prior), Decimal(0)),
+        ))
+    return PoView(po.po_number, supplier.gstin, po.status, po.currency, po.payment_terms_days, po.is_service,
+                  tuple(lines))
+
+
+def _supplier_view(s: Supplier) -> SupplierView:
+    return SupplierView(s.gstin, s.payment_terms_days, decrypt_str(s.bank_account_enc), s.bank_ifsc)
+
+
+def _acceptance_time(db: Session, po: PurchaseOrder):
+    gr = db.scalar(select(func.max(GoodsReceipt.posted_at)).where(GoodsReceipt.po_id == po.id))
+    ses = db.scalar(select(func.max(ServiceEntrySheet.posted_at)).where(ServiceEntrySheet.po_id == po.id))
+    return max((t for t in (gr, ses) if t is not None), default=None)
+
+
+def _jsonable(row) -> dict:
+    return {k: (str(v) if isinstance(v, Decimal) else v) for k, v in asdict(row).items()}
+
+
+def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcome:
+    """Run the engine for `inv`, store a MatchResult snapshot, and update the invoice's status."""
+    po = db.scalar(select(PurchaseOrder).where(PurchaseOrder.po_number == inv.po_number_text)) \
+        if inv.po_number_text else None
+    inv.po_id = po.id if po else None
+    policy = active_policy(db)
+    tol = Tolerances.from_policy(policy.data, policy.version)
+    supplier = db.get(Supplier, inv.supplier_id)
+    outcome = decide(invoice_to_doc(inv), build_po_view(db, po, inv.id) if po else None, _supplier_view(supplier),
+                     tol, plant_gstin(db), clock.today())
+
+    result = MatchResult(invoice_id=inv.id, decision=outcome.decision, policy_version=outcome.policy_version,
+                         engine_version=outcome.engine_version, trigger=trigger,
+                         matrix=[_jsonable(r) for r in outcome.matrix])
+    db.add(result)
+    db.flush()
+    for r in outcome.reasons:
+        ci = info(r.code)
+        db.add(ReasonCode(match_result_id=result.id, code=r.code, severity=r.severity, message=r.message,
+                          evidence=r.evidence, sap_equivalent=f"{ci.sap_block} · {ci.sap_tcode}", line_no=r.line_no))
+    for ln in inv.lines:
+        ln.po_line_id = outcome.line_map.get(ln.line_no)
+
+    inv.decision = outcome.decision
+    if inv.status != InvoiceStatus.NEEDS_REVIEW:  # review must finish before the decision takes effect
+        inv.status, inv.current_owner = _STATUS[outcome.decision]
+    if outcome.decision == Decision.APPROVE and po is not None:
+        inv.accepted_at = _acceptance_time(db, po)
+    db.flush()
+    return outcome
+
+
+def latest_match(db: Session, invoice_id: int) -> MatchResult | None:
+    return db.scalar(select(MatchResult).where(MatchResult.invoice_id == invoice_id)
+                     .order_by(MatchResult.id.desc()).limit(1))

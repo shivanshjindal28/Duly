@@ -8,7 +8,7 @@ from __future__ import annotations
 DEFAULT_POLICY: dict = {
     "tolerances": {
         "PP": {"flag_pct": 1.0, "flag_abs_inr": 500, "block_pct": 5.0},
-        "DQ": {"default_pct": 0.0, "bulk_mt_pct": 0.5},
+        "DQ": {"default_pct": 0.0, "bulk_mt_pct": 0.5, "block_pct": 5.0},
         "BD": {"auto_accept_inr": 10},
     },
     # Delegation of Authority, invoice value incl. GST (INR). Levels: 1 Finance Manager,

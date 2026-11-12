@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 
 from app.core.crypto import decrypt_str, encrypt_str, mask_account
 from app.models import Organisation, Supplier, User
-from app.models.enums import Role
+from app.core.enums import Role
 from app.validation.gstin import is_valid_gstin
 
 

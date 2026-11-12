@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-from app.models.enums import Severity
+from app.core.enums import Severity
 
 
 @dataclass(frozen=True)

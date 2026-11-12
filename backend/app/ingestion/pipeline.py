@@ -18,9 +18,10 @@ from app.core.crypto import encrypt_str
 from app.ingestion.extract_text import acquire_tokens
 from app.ingestion.hardening import harden
 from app.ingestion.storage import sha256, store
-from app.models import Document, ExtractionResult, Invoice, InvoiceLine, Policy, PurchaseOrder, Supplier, User
-from app.models.enums import InvoiceStatus, Role
+from app.core.enums import InvoiceStatus, Role
+from app.models import Document, ExtractionResult, Invoice, InvoiceLine, Policy, Supplier, User
 from app.validation.rules import fiscal_year
+from app.workflow.matching import run_match
 
 # Fields that must be read reliably before the rules can run on an invoice.
 KEY_FIELDS = ("supplier_gstin", "invoice_number", "invoice_date", "po_number", "total")
@@ -101,10 +102,9 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
     number = h["invoice_number"].value or ""
     inv_date = _date(h["invoice_date"].value)
     po_text = h["po_number"].value
-    po = db.scalar(select(PurchaseOrder).where(PurchaseOrder.po_number == po_text)) if po_text else None
     account = h["bank_account"].value
     invoice = Invoice(
-        supplier_id=supplier.id, po_id=po.id if po else None, document_id=doc.id, po_number_text=po_text,
+        supplier_id=supplier.id, document_id=doc.id, po_number_text=po_text,
         invoice_number=number, invoice_number_norm=normalise_invoice_number(number) if number else "",
         invoice_date=inv_date, fiscal_year=fiscal_year(inv_date) if inv_date else None,
         irn=h["irn"].value, supplier_gstin=h["supplier_gstin"].value, buyer_gstin=h["buyer_gstin"].value,
@@ -138,8 +138,11 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         ))
 
     review = needs_review(extracted, confidence_threshold(db))
-    invoice.status = InvoiceStatus.NEEDS_REVIEW if review else InvoiceStatus.RECEIVED
-    invoice.current_owner = "AP clerk (review)" if review else "AP clerk"
+    if review:
+        invoice.status, invoice.current_owner = InvoiceStatus.NEEDS_REVIEW, "AP clerk (review)"
+    db.flush()
+    db.refresh(invoice)  # load lines for the engine
+    run_match(db, invoice, trigger="upload")
     db.commit()
     db.refresh(invoice)
     return invoice

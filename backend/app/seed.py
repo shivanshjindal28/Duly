@@ -17,7 +17,7 @@ from app.core.db import create_all, drop_all
 from app.core.passwords import hash_password
 from app.core.policy_defaults import DEFAULT_POLICY
 from app.models import Organisation, Policy, Supplier, User
-from app.models.enums import EnterpriseType, MsmeCategory, Role
+from app.core.enums import EnterpriseType, MsmeCategory, Role
 from app.validation.gstin import make_gstin
 
 DEMO_PASSWORD = "Duly@2026"
@@ -97,6 +97,8 @@ STAFF: list[tuple[str, str, str, Role, int | None]] = [
 
 def seed(db: Session) -> dict[str, int]:
     """Insert seed data into an empty schema. Returns counts per entity."""
+    global _rng
+    _rng = random.Random(20261112)  # same synthetic GSTINs and accounts on every reset
     plant_pan = _pan("C", "Plant X")
     db.add(Organisation(
         name="Plant X Polymers Pvt Ltd",
@@ -135,13 +137,116 @@ def seed(db: Session) -> dict[str, int]:
         db.add(user)
 
     db.add(Policy(version=1, name="Default policy (assumptions)", data=DEFAULT_POLICY, is_active=True))
+    db.flush()
+    counts = seed_procurement(db)
     db.commit()
     return {
         "organisations": 1,
         "suppliers": len(SUPPLIERS),
         "users": len(SUPPLIERS) + len(STAFF),
         "policies": 1,
+        **counts,
     }
+
+
+@dataclass(frozen=True)
+class POSeed:
+    """A purchase order for a demo scenario. receipts: per line, (qty or SES value, days ago) or None."""
+
+    po_number: str
+    supplier_code: str
+    scenario: str
+    lines: list[tuple[str, str, str, str, str, str, str]]  # item, desc, hsn, qty, uom, price, gst%
+    receipts: list[tuple[str, int] | None]
+    is_service: bool = False
+    status: str = "open"
+    created_by: str | None = None
+    po_days_ago: int = 30
+
+
+PURCHASE_ORDERS: list[POSeed] = [
+    POSeed("4500001001", "V100101", "S1 clean catalyst, > Rs 10 lakh (L1 + L2 + MFA)",
+           [("CAT-ZN-01", "Ziegler-Natta catalyst ZN-118", "3815", "1.5", "MT", "850000.00", "18")], [("1.5", 6)]),
+    POSeed("4500001002", "V100101", "S2 additive billed 3.2% above PO price",
+           [("ADD-AO-1010", "Antioxidant 1010 powder", "3812", "2000", "KG", "620.00", "18")], [("2000", 8)]),
+    POSeed("4500001003", "V100103", "S3/S5 bearings: 100 ordered, 80 received; duplicate resubmission",
+           [("BRG-6205", "Ball bearing 6205 2RS", "8482", "100", "NOS", "450.00", "18"),
+            ("SEAL-M40", "Mechanical seal 40 mm", "8484", "4", "NOS", "7250.00", "18")], [("80", 5), ("4", 5)]),
+    POSeed("4500001004", "V100102", "S4 packaging invoiced before goods arrive (no GR yet)",
+           [("PKG-FFS-25", "FFS bag 25 kg PE", "3923", "20000", "NOS", "14.50", "18")], [None]),
+    POSeed("4500001005", "V100102", "S10 MSME jumbo bags, GR 41 days ago",
+           [("PKG-FIBC-1T", "Jumbo bag FIBC 1 tonne", "6305", "400", "NOS", "385.00", "5")], [("400", 41)],
+           po_days_ago=55),
+    POSeed("4500001006", "V100104", "S11 turnaround maintenance services with SES (TDS)",
+           [("SRV-TA-01", "Turnaround mechanical maintenance", "998719", "1", "LS", "420000.00", "18")],
+           [("420000.00", 3)], is_service=True),
+    POSeed("4500001007", "V100105", "Freight; PO created by the L1 approver (SoD demo)",
+           [("FRT-TNK-01", "Bulk tanker freight Dahej to Taloja", "996511", "10", "TRIP", "38000.00", "12")],
+           [("152000.00", 4)], is_service=True, created_by="rohan.mehta@plantx.example"),
+    POSeed("4500001008", "V100106", "Lab calibration services (MSME micro, no written agreement)",
+           [("SRV-CAL-01", "Lab instrument calibration", "998346", "1", "LS", "36000.00", "18")],
+           [("36000.00", 9)], is_service=True),
+    POSeed("4500001009", "V100103", "S6 pump impellers: invoice carries a different bank account",
+           [("PUMP-IMP-50", "Pump impeller 50 mm SS316", "8413", "10", "NOS", "6800.00", "18")], [("10", 4)]),
+    POSeed("4500001010", "V100102", "S7 pallets: invoice with hidden prompt-injection text",
+           [("PKG-PLT-1210", "Wooden pallet 1200 x 1000", "4415", "300", "NOS", "950.00", "12")], [("300", 6)]),
+    POSeed("4500001011", "V100101", "S8 catalyst: PDF total edited, signed QR original",
+           [("CAT-ZN-01", "Ziegler-Natta catalyst ZN-118", "3815", "0.5", "MT", "850000.00", "18")], [("0.5", 7)]),
+    POSeed("4500001012", "V100103", "S9 seals: intra-state invoice charging IGST",
+           [("SEAL-M60", "Mechanical seal 60 mm", "8484", "6", "NOS", "9400.00", "18")], [("6", 3)]),
+    POSeed("4500001013", "V100102", "S12 FFS bags: blurry low-confidence photo",
+           [("PKG-FFS-50", "FFS bag 50 kg PE", "3923", "5000", "NOS", "21.00", "18")], [("5000", 5)]),
+    POSeed("4500000990", "V100105", "Closed PO (PO_CLOSED demo)",
+           [("FRT-TNK-01", "Bulk tanker freight Dahej to Taloja", "996511", "4", "TRIP", "38000.00", "12")],
+           [None], is_service=True, status="closed", po_days_ago=120),
+]
+
+
+def seed_procurement(db: Session) -> dict[str, int]:
+    """POs with goods receipts / service entry sheets for the demo scenarios."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.core import clock
+    from app.models import GoodsReceipt, GRLine, POLine, PurchaseOrder, ServiceEntrySheet
+
+    suppliers = {s.code: s for s in db.scalars(select(Supplier))}
+    users = {u.email: u for u in db.scalars(select(User))}
+    stores = users["imran.shaikh@plantx.example"]
+    now, today = clock.now(), clock.today()
+    gr_no, ses_no, grs, sess = 5000000101, 1000000201, 0, 0
+    for spec in PURCHASE_ORDERS:
+        s = suppliers[spec.supplier_code]
+        po = PurchaseOrder(po_number=spec.po_number, supplier_id=s.id, po_date=today - timedelta(days=spec.po_days_ago),
+                           status=spec.status, payment_terms_days=s.payment_terms_days, is_service=spec.is_service,
+                           created_by_user_id=users[spec.created_by].id if spec.created_by else None)
+        db.add(po)
+        db.flush()
+        for n, (item, desc, hsn_code, qty, uom, price, gst) in enumerate(spec.lines, start=1):
+            pl = POLine(po_id=po.id, line_no=n * 10, item_code=item, description=desc, hsn_sac=hsn_code,
+                        qty=Decimal(qty), uom=uom, unit_price=Decimal(price), gst_rate=Decimal(gst))
+            db.add(pl)
+            db.flush()
+            receipt = spec.receipts[n - 1]
+            if receipt is None:
+                continue
+            amount, days_ago = receipt
+            posted = now - timedelta(days=days_ago)
+            if spec.is_service:
+                db.add(ServiceEntrySheet(ses_number=str(ses_no), po_id=po.id, po_line_id=pl.id, description=desc,
+                                         value=Decimal(amount), posted_by_user_id=stores.id, posted_at=posted))
+                ses_no += 1
+                sess += 1
+            else:
+                gr = GoodsReceipt(gr_number=str(gr_no), po_id=po.id, posted_by_user_id=stores.id, posted_at=posted)
+                db.add(gr)
+                db.flush()
+                db.add(GRLine(gr_id=gr.id, po_line_id=pl.id, qty=Decimal(amount), uom=uom))
+                gr_no += 1
+                grs += 1
+    return {"purchase_orders": len(PURCHASE_ORDERS), "goods_receipts": grs, "service_entry_sheets": sess}
 
 
 def reset_and_seed(db: Session) -> dict[str, int]:

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 from app.models.base import created_at_col
-from app.models.enums import EnterpriseType, MsmeCategory, Role
+from app.core.enums import EnterpriseType, MsmeCategory, Role
 
 
 class Organisation(Base):

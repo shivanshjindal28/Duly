@@ -5,7 +5,7 @@ segregation of duties, in the workflow layer. This table documents what they enf
 """
 from __future__ import annotations
 
-from app.models.enums import Role
+from app.core.enums import Role
 
 PERMISSIONS: dict[Role, dict[str, list[str]]] = {
     Role.SUPPLIER: {
