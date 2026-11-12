@@ -1,0 +1,23 @@
+/* Supplier risk cards (D8) */
+.risk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.risk-card { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.risk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.risk-head p { margin: 2px 0 0; }
+.risk-head .chip { flex: none; gap: 5px; }
+.risk-name { font-size: 15.5px; font-weight: 600; margin: 0; }
+.risk-reasons { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.45; }
+.risk-clear { margin: 0; color: var(--color-approve-text); }
+.risk-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.risk-metrics dd { font-size: 15px; }
+.risk-sustain { display: flex; gap: 8px; align-items: flex-start; border-top: 1px solid var(--color-border); padding-top: 10px; }
+.risk-sustain p { margin: 0 0 2px; line-height: 1.6; }
+.risk-leaf { flex: none; margin-top: 3px; color: var(--color-approve-text); }
+.risk-links { display: flex; gap: 16px; margin-top: auto; }
+
+@media (max-width: 1200px) {
+  .risk-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .risk-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .risk-head { flex-direction: column; }
+}

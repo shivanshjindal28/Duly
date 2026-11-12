@@ -4,7 +4,7 @@
 
 Duly reads supplier invoices (PDF, scan or phone photo), checks them against purchase orders and goods receipts, and approves, flags or blocks each one with a clear reason. A deterministic rules engine makes every decision; AI only reads documents and answers supplier questions, and the whole product also runs offline.
 
-What it does: separate logins for six roles · extraction with per-field confidence and human review · three-way match with SAP-style tolerances · approvals by delegation of authority with MFA and segregation of duties · tamper-evident audit chain · exceptions dashboard and work queue · supplier portal in English and Hindi · duplicate detection · "Where is my payment?" chatbot · controls report for auditors · signed e-invoice QR verification · prompt-injection shield · bank-detail fraud block · MSME 45-day guardian and smart payment run with TDS · SAP S/4HANA posting preview · Impact, Trust & controls, Architecture and Assumptions pages.
+What it does: separate logins for six roles · extraction with per-field confidence and human review · three-way match with SAP-style tolerances · approvals by delegation of authority with MFA and segregation of duties · tamper-evident audit chain · exceptions dashboard and work queue · supplier portal in English and Hindi · duplicate detection · "Where is my payment?" chatbot · controls report for auditors · signed e-invoice QR verification · prompt-injection shield · bank-detail fraud block · MSME 45-day guardian and smart payment run with TDS · SAP S/4HANA posting preview · supplier risk cards · Impact, Trust & controls, Architecture and Assumptions pages.
 
 Built for LYB Mumbai Hackathon 2026, Round 2, Problem Statement 4. Plant X is a fictional company and all data in this repo is synthetic.
 
@@ -12,7 +12,7 @@ Built for LYB Mumbai Hackathon 2026, Round 2, Problem Statement 4. Plant X is a 
 
 ## Requirements
 - Python 3.12 (3.13 and newer lack wheels for some pinned packages; on Windows: `py -3.12 -m venv .venv`)
-- Node.js 20.19+
+- Node.js 20.19+ or 22.12+ (Vite 8 needs it; on 22.11 Windows npm skips rolldown's native binary)
 - Windows or macOS. No Docker, no system packages.
 
 ## Setup
@@ -74,6 +74,7 @@ Five wrong passwords lock an account for 15 minutes; `python scripts/seed.py --r
 
 ## Troubleshooting
 - `npm` not found on Windows: reinstall Node.js and reopen the terminal.
+- `Cannot find module './rolldown-binding.win32-x64-msvc.node'` when Vite starts: npm skipped an optional native package (usually because Node is older than 22.12). Upgrade Node, or run `npm install --no-save @rolldown/binding-win32-x64-msvc@<rolldown version>` in `frontend/`.
 - Port already in use: stop other apps on 8000/5173, or run `python run.py --backend` and `python run.py --frontend` separately.
 - Reset everything: `python scripts/seed.py --reset` (or Demo controls → Reset demo data).
 - `pip install` fails on Python 3.13+: use Python 3.12 for the virtual environment.

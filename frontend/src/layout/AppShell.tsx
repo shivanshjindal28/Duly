@@ -61,6 +61,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/approvals", label: "Approvals", icon: Stamp, roles: ["approver"] },
       { to: "/payments", label: "Payments", icon: Banknote, roles: ["clerk", "approver", "auditor", "admin"] },
       { to: "/bank-changes", label: "Bank changes", icon: Landmark, roles: ["clerk", "approver", "auditor", "admin"] },
+      { to: "/suppliers", label: "Supplier risk", icon: Building2, roles: ["clerk", "approver", "auditor", "admin"] },
       { to: "/controls", label: "Controls report", icon: FileCheck2, roles: ["auditor", "admin"] },
       { to: "/audit", label: "Audit chain", icon: Link2, roles: ["auditor", "admin"] },
       { to: "/admin/demo", label: "Demo controls", icon: Clock, roles: ["admin"] },

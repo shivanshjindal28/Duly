@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const SCREENS: { who: string; paths: string[] }[] = [
   { who: "Hetal Shah", paths: ["/portal", "/upload"] }, // supplier
-  { who: "Asha Kulkarni", paths: ["/", "/dashboard", "/queue", "/invoices", "/assistant", "/payments", "/bank-changes", "/impact", "/trust", "/architecture", "/assumptions"] },
+  { who: "Asha Kulkarni", paths: ["/", "/dashboard", "/queue", "/invoices", "/assistant", "/payments", "/bank-changes", "/suppliers", "/impact", "/trust", "/architecture", "/assumptions"] },
   { who: "Rohan Mehta", paths: ["/approvals"] },
   { who: "Imran Shaikh", paths: ["/receiving"] },
   { who: "Meera Iyer", paths: ["/audit", "/controls"] },

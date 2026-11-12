@@ -24,6 +24,7 @@ import { ControlsReportPage } from "./pages/ControlsReportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QueuePage } from "./pages/QueuePage";
 import { SupplierPortalPage } from "./pages/SupplierPortalPage";
+import { SupplierRiskPage } from "./pages/SupplierRiskPage";
 import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { ImpactPage } from "./pages/ImpactPage";
 import { ArchitecturePage } from "./pages/ArchitecturePage";
@@ -81,6 +82,7 @@ const router = createBrowserRouter([
               { path: "/audit", element: <AuditPage /> },
               { path: "/controls", element: <ControlsReportPage /> },
               { path: "/bank-changes", element: <BankChangesPage /> },
+              { path: "/suppliers", element: <SupplierRiskPage /> },
               { path: "/payments", element: <PaymentsPage /> },
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/queue", element: <QueuePage /> },

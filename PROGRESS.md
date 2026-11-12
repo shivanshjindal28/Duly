@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 01:00 IST by Aaron (Claude Code)
+Last updated: 2026-11-12 23:15 IST (this laptop's clock) by Nakul (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,10 +12,10 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset   # ~25 s incl. ~250 historical invoices; --no-history for a bare DB
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 180 tests (about 90 s; the last file resets via the admin endpoint and runs the demo check)
+cd backend && python -m pytest    # 189 tests (about 90 s; the last file resets via the admin endpoint and runs the demo check)
 cd frontend && npm run typecheck
 python scripts/demo_check.py      # 25-step green/red table, isolated temp DB, AI offline (~45 s); exit 1 on any failure
-cd frontend && npm run e2e        # Playwright: WCAG 2.1 AA scan of 22 screens + demo path (own stack on :8100/:5180, ~2 min); first `npx playwright install chromium` or set PW_CHANNEL=msedge
+cd frontend && npm run e2e        # Playwright: WCAG 2.1 AA scan of 23 screens + demo path (own stack on :8100/:5180, ~2 min); first `npx playwright install chromium` or set PW_CHANNEL=msedge
 python scripts/demo_prestage.py --reset   # stage DB: reset + background scenarios S02 S03 S09a/b S10 S11 S12 (see docs/DEMO_SCRIPT.md)
 python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/manifest.json
 ```
@@ -78,6 +78,8 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
   - `scripts/demo_prestage.py`: reset (optional) + upload the background scenarios through the same checks as demo_check; the live demo then uploads S01 and S04-S08 (verified: Asha can upload S04-S08 on the suppliers' behalf, supplier identified from the GSTIN, same results).
   - **Bug fixed (live AI):** `anthropic.Anthropic()` read the key from `os.environ`, but our settings read it from `.env`, so live AI never had a key and every upload crashed with a TypeError (the fallback only caught API errors). Both clients now get `api_key` from settings, and extraction and chat fall back to offline on any AI error. Tests added in `test_ai_extraction.py`.
   - Wording fixes found while documenting: PP tolerance is "flag above 1% OR ₹500" (Assumptions page said "and"); Trust page privacy line now says exactly what goes to the AI (the invoice itself, never the vendor master or other invoices).
+- **Phase 5 step 27a (D8)**: supplier risk cards. `reports/supplier_risk.py` (pure `card()` on plain facts + `load_facts()` from the DB), `GET /api/suppliers/risk` and `/api/suppliers/{id}/risk` (staff only). Per supplier, last 12 months on the business clock: MSME status + Udyam no., paid on time by Plant X (paid date <= the earlier of contract and MSME statutory due date, avg days late), dispute rate (flag/block billing exceptions: price, qty, SES value, tax, maths, unordered line, terms, currency; MISSING_GR/SES excluded as Plant X's side; blocked duplicates excluded from the base), duplicate attempts (blocked + possible, value), bank changes (approved in 12 months, in progress, BANK_MISMATCH alerts), e-invoice compliance (verified QR / checked, only for e-invoice suppliers), fictional EcoVadis-style sustainability status computed from a next-due date. Overall level high / watch / low from a fixed rule list, with the reasons shown on the card; information only, never feeds the engine. UI `/suppliers` ("Supplier risk" in the staff menu and command palette): card grid sorted high first, links to the supplier's open exceptions / all invoices, methodology section. On a fresh reset: Konkan watch (bank change 17 Aug + 2 duplicates), Sahyadri watch (e-invoice 84%), Kesar and Tapti watch (disputes 34% / 31%), Navrang and Dakshin low. After the S06 upload Kesar goes high (bank-detail mismatch), checked in DemoCheck step S06+. Tests: `test_supplier_risk.py` (9).
+- Windows setup note: Node 22.11 is below Vite 8's engine range (22.12+), and npm then skips `@rolldown/binding-win32-x64-msvc`, so Vite fails with "Cannot find module './rolldown-binding.win32-x64-msvc.node'". Fixed locally with `npm install --no-save @rolldown/binding-win32-x64-msvc@1.2.19`; README troubleshooting updated. Better: upgrade Node to 22.12+.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -87,7 +89,7 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 ## Next (in order)
 Phases 0 to 4 are complete. Phase 5 continues on another teammate's laptop (handoff 2026-11-13).
 1. Team rehearsal with docs/DEMO_SCRIPT.md: fill in presenter names, time each beat. After the final reset: `python scripts/demo_prestage.py --reset`, then re-enrol MFA for Rohan and Kavita (QR on their Overview page).
-2. Phase 5 (only if time remains; cut from the end): supplier risk card (D8); evaluated receipt settlement for freight suppliers; credit-note flow (gives over-billed invoices like S03 a way to resolve); email-in simulation. After each: tests, `python scripts/demo_check.py` (must stay 25/25), `npm run e2e`, PROGRESS, commit, push.
+2. Phase 5 (only if time remains; cut from the end): ~~supplier risk card (D8)~~ done (step 27a); evaluated receipt settlement for freight suppliers; credit-note flow (gives over-billed invoices like S03 a way to resolve); email-in simulation. After each: tests, `python scripts/demo_check.py` (must stay 25/25), `npm run e2e`, PROGRESS, commit, push.
 3. Small optional items: clerk "reject a blocked invoice" action; supplier Overview page in Hindi; `jobs.enqueue` hook (spec 14; uploads are processed inside the request today); a Lighthouse run; deterministic demo MFA secrets (team decision: weaker demo accounts).
 
 Gotchas for the next person: use Python 3.12 (3.13+ lacks wheels); `.env.example` now sets `AI_MODE=offline` (team setup, see Key decisions); a reset regenerates approver MFA secrets; the scenario test file `backend/tests/test_zzz_demo_scenarios.py` reseeds the shared test DB, so it must stay last alphabetically.
@@ -171,6 +173,8 @@ Gotchas for the next person: use Python 3.12 (3.13+ lacks wheels); `.env.example
 
 - **No live AI API (2026-11-13).** The team has no API credits and will not buy any. Demo and judging run in AI mode **offline**: local OCR (RapidOCR) plus the PDF text layer, the deterministic parser, and the offline chatbot. `.env.example` sets `AI_MODE=offline`. The Claude API integration stays in the code as an optional, switched-off path (fixed in step 26, never run against the live API). Trust page, footer, AI_DECLARATION, CONTROLS, QA_PREP, DEMO_SCRIPT, IMPACT (AI cost default ₹0), ARCHITECTURE and README say so. Gemini or a local model were considered and not chosen.
 
+- Supplier risk card is information only (never an engine input) and rule-based, not a score: each level comes with the rules that fired. Thresholds are labelled assumptions in `reports/supplier_risk.py` (`THRESHOLDS`): dispute rate 30% judged only from 10+ invoices (first-pass exception rates of 20-30% are normal in AP; at 20% every seeded supplier was "watch"), 2+ blocked duplicates, e-invoice compliance below 95%, bank change within 90 days. "Paid on time" measures Plant X's performance to the supplier. Sustainability records are fictional constants keyed by vendor code (no schema change, no reseed needed).
+
 ## Known bugs
 - OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
 - Approver MFA secrets are random per seed: after every reset, approvers must scan the Overview QR again (in DEMO_SCRIPT.md).
@@ -196,6 +200,7 @@ Gotchas for the next person: use Python 3.12 (3.13+ lacks wheels); `.env.example
 - S6 bank details differ: works (BLOCK BANK_MISMATCH + security alert; change via maker-checker + cooling releases it).
 - S7 hidden white-text instruction: works (FLAG INJECTION_ATTEMPT, AI output quarantined when AI is on).
 - B3 controls report (screen + PDF): works.
+- D8 supplier risk cards (`/suppliers`): work in the browser on the seeded history; S06 turns Kesar high.
 - D5 payment run (MSME first, TDS, UTR to supplier portal) and D6 SAP posting preview: work in the browser.
 - B2 chatbot demo (precise answer + logged refusal), en/hi, offline: works.
 - Supplier can see where each invoice is, why, what to do and when it will be paid (en/hi): works.

@@ -211,7 +211,12 @@ class DemoCheck:
         ev = self.db.scalar(select(AuditEvent).where(AuditEvent.action == "security.bank_mismatch_alert",
                                                      AuditEvent.entity_id == str(self.inv["S06"]["id"])))
         assert ev is not None, "no security.bank_mismatch_alert event"
-        return f"alert: invoice a/c {ev.after.get('invoice_account')} vs master {ev.after.get('master_account')}"
+        sid = self.db.get(Invoice, self.inv["S06"]["id"]).supplier_id
+        self.login(CLERK)
+        card = self.client.get(f"/api/suppliers/{sid}/risk").json()
+        assert card["level"] == "high" and card["bank_changes"]["mismatch_alerts"] >= 1, card["reasons"]
+        return (f"alert: invoice a/c {ev.after.get('invoice_account')} vs master {ev.after.get('master_account')}; "
+                f"{card['name']} risk card now high")
 
     def _s07_injection(self) -> str:
         inj = self.detail("S07")["injection"]
