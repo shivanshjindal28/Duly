@@ -1,0 +1,11 @@
+.receiving { max-width: 1040px; }
+.po-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.po-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.po-card-head h2 { font-size: 15px; }
+.po-card-head p { font-size: 12px; }
+.po-lines td, .po-lines th { padding: 7px 10px; }
+.po-qty { width: 130px; height: 30px; text-align: right; }
+.po-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.po-history { font-size: 12px; }
+.alert-success { background: var(--color-approve-bg); color: var(--color-approve-text); border: 1px solid #BFE5CF; }
+.alert-info { background: var(--color-primary-soft); color: var(--color-primary-hover); border: 1px solid #C6D8F0; }

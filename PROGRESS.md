@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 18:10 IST by Shivansh (Claude Code)
+Last updated: 2026-11-12 18:45 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -11,7 +11,7 @@ cd frontend && npm install && cd ..
 cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 99 tests (about 15 s; OCR model loads once)
+cd backend && python -m pytest    # 103 tests (about 15 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -28,6 +28,7 @@ cd frontend && npm run typecheck
 - **Phase 1 step 5**: decision engine `app/engine/decide.py` (pure, deterministic; test proves no `app.ai`/ORM/SQLAlchemy import). All reason codes from spec C3 plus LINE_NOT_ON_PO, SES_VALUE_EXCEEDED, SMALL_DIFFERENCE, LINE_MAPPED; PP/DQ/BD tolerances from versioned policy; cumulative qty check for partial deliveries; kg/MT unit conversion; fuzzy description line mapping (rapidfuzz); SAP block + tcode per code (`engine/catalog.py`). `workflow/matching.run_match` builds PO/GR/SES/invoiced-history views, stores a MatchResult with reasons + matrix snapshot, sets invoice status (blocked / flagged / pending_approval). Runs on every upload. Seed now has 14 scenario POs (4500001001..1013 + closed 4500000990), 10 GRs, 3 SESs (`app/seed.py` PURCHASE_ORDERS lists which scenario each PO serves). `docs/DECISION_ENGINE.md` written.
 - **Phase 1 step 6**: invoice screens. `/invoices` list (decision + status chips, owner), `/upload` (drag and drop; clerk can pick a supplier or let Duly identify it by GSTIN), `/invoices/:id` hero screen: header with total, PO, status, owner and the 5-stop Duly rail (computed server-side in `workflow/lifecycle.py`); three panes: document viewer (server-rendered page PNG + clickable field boxes, low-confidence boxes dashed), extracted fields with confidence bars, threshold marker and source (PDF text / OCR / rule), decision card (reasons sorted block > flag > info, SAP block + tcode, engine/policy version, "AI does not make this decision"); three-way match matrix with variance cells coloured by severity. `GET /api/suppliers` (staff only, bank masked). Verified in the browser with 4 uploaded scenarios (S2 flag, S3 block, S4 block, S11 approve).
 - **Phase 1 step 7**: human review. `POST /api/invoices/{id}/review` (clerk only, reason required): confirm a field as read or correct it; each action appends a `source=manual` row with previous value, previous confidence, reviewer and reason (bank accounts masked), writes the value onto the invoice/line, re-runs the match (trigger `correction` / `review_completed`) and releases the invoice from `needs_review` when nothing is pending. `pending_review()` in `ingestion/pipeline.py` is the single definition. UI: review banner with "Show next field", Confirm / Correct per field, inline editor, correction history under each field. New engine rule `NO_LINES` (block: never approve an invoice with no readable lines). OCR robustness: deskewed line grouping for tilted photos, rows survive a lost line number / GST % / description (rate derived at low confidence). Scenario 12 verified end to end in the browser (blurry tilted JPEG -> 7 fields to review incl. a real OCR misread HSN 3823 -> corrected -> APPROVE).
+- **Phase 1 step 8**: stores receiving. `GET /api/stores/open-pos`, `POST /api/stores/goods-receipts` (MIGO 101; no over-receipt beyond the PO, +0.5% for MT), `POST /api/stores/service-entries` (ML81N; not above PO line value). After each posting `workflow/receipts.rematch_waiting` re-runs the engine for every not-yet-approved invoice on that PO (trigger `gr_posted:<GR>` / `ses_posted:<SES>`); stores only learns how many were re-checked/released, never which invoices. UI: `/receiving` (stores nav) with a card per open PO. Scenario 4 verified live in the browser: NPW-311 BLOCK MISSING_GR -> stores posts GR 5000000111 -> APPROVE, pending approval.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -39,7 +40,8 @@ cd frontend && npm run typecheck
 
 2. Phase 1 step 8: stores GR/SES posting + automatic re-match (call `run_match(db, inv, trigger="gr_posted")` for open invoices on that PO).
 2. Phase 1 step 9: DoA workflow, approvals, SoD, overrides, MFA step-up, SLA escalation.
-3. Phase 1 step 10: audit chain (hash + signed head) + verify endpoint + auditor view; then wire login, upload, review, decision events into it.
+2. Phase 1 step 10: audit chain (hash + signed head) + verify endpoint + auditor view; then wire login, upload, review, decision events into it.
+3. Phase 1 step 11: exceptions dashboard (type, supplier, age, drill-down) + work queue with keyboard shortcuts.
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -81,7 +83,7 @@ cd frontend && npm run typecheck
 Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they are produced by the test fixtures / an ad-hoc script.
 - S2 price variance: works (FLAG, exact ₹39,680).
 - S3 qty exceeds GR: works (BLOCK, cumulative view).
-- S4 missing GR: BLOCK works; live GR posting + auto release is step 8.
+- S4 missing GR: works end to end (BLOCK, stores posts GR live, auto re-match releases it).
 - S11 services with SES: APPROVE works; TDS is Phase 3.
 - S12 blurry photo: works end to end (review, logged corrections, APPROVE).
 - S1, S6, S9 decisions are covered by engine tests; full flow needs approvals (step 9) and generated PDFs.

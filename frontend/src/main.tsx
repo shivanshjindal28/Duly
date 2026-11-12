@@ -16,6 +16,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { ReceivingPage } from "./pages/ReceivingPage";
 import { UploadPage } from "./pages/UploadPage";
 
 applyTokens();
@@ -55,6 +56,7 @@ const router = createBrowserRouter([
               { path: "/invoices", element: <InvoicesPage /> },
               { path: "/invoices/:id", element: <InvoiceDetailPage /> },
               { path: "/upload", element: <UploadPage /> },
+              { path: "/receiving", element: <ReceivingPage /> },
             ],
           },
         ],
