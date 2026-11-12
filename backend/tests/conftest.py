@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 _tmp = Path(tempfile.mkdtemp(prefix="duly-test-"))
+os.environ["DULY_DATA_DIR"] = str(_tmp)
 os.environ["DATABASE_URL"] = f"sqlite:///{(_tmp / 'test.db').as_posix()}"
 os.environ["SECRET_KEY"] = "test-secret-key-not-for-production-0123456789"
 os.environ["DATA_ENCRYPTION_KEY"] = base64.b64encode(b"\x01" * 32).decode()

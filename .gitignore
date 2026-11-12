@@ -20,6 +20,7 @@ backend/data/*.db-shm
 backend/data/uploads/
 backend/data/keys/
 backend/data/ai_cache/
+backend/data/pages/
 
 # Node / frontend
 node_modules/

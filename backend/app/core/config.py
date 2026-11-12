@@ -16,7 +16,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = BACKEND_DIR.parent
-DATA_DIR = BACKEND_DIR / "data"
+# Runtime data (db, uploads, keys, caches). DULY_DATA_DIR overrides it (tests use a temp dir).
+DATA_DIR = Path(os.environ.get("DULY_DATA_DIR") or BACKEND_DIR / "data")
 KEYS_DIR = DATA_DIR / "keys"
 
 
