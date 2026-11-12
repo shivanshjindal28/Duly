@@ -68,8 +68,9 @@ ASSUMPTIONS: list[dict] = [
      "reason": "1% in 10 days is a common term (the demo supplier offers exactly this)."},
     {"key": "capture_gain", "label": "Extra discounts captured thanks to faster approval", "unit": "%", "default": 50,
      "reason": "Share of offered discounts missed today because approval takes longer than the window."},
-    {"key": "ai_cost_per_invoice", "label": "AI extraction cost per invoice", "unit": "₹", "default": 3,
-     "reason": "Pages x tokens x API price for ~1.5 pages; verify against current API pricing. Zero in offline mode."},
+    {"key": "ai_cost_per_invoice", "label": "AI extraction cost per invoice", "unit": "₹", "default": 0,
+     "reason": "Zero: our setup reads invoices with local OCR (AI mode offline). If a paid AI API is switched on, "
+               "use pages x tokens x price (roughly ₹3 for 1.5 pages; verify current pricing)."},
 ]
 
 FORMULAS = {

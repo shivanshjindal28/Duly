@@ -29,7 +29,7 @@ python scripts/seed.py --reset   # ~25 s: master data + ~250 historical invoices
 - The 12 demo scenarios are ready-made files in `demo/invoices/`; `demo/manifest.json` lists each file, whom to upload it as, the expected result and the next step to show. Regenerate them with `python scripts/generate_invoices.py` (synthetic data only).
 - Stage preparation: `python scripts/demo_prestage.py --reset` (history plus the background scenarios), then follow [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 - One-click reset and the AI mode switch (live / cached / offline) are on **Demo controls** (admin, `DEMO_MODE=true`).
-- Live AI: put `ANTHROPIC_API_KEY` in `.env` (AI_MODE `auto` then uses it). Without a key, or with AI mode offline, Duly uses local OCR and rules.
+- AI: our setup runs in AI mode **offline** (local OCR and rules; no API key, no network, no cost). An optional Claude API integration exists in the code (`ANTHROPIC_API_KEY` plus AI mode live or auto); the team does not use it.
 
 ## Run
 ```bash

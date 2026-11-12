@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 00:30 IST by Aaron (Claude Code)
+Last updated: 2026-11-13 01:00 IST by Aaron (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -85,10 +85,12 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Nothing half-done.
 
 ## Next (in order)
-1. Team rehearsal with docs/DEMO_SCRIPT.md: fill in presenter names, time each beat, enrol MFA for Rohan and Kavita after the final reset.
-2. Live AI once with a real key (it was broken until step 26: the key from `.env` never reached the client; fixed and unit-tested, but not yet run against the real API). Upload the 13 demo files once with AI mode live to fill `backend/data/ai_cache/`, then demo in AI mode cached or offline.
-3. Optional, from the spec: a `jobs.enqueue` hook for OCR / AI work (spec 14; uploads are processed inside the request today), Lighthouse run, supplier Overview page in Hindi.
-4. Phase 5 (only if time remains): supplier risk card (D8), credit-note flow, clerk "reject a blocked invoice" action, deterministic demo-mode MFA secrets so approvers do not re-scan after every reset (needs a team decision: weaker demo accounts).
+Phases 0 to 4 are complete. Phase 5 continues on another teammate's laptop (handoff 2026-11-13).
+1. Team rehearsal with docs/DEMO_SCRIPT.md: fill in presenter names, time each beat. After the final reset: `python scripts/demo_prestage.py --reset`, then re-enrol MFA for Rohan and Kavita (QR on their Overview page).
+2. Phase 5 (only if time remains; cut from the end): supplier risk card (D8); evaluated receipt settlement for freight suppliers; credit-note flow (gives over-billed invoices like S03 a way to resolve); email-in simulation. After each: tests, `python scripts/demo_check.py` (must stay 25/25), `npm run e2e`, PROGRESS, commit, push.
+3. Small optional items: clerk "reject a blocked invoice" action; supplier Overview page in Hindi; `jobs.enqueue` hook (spec 14; uploads are processed inside the request today); a Lighthouse run; deterministic demo MFA secrets (team decision: weaker demo accounts).
+
+Gotchas for the next person: use Python 3.12 (3.13+ lacks wheels); `.env.example` now sets `AI_MODE=offline` (team setup, see Key decisions); a reset regenerates approver MFA secrets; the scenario test file `backend/tests/test_zzz_demo_scenarios.py` reseeds the shared test DB, so it must stay last alphabetically.
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -121,7 +123,7 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - pHash is corroborating only (weight 0.35, below the 0.6 flag threshold) and only within one supplier: measured on our template invoices, a different invoice on the same template has distance ~2 while a phone photo of the same invoice has ~8, so pHash alone cannot identify an invoice. Exact duplicates are caught by normalised number / IRN / SHA-256.
 - Duplicates compare only against earlier invoices (lower id), so the original is never flagged as a copy of its resubmission; rejected invoices are ignored.
 - AI bounding boxes come from our own positioned tokens on the line Claude cites, not model-estimated coordinates (more reliable highlights). On disagreement with the exact PDF text layer, the PDF text wins and the field goes to review.
-- `AI_MODE=cached` lets the team pre-warm `backend/data/ai_cache/` with a key once and then demo with live-quality extraction fully offline.
+- `AI_MODE=cached` lets the team pre-warm `backend/data/ai_cache/` with a key once and then demo with live-quality extraction fully offline. (Superseded 2026-11-13: no live API, see below.)
 - Supplier to-dos are message codes + params from the server, rendered from i18n files; no internal data (approver names, SAP refs) is sent to suppliers. Language choice is a per-browser preference (localStorage).
 - MSME clock starts at acceptance (GR/SES date) whatever the match outcome; traders excluded; no written agreement = 15 days.
 - Dashboard, payment run, MSME guardian and controls report get their data from the seeded history (step 22); all are live queries, not placeholders.
@@ -167,11 +169,13 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Accessibility is checked with axe-core in Playwright instead of Lighthouse runs: same rule engine, repeatable in CI and on every laptop, and it fails the test on any WCAG 2.1 AA violation.
 - Supplier-facing chrome follows the supplier's language; staff screens are English only (the AP team works in English).
 
+- **No live AI API (2026-11-13).** The team has no API credits and will not buy any. Demo and judging run in AI mode **offline**: local OCR (RapidOCR) plus the PDF text layer, the deterministic parser, and the offline chatbot. `.env.example` sets `AI_MODE=offline`. The Claude API integration stays in the code as an optional, switched-off path (fixed in step 26, never run against the live API). Trust page, footer, AI_DECLARATION, CONTROLS, QA_PREP, DEMO_SCRIPT, IMPACT (AI cost default ₹0), ARCHITECTURE and README say so. Gemini or a local model were considered and not chosen.
+
 ## Known bugs
 - OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
 - Approver MFA secrets are random per seed: after every reset, approvers must scan the Overview QR again (in DEMO_SCRIPT.md).
 - History: a few old duplicates stay BLOCKED forever (there is no clerk "reject a blocked invoice" action), so the 45+ day age bucket is never empty. Realistic, but a reject action for blocked invoices would be a small useful addition.
-- Live Claude extraction and chat have still not been run against the real API (step 26 fixed the missing key; see Next).
+- The optional Claude API path (extraction and chat) has never been run against the live API; it is switched off by team decision (no credits). If anyone enables it, test it first.
 - The browser pane in this environment is narrower than a laptop screen, so the three-pane layout was checked via DOM measurements at 1600 px (grid 488/390/390 px) and visually only in the stacked narrow layout.
 - None known. Visual layout has been checked through the accessibility tree and DOM, not by eye (the browser pane could not take screenshots this session). Have a quick look at the login page and shell on first run.
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.

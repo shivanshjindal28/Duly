@@ -162,9 +162,14 @@ export function TrustPage() {
 
       <section className="panel model-card" aria-labelledby="model-card-title">
         <h2 id="model-card-title" className="label">Model card</h2>
+        <p className="muted small">
+          Our setup runs in AI mode <strong>offline</strong>: every invoice is read by local OCR on this machine and
+          the deterministic parser; the chatbot uses an offline intent matcher. No AI service is called and nothing
+          leaves the laptop. The optional AI integration described below can be switched on with an API key.
+        </p>
         <div className="model-card-grid">
           <div>
-            <h3>What the AI does</h3>
+            <h3>What the optional AI does</h3>
             <ul>
               <li>Reads invoice pages and returns each field with a confidence and the line it came from (strict JSON schema).</li>
               <li>Answers supplier questions through five read-only tools scoped to that supplier.</li>
@@ -196,8 +201,9 @@ export function TrustPage() {
           </div>
         </div>
         <p className="muted small" id="ai-use">
-          Generative AI use: Claude (via Claude Code) helped design and write this code, and Claude via the API powers
-          extraction and the chatbot inside Duly. The team reviewed and can explain all of it.
+          Generative AI use: Claude (via Claude Code) helped design and write this code; the team reviewed and can
+          explain all of it. Inside Duly, an optional Claude API integration can read invoices and power the chatbot;
+          it is switched off in our demo (AI mode offline: local OCR and rules).
         </p>
       </section>
     </div>

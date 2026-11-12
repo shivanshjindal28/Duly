@@ -43,13 +43,15 @@ a period. This file says how each control works, where it lives in the code, and
   rate limit 10 per minute per IP; unknown e-mails get the same error and timing.
 
 ## 5. Privacy and data minimisation
-- Only the invoice itself (page images and the text read from them) goes to the AI provider. Never the vendor
+- **Our setup runs in AI mode offline: nothing is sent to any AI provider.** Invoices are read on the laptop (local
+  OCR and the PDF text layer); the chatbot answers from an offline intent matcher.
+- If the optional AI integration is switched on: only the invoice itself (page images and the text read from them) goes to the AI provider. Never the vendor
   master or its bank records, never other invoices. Chatbot tool results carry no bank data.
 - Vendor and invoice bank accounts are encrypted at rest (AES-GCM, key from the environment) and masked everywhere
   (XXXXXX4417), including logs and audit events. Chat transcripts are stored with digits redacted.
 - Synthetic data only; every master record is flagged `is_synthetic`.
 - AI kill switch: AI mode **offline** (admin Demo controls, or `AI_MODE=offline`) runs everything on local OCR and
-  rules; **cached** replays earlier AI readings with no network. The demo runs fully offline.
+  rules; **cached** replays earlier AI readings with no network. The demo and judging setup is offline.
 
 ## 6. Security
 - Upload hardening (`app/ingestion/hardening.py`): extension must match the file's magic bytes; 10 MB and 20

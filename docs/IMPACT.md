@@ -40,7 +40,7 @@ Inputs marked *measured* default to the figure measured in half 1.
 | Value offering an early-payment discount | 5% | Few suppliers offer one |
 | Discount | 1% | Common "1% 10 days" term |
 | Extra discounts captured | 50% | Discounts missed today because approval is slower than the window |
-| AI extraction cost per invoice | ₹3 | Pages x tokens x API price; verify current pricing. Zero offline |
+| AI extraction cost per invoice | ₹0 | Our setup reads invoices with local OCR (AI mode offline). With a paid AI API, roughly ₹3 (verify current pricing) |
 
 Formulas (value per year = invoices per month x 12 x average invoice value):
 

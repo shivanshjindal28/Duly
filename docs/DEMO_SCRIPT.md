@@ -6,8 +6,8 @@ result and story for each.
 
 ## Before going on stage (15 minutes earlier)
 1. `python run.py`, open http://localhost:5173 (full-screen browser, zoom 90-100%).
-2. Admin (Sanjay Patil) → **Demo controls** → AI mode **Offline** (no network risk; Cached also works if
-   `backend/data/ai_cache/` was pre-warmed with a key).
+2. Admin (Sanjay Patil) → **Demo controls** → check AI mode is **Offline** (our setup: no API key or network
+   needed). The top-bar badge must say "AI: offline (OCR)".
 3. In a terminal: `python scripts/demo_prestage.py --reset` (about a minute). Resets with the 90-day history and
    uploads the background scenarios S02, S03, S09a, S09b, S10, S11, S12. Every line must say OK.
 4. **MFA:** sign in as Rohan Mehta (L1) and Kavita Desai (L2); on each Overview page scan the QR code into an

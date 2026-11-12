@@ -6,7 +6,8 @@ the one in the app. Module names below are the real packages under `backend/app/
 ## Components
 
 Duly is a side-car to the ERP: a React single-page app, a FastAPI backend with a deterministic rules engine at its
-centre, and SQLite (Postgres-ready). AI reads documents and answers supplier questions; it never decides.
+centre, and SQLite (Postgres-ready). Invoices are read by local OCR and rules (our setup runs in AI mode offline);
+an optional AI integration can read documents and answer supplier questions, but it never decides.
 
 ```mermaid
 flowchart TB
