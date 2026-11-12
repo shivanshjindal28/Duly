@@ -1,0 +1,26 @@
+# Render Blueprint for the Duly backend (FastAPI). Frontend is on Vercel (frontend/vercel.json).
+#
+# Free plan (team decision): no persistent disk, so the demo database is built during the
+# build step (seed with ~250 invoices of history) and every start begins from that copy.
+# Changes made on the live site are lost when the instance restarts or sleeps; "Reset demo
+# data" (admin) rebuilds it at run time. Secrets are generated during the build into
+# backend/data/keys (not in git) and ship with that build only.
+services:
+  - type: web
+    name: duly-api
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install -r backend/requirements.txt && python scripts/seed.py --reset
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.5
+      - key: DEMO_MODE
+        value: "true"
+      - key: AI_MODE
+        value: offline
+      - key: FRONTEND_ORIGIN
+        value: https://duly.website

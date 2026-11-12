@@ -25,6 +25,10 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Demo files: `demo/invoices/` (12 scenarios, 13 files: S9 has a and b) and `demo/manifest.json` (upload as whom, expected result, next step). Upload them in manifest order after a fresh reset.
 - Python 3.12 is required (3.13+/3.14 lack wheels for some pinned packages, e.g. rapidocr-onnxruntime). On Windows: `py -3.12 -m venv .venv`.
 
+### Hosted demo (in progress)
+- Frontend on Vercel (project root `frontend/`, `frontend/vercel.json`: Vite build, SPA fallback, `/api/*` rewritten to the Render backend so the session cookie stays same-origin). Domain `duly.website` (Namecheap DNS -> Vercel).
+- Backend on Render free plan (`render.yaml` Blueprint, service `duly-api`, Singapore): the demo DB is seeded during the build and every start begins from that copy (no disk on the free plan); sleeps after ~15 min idle (first request then takes about a minute: open the site a few minutes before presenting). 512 MB RAM: photo / scan OCR peaks around 640 MB locally, so S05 / S10 / S12 uploads may fail on the free plan; the PDF scenarios are fine. Demo mode is on (persona logins public; all data fictional).
+
 ## Done
 - **Phase 0, 1 and 2 complete** (core expectations 1 to 5 and bonus B1 to B3 working end to end).
 - Step 1: repo layout, `.gitignore`, `.gitattributes` (LF), `.env.example`, README, `docs/MASTER_PROMPT.md`, PROGRESS.md, `run.py`. Slides in `docs/brief/` (7 images).
