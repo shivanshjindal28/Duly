@@ -530,6 +530,7 @@ class DupMatchOut(BaseModel):
 
 class DuplicatesOut(BaseModel):
     invoice_id: int
+    invoice_number: str = ""
     pages: int
     matches: list[DupMatchOut]
 
@@ -577,7 +578,7 @@ def duplicates(invoice_id: int, scope: SupplierScope = Depends(get_scope), db: S
                            decision=other.decision, received_at=other.received_at, pages=odoc.pages if odoc else 0),
             fields=_compare_fields(inv, other, doc, odoc),
         ))
-    return DuplicatesOut(invoice_id=inv.id, pages=doc.pages if doc else 0, matches=out)
+    return DuplicatesOut(invoice_id=inv.id, invoice_number=inv.invoice_number, pages=doc.pages if doc else 0, matches=out)
 
 
 @router.get("/{invoice_id}/sap-preview")

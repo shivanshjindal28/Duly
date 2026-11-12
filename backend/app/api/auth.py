@@ -161,7 +161,7 @@ def demo_personas(db: Session = Depends(get_db)) -> list[PersonaOut]:
 
 
 @router.post("/demo-login", response_model=MeOut, dependencies=[Depends(_require_demo)])
-@limiter.limit(lambda: get_settings().login_rate_limit)
+@limiter.limit(lambda: get_settings().demo_login_rate_limit)  # presenters switch personas often
 def demo_login(request: Request, response: Response, body: DemoLoginIn, db: Session = Depends(get_db)) -> MeOut:
     """One-click persona login. Exists only when DEMO_MODE=true (404 otherwise)."""
     user = _find_user(db, body.email)

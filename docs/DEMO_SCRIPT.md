@@ -4,6 +4,37 @@ Presenters (fill in names): **A** product and AP story · **B** security (cybers
 **C** SAP and finance (SAP background). Every file is in `demo/invoices/`; `demo/manifest.json` has the expected
 result and story for each.
 
+## 4-minute demo on https://www.duly.website (final round)
+
+The hosted site runs on Render's free plan: it sleeps after ~15 min idle (first request then takes about a minute)
+and photo OCR is too slow there, so the photo scenario (S05) is already loaded. Every live upload below is a PDF
+(~7 s each).
+
+**Before presenting (10 minutes earlier, same browser you will present from)**
+1. Open https://www.duly.website and wait for the login page (this wakes the server).
+2. Sign in as **Sanjay Patil** (admin) → Demo controls → **Reset demo data** (about a second): back to the staged
+   state (90-day history + S02 S03 S05 S09a/b S10 S11 S12). Check the top bar says "AI: offline (OCR)".
+3. MFA: sign in as **Rohan Mehta** and **Kavita Desai**; scan each Overview QR into an authenticator app (only after a
+   new deploy; a reset keeps the same codes).
+4. Download `S01_catalyst_clean_einvoice.pdf`, `S04_packaging_missing_gr.pdf`, `S06_impellers_bank_mismatch.pdf`,
+   `S07_pallets_prompt_injection.pdf` and `S08_catalyst_edited_total_qr_mismatch.pdf` from `demo/invoices/` to the
+   desktop. Browser zoom 90-100%.
+
+| Time | On screen | Say |
+|---|---|---|
+| 0:00 | Login page | Plant X AP clerks chase mismatches by hand; wrong invoices get paid, MSMEs get paid late. Duly: every invoice duly checked, every payment duly on time. |
+| 0:20 | **Asha Kulkarni** → Upload `S04` (Identify from the document) | Billed before the goods arrived: **BLOCK MISSING_GR**. Point at the Duly rail, reasons, "AI does not make this decision", **Explain**. |
+| 0:50 | **Imran Shaikh** (stores) → Receiving → type `1004` → Post goods receipt | "1 released from block": Duly re-checked by itself. |
+| 1:10 | **Asha** → Upload `S06`, then `S07`, then `S08` | New bank account → **BLOCK** + security alert. Hidden white text telling the AI to approve → **FLAG**, AI output quarantined. Edited PDF total vs signed e-invoice QR → **BLOCK QR_MISMATCH**. |
+| 2:00 | Ctrl+K → `INV-42` → **Compare** | A WhatsApp photo of an invoice already paid, renumbered: **BLOCK DUPLICATE**, side by side. |
+| 2:20 | Ctrl+K → `NPW-311` (the S04 invoice) → **SAP posting preview** | The exact S/4HANA payload; SAP stays the system of record. |
+| 2:40 | **Rohan Mehta** → Approvals → NPW-305 → Approve; Payments | MSME invoice first in the run (4 days left of 45); contractor TDS ₹8,400; discounts only if they beat the cost of funds. |
+| 3:15 | **Dinesh Patel** (Kesar) → Payment assistant: "When will I get paid for INV/0042?", then "Show me Navrang's invoices" | Precise answer from his own data; the other-supplier question is refused and logged. Works offline. |
+| 3:40 | **Meera Iyer** (auditor) → Controls report → Audit chain → Verify | 10 controls tested on live data; every action in a signed hash chain. Close: every invoice, duly done. |
+
+If time is short, drop S07 or the SAP preview. S01 (₹15 lakh, L1 + L2 with MFA) is the 10-minute version below.
+After rehearsing, run **Reset demo data** again so the stage starts clean.
+
 ## Before going on stage (15 minutes earlier)
 1. `python run.py`, open http://localhost:5173 (full-screen browser, zoom 90-100%).
 2. Admin (Sanjay Patil) → **Demo controls** → check AI mode is **Offline** (our setup: no API key or network

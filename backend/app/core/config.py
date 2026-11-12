@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     secret_key: str = ""
     session_minutes: int = 60
     login_rate_limit: str = "10/minute"
+    demo_login_rate_limit: str = "60/minute"  # one-click personas (DEMO_MODE only); passwords stay at 10
     lockout_threshold: int = 5
     lockout_minutes: int = 15
     database_url: str = ""

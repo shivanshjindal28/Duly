@@ -16,6 +16,7 @@ interface DupMatch {
 }
 interface DuplicatesOut {
   invoice_id: number;
+  invoice_number: string;
   pages: number;
   matches: DupMatch[];
 }
@@ -75,7 +76,7 @@ export function ComparePage() {
           <div className="compare-docs">
             <figure className="panel">
               <figcaption>
-                <span className="label">This invoice</span> <span className="mono">#{q.data.invoice_id}</span>
+                <span className="label">This invoice</span> <span className="mono">{q.data.invoice_number || `#${q.data.invoice_id}`}</span>
               </figcaption>
               <img src={`/api/invoices/${q.data.invoice_id}/pages/1.png`} alt="This invoice, page 1" />
             </figure>
