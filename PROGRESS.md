@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 00:05 IST by Shivansh (Claude Code)
+Last updated: 2026-11-13 01:00 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,7 +12,7 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 136 tests (about 20 s; OCR model loads once)
+cd backend && python -m pytest    # 144 tests (about 20 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -36,6 +36,7 @@ cd frontend && npm run typecheck
 - **Phase 1 step 12**: supplier portal (`/portal`, `GET /api/portal`, supplier only, own data). Header with MSME status, Udyam no., terms (MSME: paid within N days of acceptance), masked bank account; tiles (open, need your action, next expected payment, paid so far); a card per invoice with Duly rail, supplier-friendly stage, expected payment date, MSME statutory due date + countdown, "What you need to do" (e.g. exact credit-note amount = excess qty x PO price x (1 + GST)) and "What Plant X is doing" (e.g. waiting for GR, re-checked automatically); payment history table (UTRs appear with the Phase 3 payment run). English / Hindi via i18next with reviewed JSON files (`frontend/src/i18n/en.json`, `hi.json`), IBM Plex Sans Devanagari bundled for offline. Suppliers' nav: My invoices + Upload (generic Invoices list now staff only). Verified in the browser in both languages.
 - **Phase 2 step 13**: Claude extraction (`ai/claude_extractor.py`, `ai/extract.py`, prompt `ai/prompts/extraction.py` = `extract-v1`). Page images (150 dpi, max 5 pages) + numbered text lines -> structured output (`output_config.format` JSON schema: value, confidence, cited line id per field; `suspicious_text` for injection signals). Model from `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`, effort medium) with server-side refusal fallback (`fallbacks: "default"`). Merge with the deterministic parser: agree -> max confidence; disagree -> PDF-text value kept (or AI's for OCR) at reduced confidence so a human reviews it; boxes from our tokens on the cited line. Cache by SHA-256 + model + prompt version in `backend/data/ai_cache/`. `AI_MODE` auto | live | cached | offline; any AI failure falls back to offline with the reason in the audit event. Model + prompt version stored per field. Tested with a mocked client (no key on this laptop: the live path has NOT been run against the real API yet).
 - **Phase 2 step 14**: duplicate detection (`duplicates/detector.py`, pure). Signals vs every earlier non-rejected invoice: exact normalised number + same supplier + same FY, same IRN, same file SHA-256 (any -> BLOCK `DUPLICATE`); near-match (same supplier, total +-0.5%, date <= 30 days, item/qty Jaccard >= 0.8) and page-1 pHash (corroboration only) combined into a probability (>= 0.6 -> FLAG `POSSIBLE_DUPLICATE`); same bank account on two suppliers -> FLAG `BANK_ACCOUNT_SHARED`. Reasons enter the engine via `decide(..., extra_reasons)` (engine stays pure); runs on upload and every re-match. `GET /api/invoices/{id}/duplicates` + `/invoices/:id/compare` page (both documents, signals, field-by-field same/differs). Scenario 5 verified in tests and live (photo "INV-42" blocked as duplicate of "INV/0042"). Dashboard "duplicates prevented" now counts real cases.
+- **Phase 2 step 15**: "Where is my payment?" assistant (`app/chat/`, `POST /api/chat`, 20/min). Five server tools (`list_my_invoices`, `get_invoice_status`, `get_payment_schedule`, `get_block_reason`, `get_msme_due_date`); supplier id injected from the session (suppliers) or the clerk's chosen supplier, never a tool parameter. Guardrails before any model call: other supplier named (name/GSTIN) -> refusal + `security.chat_cross_tenant_refused`; injection phrases stripped + `security.chat_injection_flagged`; digits redacted in session log; every turn audited (`chat.message`). Live: Claude manual tool loop (strict tools, effort low, refusal fallback) in en/hi; offline: keyword intent matcher (en/hi/Hinglish) composing answers from the same reviewed i18n files (backend reads `frontend/src/i18n/*.json`). Invoice resolution by number (normalised) or item word ("bearings"), preferring genuine invoices over blocked duplicates. UI: floating chat dock in the supplier portal with "Looked up: ..." chips; clerk `/assistant` page with supplier picker. Verified live: bearings question -> "INV/0042 ... Expected payment 22 Dec 2026"; Navrang request refused and logged.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -54,7 +55,8 @@ cd frontend && npm run typecheck
 2. Phase 2 step 14: duplicate detection (5 signals) + side-by-side compare.
 2. Phase 2 step 15: "Where is my payment?" chatbot with scoped tools, guardrails, offline intent fallback, English/Hindi (the portal footer currently says "coming soon"; update it when done).
 2. Phase 2 step 16: controls report for auditors (screen + PDF via reportlab).
-3. Phase 3 step 17: Sandbox IRP signing + signed-QR verification (D1).
+2. Phase 3 step 17: Sandbox IRP signing + signed-QR verification (D1).
+3. Phase 3 step 18: prompt-injection shield for documents (D2): hidden-text scan + quarantine (`suspicious_text` from the AI is already captured).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -76,6 +78,9 @@ cd frontend && npm run typecheck
 - Extraction results are append-only: a human correction adds a new row with source=manual; the latest row per field wins.
 - Bank account numbers are masked in `extraction_results`; the full number is only stored encrypted on the invoice.
 - HSN/SAC rate table (`validation/hsn.py`) is a labelled assumption; ambiguous codes list every allowed rate.
+- Supplier-facing text has one source: `frontend/src/i18n/{en,hi}.json`, read by the backend too (chat offline answers, tool payloads). Add new keys there.
+- Chat cross-supplier refusal is deterministic (before the model) so it works offline and is always logged; the model additionally has no way to reach other suppliers' data.
+- React effects must use block bodies around `scrollIntoView` (newer Chromium returns a Promise; an arrow body returned it as a "cleanup" and crashed the chat dock).
 - pHash is corroborating only (weight 0.35, below the 0.6 flag threshold) and only within one supplier: measured on our template invoices, a different invoice on the same template has distance ~2 while a phone photo of the same invoice has ~8, so pHash alone cannot identify an invoice. Exact duplicates are caught by normalised number / IRN / SHA-256.
 - Duplicates compare only against earlier invoices (lower id), so the original is never flagged as a copy of its resubmission; rejected invoices are ignored.
 - AI bounding boxes come from our own positioned tokens on the line Claude cites, not model-estimated coordinates (more reliable highlights). On disagreement with the exact PDF text layer, the PDF text wins and the field goes to review.
@@ -117,5 +122,6 @@ Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they a
 - S6, S9 decisions are covered by engine tests; generated demo PDFs come in Phase 4.
 - Separate logins for all 6 roles, cross-tenant denial: works.
 - S5 duplicate photo with reformatted number: works end to end (BLOCK DUPLICATE, side-by-side compare).
+- B2 chatbot demo (precise answer + logged refusal), en/hi, offline: works.
 - Supplier can see where each invoice is, why, what to do and when it will be paid (en/hi): works.
 - Dev DB invoices uploaded before step 11 have no MSME due date; run `python scripts/seed.py --reset` and re-upload to see countdowns.

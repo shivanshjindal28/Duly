@@ -41,7 +41,7 @@
     "col_tds": "TDS deducted",
     "col_net": "Paid to you",
     "col_utr": "UTR (bank reference)",
-    "help": "Questions? Ask the payment assistant (coming soon) or write to ap@plantx.example."
+    "help": "Ask about your invoices and payments. Answers come only from your own records."
   },
   "stage": {
     "checking": "Being checked by Plant X accounts",
@@ -74,6 +74,52 @@
     "SES_VALUE_EXCEEDED": "You billed more for {{item}} than the service value Plant X has accepted so far.",
     "PAYMENT_TERMS_MISMATCH": "Plant X is checking the payment terms on the order. No action needed.",
     "CURRENCY_MISMATCH": "The invoice currency differs from the purchase order. Please send it in the PO currency.",
-    "default": "Plant X needs to check this invoice ({{code}})."
+    "default": "Plant X needs to check this invoice ({{code}}).",
+    "DUPLICATE": "This looks like a copy of invoice {{of}} that you already sent. It will not be paid twice; if it is a different invoice, please give it a new invoice number.",
+    "POSSIBLE_DUPLICATE": "This invoice looks very similar to {{of}}. Plant X is checking it is not a duplicate. No action needed unless they contact you.",
+    "BANK_ACCOUNT_SHARED": "The bank account on this invoice is also used by another company. Plant X will verify it with you before paying."
+  },
+  "chat": {
+    "title": "Where is my payment?",
+    "subtitle": "Ask about your invoices and payments. Answers come only from your own records.",
+    "placeholder": "e.g. When will I get paid for my bearings invoice?",
+    "send": "Ask",
+    "open": "Payment assistant",
+    "close": "Close assistant",
+    "greeting": "Hello {{name}}. I can tell you where an invoice is, why it is on hold, when it will be paid, and your MSME due dates.",
+    "help": "I can answer questions about your invoices and payments: where an invoice is, why it is on hold, when you will be paid, MSME due dates, and payments made (with UTR). Mention an invoice number or an item, for example \"bearings\".",
+    "refused_other_supplier": "I can only share information about your own invoices. I can't look up another supplier's records. (This request has been logged.)",
+    "refused_scope": "I can only help with your invoices and payments to Plant X.",
+    "injection_flagged": "I can't follow instructions to change how I work. I can still help with your invoices and payments.",
+    "not_found": "I couldn't find an invoice matching \"{{ref}}\". Try the invoice number, for example {{example}}.",
+    "ask_which": "Which invoice do you mean? {{options}}",
+    "status_line": "Invoice {{number}} for {{amount}}: {{stage}}.",
+    "expected": "Expected payment: {{date}}.",
+    "expected_after_fix": "It will be scheduled for payment once the issue is fixed.",
+    "expected_after_approval": "The payment date is set once it is approved.",
+    "paid_line": "Paid on {{date}}: {{net}} after TDS of {{tds}}. Bank reference (UTR) {{utr}}.",
+    "on_hold_intro": "Why it is on hold:",
+    "nothing_blocking": "Nothing is blocking invoice {{number}}.",
+    "msme_line": "As an MSME supplier you must be paid by {{date}} ({{days}} days from today).",
+    "msme_overdue": "As an MSME supplier you should have been paid by {{date}}; that is {{days}} days ago. Plant X accounts has been alerted.",
+    "msme_none": "Invoice {{number}} has no MSME due date yet (it starts when Plant X accepts the goods or service).",
+    "msme_not_eligible": "Your company is not registered as a micro or small enterprise, so the 45-day MSME rule does not apply; payment follows your {{days}}-day terms.",
+    "list_intro": "You have {{count}} invoices with Plant X:",
+    "list_item": "{{number}} ({{amount}}): {{stage}}",
+    "no_invoices": "You have not sent any invoices yet.",
+    "payments_intro": "Payments made:",
+    "upcoming_intro": "Upcoming payments:",
+    "no_payments": "No payments have been made yet.",
+    "looked_up": "Looked up",
+    "mode_live": "Answered with AI using your records",
+    "mode_offline": "Answered from your records (offline assistant)",
+    "error": "Sorry, I could not answer that just now.",
+    "tool": {
+      "list_my_invoices": "your invoices",
+      "get_invoice_status": "invoice {{ref}}",
+      "get_payment_schedule": "your payments",
+      "get_block_reason": "hold reasons for {{ref}}",
+      "get_msme_due_date": "MSME due date for {{ref}}"
+    }
   }
 }

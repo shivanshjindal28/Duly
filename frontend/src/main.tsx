@@ -16,6 +16,7 @@ import "./theme/common.css";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AppShell } from "./layout/AppShell";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
+import { AssistantPage } from "./pages/AssistantPage";
 import { AuditPage } from "./pages/AuditPage";
 import { ComparePage } from "./pages/ComparePage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/queue", element: <QueuePage /> },
               { path: "/portal", element: <SupplierPortalPage /> },
+              { path: "/assistant", element: <AssistantPage /> },
             ],
           },
         ],

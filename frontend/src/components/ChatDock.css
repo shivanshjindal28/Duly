@@ -1,0 +1,35 @@
+.chat-fab {
+  position: fixed; right: 24px; bottom: 24px; z-index: 20;
+  display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px;
+  border: none; border-radius: 24px; background: var(--color-primary); color: #fff; font: inherit; font-weight: 600;
+  box-shadow: 0 6px 18px rgba(11, 31, 68, 0.25); cursor: pointer;
+}
+.chat-fab:hover { background: var(--color-primary-hover); }
+.chat {
+  display: flex; flex-direction: column; background: var(--color-surface);
+  border: 1px solid var(--color-border-strong); border-radius: var(--radius-md);
+}
+.chat-dock {
+  position: fixed; right: 24px; bottom: 24px; z-index: 20; width: min(420px, calc(100vw - 32px)); height: min(600px, 80vh);
+  box-shadow: 0 12px 32px rgba(11, 31, 68, 0.25);
+}
+.chat-inline { height: 560px; }
+.chat-head { display: flex; justify-content: space-between; gap: 8px; padding: 12px 14px; background: var(--color-navy); color: #fff; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.chat-head h2 { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.chat-head p { font-size: 12px; color: var(--color-navy-text); margin-top: 2px; }
+.chat-close { color: #fff; height: 28px; padding: 0 6px; }
+.chat-close:hover { background: var(--color-navy2); }
+.chat-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.chat-turn { display: flex; flex-direction: column; gap: 4px; }
+.chat-turn-user { align-items: flex-end; }
+.chat-msg { max-width: 88%; padding: 8px 12px; border-radius: 12px; font-size: 14px; white-space: pre-wrap; line-height: 1.45; }
+.chat-assistant { background: var(--color-canvas); border: 1px solid var(--color-border); align-self: flex-start; }
+.chat-user { background: var(--color-primary); color: #fff; }
+.chat-msg.is-refused { background: var(--color-block-bg); border-color: #F3BCD6; color: var(--color-block-text); }
+.chat-shield { vertical-align: -2px; margin-right: 4px; }
+.chat-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; max-width: 88%; }
+.chat-chip { height: 20px; font-size: 11px; font-weight: 500; }
+.chat-mode { font-size: 10.5px; color: var(--color-text-secondary); }
+.chat-form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--color-border); }
+.chat-form .input { flex: 1; height: 40px; }
+.chat-form .btn { height: 40px; }

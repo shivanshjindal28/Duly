@@ -115,14 +115,22 @@ def _todos(db: Session, inv: Invoice, codes: list[tuple[str, str]]) -> list[Todo
                       "credit": _money(amount * (1 + line.gst_rate / 100))}
         elif r.code in ("MISSING_GR", "MISSING_SES") and line is not None:
             params = {"item": line.item_code or line.description}
-        you_act = r.code not in ("MISSING_GR", "MISSING_SES", "PAYMENT_TERMS_MISMATCH")
+        elif r.code in ("DUPLICATE", "POSSIBLE_DUPLICATE"):
+            params = {"of": str(ev.get("duplicate_of", ""))}
+        you_act = r.code not in ("MISSING_GR", "MISSING_SES", "PAYMENT_TERMS_MISMATCH", "POSSIBLE_DUPLICATE",
+                                 "BANK_ACCOUNT_SHARED")
         out.append(Todo(code=r.code, severity=r.severity, you_act=you_act, params=params))
     return out
 
 
 @router.get("", response_model=PortalOut)
 def portal(scope: SupplierScope = Depends(get_scope), db: Session = Depends(get_db)) -> PortalOut:
-    s = db.get(Supplier, scope.supplier_id)
+    return build_portal(db, scope.supplier_id)
+
+
+def build_portal(db: Session, supplier_id: int) -> PortalOut:
+    """One supplier's own portal data (also used by the payment chatbot's tools)."""
+    s = db.get(Supplier, supplier_id)
     today = clock.today()
     eligible = msme_eligible(s.msme_category, s.enterprise_type)
     codes = latest_reasons(db)

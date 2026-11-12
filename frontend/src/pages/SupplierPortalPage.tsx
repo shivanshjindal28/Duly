@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { BadgeCheck, CalendarClock, CircleAlert, Hourglass, Languages, Landmark, Upload, Wallet } from "lucide-react";
 import { api } from "../api/client";
 import type { InvoiceStatus } from "../api/types";
+import { ChatDock } from "../components/ChatDock";
 import { DulyRail } from "../components/DulyRail";
 import { StatusChip } from "../components/StatusChip";
 import { setLanguage } from "../i18n";
@@ -260,6 +261,7 @@ export function SupplierPortalPage() {
         )}
       </section>
       <p className="muted portal-help">{t("portal.help")}</p>
+      <ChatDock greetingName={p.supplier_name} />
     </div>
   );
 }
