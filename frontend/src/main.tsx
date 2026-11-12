@@ -19,6 +19,7 @@ import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { AssistantPage } from "./pages/AssistantPage";
 import { AuditPage } from "./pages/AuditPage";
 import { ComparePage } from "./pages/ComparePage";
+import { ControlsReportPage } from "./pages/ControlsReportPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QueuePage } from "./pages/QueuePage";
 import { SupplierPortalPage } from "./pages/SupplierPortalPage";
@@ -72,6 +73,7 @@ const router = createBrowserRouter([
               { path: "/approvals", element: <ApprovalsPage /> },
               { path: "/admin/demo", element: <DemoControlsPage /> },
               { path: "/audit", element: <AuditPage /> },
+              { path: "/controls", element: <ControlsReportPage /> },
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/queue", element: <QueuePage /> },
               { path: "/portal", element: <SupplierPortalPage /> },
