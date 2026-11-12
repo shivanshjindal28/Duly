@@ -78,6 +78,9 @@ def resolve(db: Session, portal: PortalOut, ref: str | None) -> tuple[PortalInvo
     exact = [i for i in invoices if i.invoice_number.upper() == ref.strip().upper()
              or (len(norm) >= 2 and normalise_invoice_number(i.invoice_number) == norm)]
     if exact:
+        # "INV/0042" and its blocked copy "INV-42" normalise alike: the literal number wins, then the original.
+        exact.sort(key=lambda i: (i.invoice_number.upper() != ref.strip().upper(),
+                                  any(x.code == "DUPLICATE" for x in i.todos)))
         return exact[0], []
     words = [w for w in re.findall(r"[A-Za-z]{3,}", ref.lower()) if w not in {"invoice", "the", "for", "bill", "my"}]
     scored = []
@@ -96,7 +99,8 @@ def resolve(db: Session, portal: PortalOut, ref: str | None) -> tuple[PortalInvo
     open_top = [i for i in top if i.status not in ("paid", "rejected")]
     if len(open_top) == 1 or len(top) == 1:
         return (open_top or top)[0], []
-    return None, top
+    # Several: ask about the open ones (a supplier asking "when" means an unpaid invoice), newest five.
+    return None, sorted(open_top or top, key=lambda i: -i.id)[:5]
 
 
 def _status_payload(lang: str, inv: PortalInvoice, portal: PortalOut) -> dict:

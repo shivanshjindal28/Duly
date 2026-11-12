@@ -92,6 +92,8 @@ def compose(lang: str, call: ToolCall) -> str:
 
 def answer(db: Session, supplier_id: int, message: str, lang: str) -> tuple[str, list[ToolCall]]:
     intent = detect(message)
+    if intent is None and _NUMBER.fullmatch(message.strip().rstrip("?.!")):
+        intent = "get_invoice_status"  # just an invoice number (e.g. the reply to "which invoice?")
     if intent is None:
         return t(lang, "chat.help"), []
     args = {"only_open": False} if intent == "list_my_invoices" else {}

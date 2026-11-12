@@ -35,8 +35,11 @@ python run.py
 
 ## Tests
 ```bash
-cd backend && python -m pytest
+cd backend && python -m pytest          # backend tests (~90 s)
+python scripts/demo_check.py            # the whole demo through the API: green/red table (~45 s; `make demo-check`)
+cd frontend && npx playwright install chromium && npm run e2e   # browser smoke test of the demo path
 ```
+`demo_check.py` uses its own temporary database and offline AI by default (`--live-db`, `--ai` to change that). The Playwright test starts its own backend and frontend on ports 8100/5180 with a fresh database; to use an installed browser instead of downloading Chromium, set `PW_CHANNEL=msedge` (or `chrome`).
 
 ## Demo accounts
 Created by `scripts/seed.py`. With `DEMO_MODE=true` the login page shows one-click persona buttons. The demo password for every seeded user is `Duly@2026` (synthetic demo data only).

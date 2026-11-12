@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "e2e": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "recharts": "3.10.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.59.1",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "6.3.0",
