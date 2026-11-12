@@ -105,7 +105,12 @@ class ExtractionResult(Base):
     source: Mapped[str] = mapped_column(String(10))  # text | ocr | ai | qr | manual
     model: Mapped[str | None] = mapped_column(String(60))
     prompt_version: Mapped[str | None] = mapped_column(String(20))
-    corrected: Mapped[bool] = mapped_column(Boolean, default=False)
+    corrected: Mapped[bool] = mapped_column(Boolean, default=False)  # superseded by a human review row
+    # For human review rows (source="manual"): who, why, and the value before the change.
+    previous_value: Mapped[str | None] = mapped_column(Text)
+    previous_confidence: Mapped[float | None] = mapped_column(Float)
+    reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    review_reason: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = created_at_col()
 
 

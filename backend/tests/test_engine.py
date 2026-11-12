@@ -219,6 +219,13 @@ def test_line_mapped_by_description_when_code_differs():
     assert out.decision == Decision.APPROVE and codes == {("LINE_MAPPED", "info")}
 
 
+def test_invoice_without_lines_never_approves():
+    p = po([po_line(1, "BRG-6205", 100, "NOS", "450.00", received=100)])
+    doc = replace(invoice([line(1, "BRG-6205", 1, "NOS", "450.00")]), lines=())
+    out, codes = run(doc, p)
+    assert out.decision == Decision.BLOCK and ("NO_LINES", "block") in codes
+
+
 def test_line_not_on_po_blocks():
     p = po([po_line(1, "BRG-6205", 100, "NOS", "450.00", received=100, desc="Ball bearing 6205 2RS")])
     out, codes = run(invoice([line(1, "GLV-01", 10, "NOS", "90.00", desc="Safety gloves")]), p)

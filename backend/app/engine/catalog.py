@@ -26,6 +26,7 @@ CATALOG: dict[str, CodeInfo] = {
     "CURRENCY_MISMATCH": CodeInfo("Currency differs from the PO", _A, "ME23N / MIRO"),
     "PAYMENT_TERMS_MISMATCH": CodeInfo("Payment terms differ", _R, "ME23N terms / XK03"),
     "LINE_NOT_ON_PO": CodeInfo("Invoice line not on the PO", _R, "ME23N items"),
+    "NO_LINES": CodeInfo("No line items read", _R, "MIRO items"),
     "PRICE_VARIANCE": CodeInfo("Price differs from the PO", _R + " (tolerance key PP)", "MIRO price variance"),
     "QTY_EXCEEDS_GR": CodeInfo("Billed more than received", _R + " (tolerance key DQ)", "MIGO GR history / MIRO"),
     "MISSING_GR": CodeInfo("No goods receipt yet", _R, "MIGO movement type 101"),

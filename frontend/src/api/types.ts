@@ -50,6 +50,11 @@ export interface ExtractedFieldOut {
   bbox: [number, number, number, number] | null;
   source: string;
   needs_review: boolean;
+  previous_value: string | null;
+  previous_confidence: number | null;
+  reviewed_by: string | null;
+  review_reason: string | null;
+  reviewed_at: string | null;
 }
 
 export interface ReasonOut {
@@ -106,6 +111,8 @@ export interface InvoiceDetail extends InvoiceSummary {
   document: { original_filename: string; mime_type: string; pages: number; sha256: string; size_bytes: number } | null;
   fields: ExtractedFieldOut[];
   confidence_threshold: number;
+  pending_review: string[];
+  can_review: boolean;
   match: MatchOut | null;
 }
 

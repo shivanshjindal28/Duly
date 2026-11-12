@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Cpu, FileText } from "lucide-react";
+import { ArrowLeft, Cpu, Eye, FileText } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import type { InvoiceDetail } from "../api/types";
 import { DulyRail } from "../components/DulyRail";
@@ -89,6 +89,22 @@ export function InvoiceDetailPage() {
         </div>
       </header>
 
+      {inv.pending_review.length > 0 ? (
+        <div className="review-banner" role="status">
+          <p>
+            <Eye size={16} aria-hidden="true" />
+            <span>
+              <strong>Human review:</strong> {inv.pending_review.length} field
+              {inv.pending_review.length > 1 ? "s need" : " needs"} confirmation before the decision takes effect
+              {inv.can_review ? "." : " (an AP clerk will check them)."}
+            </span>
+          </p>
+          <button type="button" className="btn btn-sm" onClick={() => setSelected(inv.pending_review[0])}>
+            Show next field
+          </button>
+        </div>
+      ) : null}
+
       <div className="detail-grid">
         <section className="panel detail-pane" aria-labelledby="doc-title">
           <div className="pane-head">
@@ -129,6 +145,8 @@ export function InvoiceDetailPage() {
             </span>
           </div>
           <FieldsPanel
+            invoiceId={inv.id}
+            canReview={inv.can_review}
             fields={inv.fields}
             threshold={inv.confidence_threshold}
             selected={selected}

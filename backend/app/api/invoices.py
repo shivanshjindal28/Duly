@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -24,9 +24,11 @@ from app.ingestion.pipeline import UploadError, confidence_threshold, process_up
 from app.ingestion.storage import path_of
 from app.core.enums import Role
 from app.engine.catalog import info
-from app.models import Document, ExtractionResult, Invoice, MatchResult, ReasonCode, Supplier, User
+from app.models import Document, Invoice, MatchResult, ReasonCode, Supplier, User
 from app.workflow.lifecycle import rail_progress
 from app.workflow.matching import latest_match
+from app.ingestion.pipeline import latest_fields, pending_review
+from app.workflow.review import EDITABLE_STATUSES, ReviewError, review_field
 
 router = APIRouter(
     prefix="/invoices",
@@ -73,6 +75,17 @@ class FieldOut(BaseModel):
     bbox: list[float] | None
     source: str
     needs_review: bool
+    previous_value: str | None = None
+    previous_confidence: float | None = None
+    reviewed_by: str | None = None
+    review_reason: str | None = None
+    reviewed_at: datetime | None = None
+
+
+class ReviewIn(BaseModel):
+    field: str = Field(max_length=60)
+    value: str | None = Field(None, max_length=300)  # None = confirm the value as read
+    reason: str = Field(max_length=300)
 
 
 class ReasonOut(BaseModel):
@@ -120,6 +133,8 @@ class InvoiceDetail(InvoiceSummary):
     document: DocumentOut | None
     fields: list[FieldOut]
     confidence_threshold: float
+    pending_review: list[str]
+    can_review: bool  # filled per request: clerk and invoice still editable
     match: MatchOut | None
 
 
@@ -155,16 +170,14 @@ def get_invoice_in_scope(invoice_id: int, scope: SupplierScope, db: Session) -> 
     return inv
 
 
-def _detail(db: Session, inv: Invoice) -> InvoiceDetail:
+def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
     supplier = db.get(Supplier, inv.supplier_id) if inv.supplier_id else None
     doc = db.get(Document, inv.document_id) if inv.document_id else None
     threshold = confidence_threshold(db)
-    results = db.scalars(select(ExtractionResult).where(ExtractionResult.invoice_id == inv.id)
-                         .order_by(ExtractionResult.id)).all()
     # Latest result per field wins (human corrections are appended, never overwritten).
-    latest: dict[str, ExtractionResult] = {}
-    for r in results:
-        latest[r.field] = r
+    latest = latest_fields(db, inv.id)
+    reviewers = {u.id: u.full_name for u in db.scalars(select(User).where(
+        User.id.in_({r.reviewed_by_user_id for r in latest.values() if r.reviewed_by_user_id})))}
     match = _match_out(db, inv.id)
     codes = {r.code for r in match.reasons} if match else set()
     return InvoiceDetail(
@@ -177,9 +190,14 @@ def _detail(db: Session, inv: Invoice) -> InvoiceDetail:
         document=DocumentOut.model_validate(doc, from_attributes=True) if doc else None,
         fields=[FieldOut(field=r.field, value=r.value, confidence=r.confidence, page=r.page, bbox=r.bbox,
                          source=r.source, needs_review=r.source != "manual" and r.value is not None
-                         and r.confidence < threshold)
+                         and r.confidence < threshold,
+                         previous_value=r.previous_value, previous_confidence=r.previous_confidence,
+                         reviewed_by=reviewers.get(r.reviewed_by_user_id), review_reason=r.review_reason,
+                         reviewed_at=r.created_at if r.source == "manual" else None)
                 for r in latest.values()],
         confidence_threshold=threshold,
+        pending_review=pending_review(db, inv.id),
+        can_review=user.role == Role.CLERK and inv.status in EDITABLE_STATUSES,
         match=match,
     )
 
@@ -221,12 +239,12 @@ def upload_invoice(
     except (UploadRejected, UploadError) as e:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
-    return _detail(db, inv)
+    return _detail(db, inv, user)
 
 
 @router.get("/{invoice_id}", response_model=InvoiceDetail)
 def get_invoice(invoice_id: int, scope: SupplierScope = Depends(get_scope), db: Session = Depends(get_db)) -> InvoiceDetail:
-    return _detail(db, get_invoice_in_scope(invoice_id, scope, db))
+    return _detail(db, get_invoice_in_scope(invoice_id, scope, db), scope.user)
 
 
 def _document(invoice_id: int, scope: SupplierScope, db: Session) -> Document:
@@ -250,3 +268,22 @@ def get_page(invoice_id: int, page: int, scope: SupplierScope = Depends(get_scop
     if not 1 <= page <= doc.pages:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such page")
     return Response(page_png(doc.stored_name, page), media_type="image/png")
+
+
+@router.post("/{invoice_id}/review", response_model=InvoiceDetail)
+def review(
+    invoice_id: int,
+    body: ReviewIn,
+    user: User = Depends(require_roles(Role.CLERK)),
+    scope: SupplierScope = Depends(get_scope),
+    db: Session = Depends(get_db),
+) -> InvoiceDetail:
+    """Confirm (value omitted) or correct one extracted field. A reason is always required."""
+    inv = get_invoice_in_scope(invoice_id, scope, db)
+    try:
+        review_field(db, inv, user, body.field, body.value, body.reason)
+    except ReviewError as e:
+        db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
+    db.refresh(inv)
+    return _detail(db, inv, user)

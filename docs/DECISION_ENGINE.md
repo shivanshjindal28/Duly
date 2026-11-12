@@ -23,6 +23,7 @@ Invoice (after extraction and human corrections), PO with lines, goods receipts 
 | CURRENCY_MISMATCH | block | Invoice currency differs from PO | none | Block A · ME23N |
 | GSTIN_INVALID | block | Supplier GSTIN fails format or mod-36 check digit | none | Block A · XK03 |
 | BANK_MISMATCH | block | Bank account or IFSC on invoice differs from vendor master (possible BEC fraud). Accounts are masked in messages. | none | Block A · XK03 |
+| NO_LINES | block | No line items could be read; nothing to match, so never approve | none | Block R · MIRO items |
 | LINE_NOT_ON_PO | block | Invoice line matches no PO line (by item code, then fuzzy description ≥ 85), or its unit cannot be converted | none | Block R · ME23N |
 | MISSING_GR | block | Goods line with no goods receipt yet. Re-checked automatically when stores posts a GR. | none | Block R · MIGO 101 |
 | MISSING_SES | block | Service line with no service entry sheet | none | Block R · ML81N |

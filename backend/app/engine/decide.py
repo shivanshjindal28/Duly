@@ -260,6 +260,13 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
     matrix: list[MatrixRow] = []
     line_map: dict[int, int] = {}
 
+    if not doc.lines:
+        # Without lines there is nothing to match against the PO and GR: never approve.
+        reasons.append(Reason("NO_LINES", Severity.BLOCK,
+                              "No line items could be read from the invoice, so it cannot be matched to the PO "
+                              "and goods receipt. Enter the lines or ask the supplier for a clearer copy.",
+                              {"lines_read": 0, "invoice_total": str(doc.total)}))
+
     if po is not None:
         mapping = map_lines(doc, po)
         for ln in doc.lines:

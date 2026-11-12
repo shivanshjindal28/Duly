@@ -44,16 +44,32 @@ def _ocr_engine():
     return RapidOCR()
 
 
+def _page_slope(result) -> float:
+    """Median text baseline slope (dy/dx) of the wider OCR boxes: how much the photo is rotated."""
+    slopes = []
+    for quad, _text, _score in result:
+        (x0, y0), (x1, y1) = quad[0], quad[1]  # top-left -> top-right corner
+        if x1 - x0 > 40:
+            slopes.append((y1 - y0) / (x1 - x0))
+    return float(np.median(slopes)) if slopes else 0.0
+
+
 def ocr_tokens(images: list[Image.Image]) -> list[Token]:
     tokens: list[Token] = []
     for pno, img in enumerate(images, start=1):
         w, h = img.size
         result, _ = _ocr_engine()(np.array(img))
-        for quad, text, score in result or []:
+        result = result or []
+        slope = _page_slope(result)
+        for quad, text, score in result:
             xs = [p[0] for p in quad]
             ys = [p[1] for p in quad]
             box = (min(xs) / w, min(ys) / h, max(xs) / w, max(ys) / h)
-            tokens.append(Token(str(text), pno, box, float(score), "ocr"))
+            # Deskew only the grouping coordinate, so a tilted photo's row stays one line;
+            # the highlight box keeps the true position on the image.
+            cx, cy = sum(xs) / 4, sum(ys) / 4
+            line_y = (cy - (cx - w / 2) * slope) / h
+            tokens.append(Token(str(text), pno, box, float(score), "ocr", line_y=line_y))
     return tokens
 
 

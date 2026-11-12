@@ -17,6 +17,11 @@ class Token:
     bbox: BBox
     conf: float  # 1.0 for the text layer, OCR score otherwise
     source: str  # "text" | "ocr"
+    line_y: float | None = None  # deskewed vertical centre used for line grouping (photos)
+
+    @property
+    def cy(self) -> float:
+        return self.line_y if self.line_y is not None else (self.bbox[1] + self.bbox[3]) / 2
 
 
 @dataclass
@@ -49,14 +54,11 @@ class TextLine:
 def group_lines(tokens: list[Token]) -> list[TextLine]:
     """Group tokens whose vertical centres are close into reading-order lines."""
     lines: list[TextLine] = []
-    for t in sorted(tokens, key=lambda t: (t.page, (t.bbox[1] + t.bbox[3]) / 2, t.bbox[0])):
-        cy = (t.bbox[1] + t.bbox[3]) / 2
+    for t in sorted(tokens, key=lambda t: (t.page, t.cy, t.bbox[0])):
         h = max(t.bbox[3] - t.bbox[1], 0.004)
         cur = lines[-1] if lines else None
         if cur and cur.page == t.page:
-            ref = cur.tokens[0]
-            ref_cy = (ref.bbox[1] + ref.bbox[3]) / 2
-            if abs(cy - ref_cy) <= h * 0.6:
+            if abs(t.cy - cur.tokens[0].cy) <= h * 0.6:
                 cur.tokens.append(t)
                 continue
         lines.append(TextLine(page=t.page, tokens=[t]))

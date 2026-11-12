@@ -45,6 +45,20 @@ def test_text_layer_extraction_with_locations(pdf):
     assert 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1
 
 
+def test_tilted_blurry_phone_photo_keeps_rows_together(pdf):
+    from PIL import ImageFilter
+
+    page = render_pages(pdf, "pdf", dpi=130)[0]
+    photo = page.rotate(1.2, expand=True, fillcolor="#d8d4cc").filter(ImageFilter.GaussianBlur(0.9))
+    buf = io.BytesIO()
+    photo.save(buf, format="JPEG", quality=40)
+    tokens, method = acquire_tokens(buf.getvalue(), "jpg")
+    ex = parse(tokens, method)
+    assert len(ex.lines) == 2  # rows survive the tilt (deskewed line grouping)
+    assert ex.lines[0]["item_code"].value == "BRG-6205" and ex.lines[0]["qty"].value == "100"
+    assert ex.header["po_number"].value == "4500001234"
+
+
 def test_ocr_extraction_of_scanned_image(pdf):
     page = render_pages(pdf, "pdf", dpi=170)[0]
     buf = io.BytesIO()

@@ -54,12 +54,21 @@ def confidence_threshold(db: Session) -> float:
     return float(policy.data.get("confidence_threshold", 0.85)) if policy else 0.85
 
 
-def needs_review(extracted: ExtractedInvoice, threshold: float) -> list[str]:
-    """Field paths that a human must confirm: low confidence, or a key field missing."""
-    low = [path for path, f in extracted.all_fields() if f.value is not None and f.confidence < threshold]
-    missing = [k for k in KEY_FIELDS if extracted.header[k].value is None]
-    if not extracted.lines:
-        missing.append("lines")
+def latest_fields(db: Session, invoice_id: int) -> dict[str, ExtractionResult]:
+    """Latest extraction row per field (human review rows are appended, never overwritten)."""
+    rows = db.scalars(select(ExtractionResult).where(ExtractionResult.invoice_id == invoice_id)
+                      .order_by(ExtractionResult.id)).all()
+    return {r.field: r for r in rows}
+
+
+def pending_review(db: Session, invoice_id: int) -> list[str]:
+    """The single definition of "needs a human": a field below the confidence threshold that
+    nobody has reviewed yet, or a key field that could not be read. (No readable lines at all
+    is not a review item: the engine blocks it with NO_LINES.)"""
+    threshold = confidence_threshold(db)
+    latest = latest_fields(db, invoice_id)
+    low = [k for k, r in latest.items() if r.source != "manual" and r.value is not None and r.confidence < threshold]
+    missing = [k for k in KEY_FIELDS if k in latest and latest[k].value is None]
     return low + missing
 
 
@@ -137,8 +146,8 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
             prompt_version=extracted.extractor_version,
         ))
 
-    review = needs_review(extracted, confidence_threshold(db))
-    if review:
+    db.flush()
+    if pending_review(db, invoice.id):
         invoice.status, invoice.current_owner = InvoiceStatus.NEEDS_REVIEW, "AP clerk (review)"
     db.flush()
     db.refresh(invoice)  # load lines for the engine

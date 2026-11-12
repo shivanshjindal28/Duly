@@ -112,22 +112,35 @@ def _parse_header(lines: list[TextLine]) -> dict[str, ExtractedField]:
 
 
 def _parse_row(line: TextLine) -> dict[str, ExtractedField] | None:
-    """Parse a table row from the right: igst sgst cgst gst% taxable rate uom qty hsn | no code desc."""
+    """Parse a table row from the right: igst sgst cgst [gst%] taxable rate uom qty hsn | [no] code [desc].
+
+    On poor photos OCR can lose the GST % cell or the description. Then the rate is derived
+    from tax / taxable value and the description left empty, both at low confidence so a
+    human confirms them; the row is not thrown away.
+    """
     # Amounts first, so glued cells like "4,050.004,050.00" split into two amounts.
     pieces = [(m.group(), m.span()) for m in _PIECE_RE.finditer(line.text)]
-    if len(pieces) < 11:
+    if len(pieces) < 8:
         return None
-    tail = pieces[-8:]
-    igst, sgst, cgst, rate_pct, taxable, unit_price, uom, qty = tail[::-1]
+    igst, sgst, cgst = pieces[-1], pieces[-2], pieces[-3]
+    rest = pieces[:-3]
+    rate_pct = None
+    if rest and _NUM_RE.match(rest[-1][0]) and not _MONEY_RE.match(rest[-1][0]):
+        rate_pct, rest = rest[-1], rest[:-1]
+    if len(rest) < 6:
+        return None
+    taxable, unit_price, uom, qty = rest[-1], rest[-2], rest[-3], rest[-4]
     if not all(_MONEY_RE.match(p[0]) for p in (igst, sgst, cgst, taxable, unit_price)):
         return None
-    if not (_NUM_RE.match(rate_pct[0]) and _UOM_RE.match(uom[0]) and _NUM_RE.match(qty[0])):
+    if not (_UOM_RE.match(uom[0]) and _NUM_RE.match(qty[0])):
         return None
-    head = pieces[:-8]
-    if len(head) < 4 or not head[0][0].isdigit() or not _HSN_RE.match(head[-1][0]):
+    head = rest[:-4]
+    if head and head[0][0].isdigit() and len(head[0][0]) <= 3:
+        head = head[1:]  # leading line number (OCR sometimes drops it, so it is optional)
+    if len(head) < 2 or not _HSN_RE.match(head[-1][0]):
         return None
-    hsn, code = head[-1], head[1]
-    desc_span = (head[2][1][0], head[-2][1][1]) if len(head) > 3 else head[2][1]
+    hsn, code = head[-1], head[0]
+    desc_span = (head[1][1][0], head[-2][1][1]) if len(head) > 2 else None
 
     # On OCR text a broken row equation usually means a misread digit: lower numeric confidence.
     q, p, v = (Decimal(_num(x[0]) or "0") for x in (qty, unit_price, taxable))
@@ -137,15 +150,26 @@ def _parse_row(line: TextLine) -> dict[str, ExtractedField] | None:
     def f(piece, value, factor=1.0):
         return _field(line, piece[1], value, factor)
 
+    if rate_pct is not None:
+        gst_rate = f(rate_pct, _num(rate_pct[0]))
+    else:  # derived: (cgst + sgst + igst) / taxable, rounded to a whole percent
+        tax = sum((Decimal(_num(x[0]) or "0") for x in (cgst, sgst, igst)), Decimal(0))
+        derived = str((tax / v * 100).quantize(Decimal("1"))) if v else None
+        gst_rate = _field(line, (cgst[1][0], igst[1][1]), derived, 0.6)
+    if desc_span is not None:
+        description = f((None, desc_span), line.text[desc_span[0]:desc_span[1]])
+    else:
+        description = ExtractedField(value=None, source=line.tokens[0].source)
+
     return {
         "item_code": f(code, code[0].upper()),
-        "description": f((None, desc_span), line.text[desc_span[0]:desc_span[1]]),
+        "description": description,
         "hsn_sac": f(hsn, hsn[0]),
         "qty": f(qty, _num(qty[0]), num_factor),
         "uom": f(uom, uom[0].upper()),
         "unit_price": f(unit_price, _num(unit_price[0]), num_factor),
         "taxable_value": f(taxable, _num(taxable[0]), num_factor),
-        "gst_rate": f(rate_pct, _num(rate_pct[0])),
+        "gst_rate": gst_rate,
         "cgst": f(cgst, _num(cgst[0])),
         "sgst": f(sgst, _num(sgst[0])),
         "igst": f(igst, _num(igst[0])),
