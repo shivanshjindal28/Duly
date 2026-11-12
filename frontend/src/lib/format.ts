@@ -10,6 +10,17 @@ export function inr(value: string | number | null | undefined, symbol = true): s
   return (symbol ? "₹" : "") + inrFmt.format(n);
 }
 
+/** Large amounts in lakh / crore: ₹2.35 Cr, ₹18.4 L, ₹45,000. */
+export function inrShort(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "-";
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+  const a = Math.abs(n);
+  if (a >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
+  if (a >= 1e5) return `₹${(n / 1e5).toFixed(1)} L`;
+  return "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+}
+
 export function qty(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "-";
   const n = Number(value);

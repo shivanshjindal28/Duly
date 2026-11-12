@@ -17,6 +17,7 @@ import {
   PackageCheck,
   ShieldCheck,
   Stamp,
+  TrendingUp,
   Upload,
   Wallet,
   type LucideIcon,
@@ -56,6 +57,12 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/controls", label: "Controls report", icon: FileCheck2, roles: ["auditor", "admin"] },
       { to: "/audit", label: "Audit chain", icon: Link2, roles: ["auditor", "admin"] },
       { to: "/admin/demo", label: "Demo controls", icon: Clock, roles: ["admin"] },
+    ],
+  },
+  {
+    section: "About Duly",
+    items: [
+      { to: "/impact", label: "Impact", icon: TrendingUp, roles: ["clerk", "approver", "auditor", "admin"] },
     ],
   },
 ];
