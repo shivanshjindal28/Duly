@@ -20,6 +20,8 @@ from app.core import audit
 from app.core.crypto import encrypt_str
 from app.ingestion.extract_text import acquire_tokens, render_pages
 from app.ingestion.hardening import harden
+from app.ingestion.injection import Finding, is_injection, scan_pdf, scan_text, to_json
+from app.ingestion.tokens import group_lines
 from app.ingestion.qr import verify as verify_qr
 from app.ingestion.storage import sha256, store
 from app.core.enums import InvoiceStatus, Role
@@ -110,8 +112,14 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
     clean = harden(filename, data)
     tokens, method = acquire_tokens(clean.data, clean.kind)
     file_hash = sha256(clean.data)
-    extracted, ai_mode, ai_fallback = ai_extract(file_hash, tokens, method,
-                                                 lambda: render_pages(clean.data, clean.kind, dpi=IMAGE_DPI))
+    # D2: look for hidden or instruction-like text BEFORE any AI reads the document.
+    findings = scan_pdf(clean.data) if clean.kind == "pdf" else scan_text([ln.text for ln in group_lines(tokens)])
+    injected = is_injection(findings)
+    extracted, ai_mode, ai_fallback, quarantined = ai_extract(
+        file_hash, tokens, method, lambda: render_pages(clean.data, clean.kind, dpi=IMAGE_DPI), quarantine=injected)
+    if extracted.suspicious_text and not injected:  # the AI itself noticed instructions
+        findings.append(Finding("ai noticed", extracted.suspicious_text[:500], None, ["reported by the AI"]))
+        injected = True
     supplier = _resolve_supplier(db, user, supplier_id, extracted)
     # Signed e-invoice QR on the first pages (photos are used as they are).
     qr = verify_qr(render_pages(clean.data, clean.kind, dpi=200)[:2] if clean.kind == "pdf"
@@ -140,6 +148,7 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         bank_account_enc=encrypt_str(account) if account else None,
         bank_account_last4=account[-4:] if account else None, bank_ifsc=h["bank_ifsc"].value,
         qr_status=qr.status, qr_payload=qr.payload, qr_error=qr.error,
+        injection={"found": injected, "findings": to_json(findings), "ai_quarantined": quarantined},
         ai_mode=ai_mode, processed_by_user_id=user.id if user.role == Role.CLERK else None,
     )
     db.add(invoice)
@@ -174,7 +183,8 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
         "pages": doc.pages, "text_source": extracted.method, "extractor": extracted.extractor_version,
         "ai_mode": ai_mode, "ai_model": extracted.extractor, "ai_fallback_reason": ai_fallback,
         "suspicious_text": extracted.suspicious_text, "fields": len(extracted.all_fields()),
-        "einvoice_qr": qr.status, "qr_error": qr.error,
+        "einvoice_qr": qr.status, "qr_error": qr.error, "injection_found": injected,
+        "ai_quarantined": quarantined is not None,
         "needs_review": pending_review(db, invoice.id),
     })
     run_match(db, invoice, trigger="upload")

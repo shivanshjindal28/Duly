@@ -25,6 +25,7 @@ from app.models.base import as_utc
 from app.payments.msme import msme_eligible, statutory_due_date
 from app.validation.rules import validate
 from app.duplicates.detector import DupView, assess
+from app.ingestion.injection import injection_reasons
 from app.ingestion.qr import einvoice_reasons
 from app.workflow.approvals import sync_after_match
 
@@ -151,6 +152,7 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     doc = invoice_to_doc(inv)
     _matches, dup_reasons = duplicate_check(db, inv, doc)
     qr_reasons = einvoice_reasons(doc, inv.qr_status, inv.qr_payload, supplier.e_invoice_applicable)
+    qr_reasons += injection_reasons(inv.injection)
     outcome = decide(doc, build_po_view(db, po, inv.id) if po else None, _supplier_view(supplier),
                      tol, plant_gstin(db), clock.today(), tuple(dup_reasons + qr_reasons))
 

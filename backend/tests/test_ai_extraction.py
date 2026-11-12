@@ -54,7 +54,7 @@ def pdf() -> bytes:
 
 def test_offline_by_default_without_key(pdf):
     tokens, method = acquire_tokens(pdf, "pdf")
-    ex, mode, reason = extract("abc", tokens, method, lambda: [])
+    ex, mode, reason, _quarantined = extract("abc", tokens, method, lambda: [])
     assert mode == "offline" and reason is None and ex.extractor == "offline-regex"
 
 
@@ -116,7 +116,7 @@ def test_ai_failure_falls_back_to_offline(pdf, monkeypatch):
     monkeypatch.setattr(claude_extractor, "call_claude", boom)
     monkeypatch.setattr(get_settings(), "ai_mode", "live")
     tokens, method = acquire_tokens(pdf, "pdf")
-    ex, mode, reason = extract("deadbeef", tokens, method, lambda: [])
+    ex, mode, reason, _quarantined = extract("deadbeef", tokens, method, lambda: [])
     assert mode == "offline" and "not reachable" in reason and ex.extractor == "offline-regex"
 
 
@@ -124,5 +124,5 @@ def test_cached_mode_never_calls_the_api(pdf, monkeypatch):
     monkeypatch.setattr(claude_extractor, "call_claude", lambda *a, **k: pytest.fail("network call in cached mode"))
     monkeypatch.setattr(get_settings(), "ai_mode", "cached")
     tokens, method = acquire_tokens(pdf, "pdf")
-    ex, mode, reason = extract("nocache", tokens, method, lambda: [])
+    ex, mode, reason, _quarantined = extract("nocache", tokens, method, lambda: [])
     assert mode == "offline" and "No cached" in reason

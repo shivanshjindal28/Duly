@@ -116,6 +116,11 @@ export interface InvoiceDetail extends InvoiceSummary {
   match: MatchOut | null;
   workflow: WorkflowOut;
   einvoice: EInvoiceOut;
+  injection: {
+    found: boolean;
+    findings: { where: string; text: string; page: number | null; patterns: string[] }[];
+    ai_quarantined: { header?: Record<string, { value: string | null }> } | null;
+  } | null;
 }
 
 export interface EInvoiceOut {

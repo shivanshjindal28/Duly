@@ -9,6 +9,7 @@ import pdfplumber
 import pypdfium2 as pdfium
 from PIL import Image
 
+from app.ingestion.injection import hidden_reason
 from app.ingestion.tokens import Token
 
 RENDER_DPI = 200
@@ -16,11 +17,16 @@ MIN_TEXT_CHARS = 40  # below this a PDF is treated as a scan
 
 
 def text_layer_tokens(pdf_bytes: bytes) -> list[Token]:
+    """Visible words only: white, tiny or off-page text is dropped (it is reported by the
+    injection scan instead), so hidden text cannot change what the parser extracts."""
     tokens: list[Token] = []
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         for pno, page in enumerate(pdf.pages, start=1):
             w, h = float(page.width), float(page.height)
-            for word in page.extract_words(keep_blank_chars=False, use_text_flow=False):
+            for word in page.extract_words(keep_blank_chars=False, use_text_flow=False,
+                                           extra_attrs=["non_stroking_color", "size"]):
+                if hidden_reason(word, w, h):
+                    continue
                 box = (word["x0"] / w, word["top"] / h, word["x1"] / w, word["bottom"] / h)
                 tokens.append(Token(word["text"], pno, box, 1.0, "text"))
     return tokens

@@ -117,16 +117,24 @@ def merge(ai: dict, det: ExtractedInvoice, ids: dict[str, TextLine], model: str)
                             extractor_version=PROMPT_VERSION, suspicious_text=ai.get("suspicious_text"))
 
 
-def extract(sha256: str, tokens: list[Token], method: str, images_fn) -> tuple[ExtractedInvoice, str, str | None]:
-    """Return (extraction, ai_mode used, reason the AI was not used if it fell back)."""
+def extract(sha256: str, tokens: list[Token], method: str, images_fn, quarantine: bool = False
+            ) -> tuple[ExtractedInvoice, str, str | None, dict | None]:
+    """Return (extraction, ai_mode used, reason the AI was not used, quarantined AI output).
+
+    quarantine=True (instruction-like text found in the document): the AI still reads the
+    document so the clerk can see what it would have said, but its values are NOT used; the
+    deterministic parser's are. The same happens if the AI itself reports suspicious text."""
     det = offline_parser.parse(tokens, method)
     mode = ai_mode_setting()
     if mode == "offline":
-        return det, "offline", None
+        return det, "offline", None, None
     try:
         data, used, ids = extract_with_claude(sha256, images_fn(), group_lines(tokens), mode)
     except AIUnavailable as e:
         log.warning("AI extraction unavailable, using offline parser: %s", e)
-        return det, "offline", str(e)
+        return det, "offline", str(e), None
+    if quarantine or data.get("suspicious_text"):
+        det.suspicious_text = data.get("suspicious_text")
+        return det, used, "AI output quarantined (possible prompt injection)", data
     model = data.get("_model_served") or get_settings().anthropic_model
-    return merge(data, det, ids, model), used, None
+    return merge(data, det, ids, model), used, None, None

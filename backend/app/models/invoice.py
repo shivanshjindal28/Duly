@@ -44,6 +44,8 @@ class Invoice(Base):
     qr_status: Mapped[str] = mapped_column(String(10), default="none")
     qr_payload: Mapped[dict | None] = mapped_column(JSON)
     qr_error: Mapped[str | None] = mapped_column(String(200))
+    # Prompt-injection scan: {"found": bool, "findings": [...], "ai_quarantined": {...} | None}
+    injection: Mapped[dict | None] = mapped_column(JSON)
     supplier_gstin: Mapped[str | None] = mapped_column(String(15))
     buyer_gstin: Mapped[str | None] = mapped_column(String(15))
     place_of_supply: Mapped[str | None] = mapped_column(String(2))

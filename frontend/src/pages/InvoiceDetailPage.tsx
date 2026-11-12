@@ -9,6 +9,7 @@ import { ApprovalPanel } from "../components/invoice/ApprovalPanel";
 import { DecisionPanel } from "../components/invoice/DecisionPanel";
 import { DocumentViewer } from "../components/invoice/DocumentViewer";
 import { EInvoicePanel } from "../components/invoice/EInvoicePanel";
+import { InjectionPanel } from "../components/invoice/InjectionPanel";
 import { InvoiceAuditTrail } from "../components/invoice/InvoiceAuditTrail";
 import { useAuth } from "../auth/AuthContext";
 import { FieldsPanel } from "../components/invoice/FieldsPanel";
@@ -109,6 +110,8 @@ export function InvoiceDetailPage() {
           </button>
         </div>
       ) : null}
+
+      <InjectionPanel inv={inv} />
 
       <div className="detail-grid">
         <section className="panel detail-pane" aria-labelledby="doc-title">

@@ -80,7 +80,8 @@ class InvoiceSpec:
     force_igst: bool | None = None  # scenario override: True = IGST, False = CGST+SGST
     total_override: Decimal | None = None  # scenario override: printed total differs
     hidden_text: str | None = None  # scenario: white text (prompt injection demo)
-    signed_qr: str | None = None  # IRP-signed e-invoice QR payload (JWT), printed top-right
+    signed_qr: str | None = None  # IRP-signed e-invoice QR payload (JWT), printed bottom-left
+    metadata_subject: str | None = None  # scenario: instructions hidden in the PDF metadata
     extra_notes: list[str] = field(default_factory=list)
 
     @property
@@ -134,6 +135,8 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
     c = canvas.Canvas(buf, pagesize=A4, pageCompression=0)
     c.setTitle(f"Tax invoice {spec.invoice_number}")
     c.setAuthor(spec.supplier.name)
+    if spec.metadata_subject:
+        c.setSubject(spec.metadata_subject)
     width, height = A4
     left, right = 15 * mm, width - 15 * mm
     y = height - 18 * mm

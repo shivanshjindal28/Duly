@@ -207,6 +207,7 @@ class InvoiceDetail(InvoiceSummary):
     match: MatchOut | None
     workflow: WorkflowOut
     einvoice: EInvoiceOut
+    injection: dict | None  # D2 scan: {"found", "findings", "ai_quarantined"}
 
 
 def _workflow(db: Session, inv: Invoice, user: User) -> WorkflowOut:
@@ -299,6 +300,7 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
         match=match,
         workflow=_workflow(db, inv, user),
         einvoice=_einvoice(inv, supplier),
+        injection=inv.injection,
     )
 
 

@@ -40,6 +40,7 @@ CATALOG: dict[str, CodeInfo] = {
     "GSTIN_INVALID": CodeInfo("Supplier GSTIN invalid", _A, "XK03 tax numbers"),
     "INVOICE_NO_INVALID": CodeInfo("Invoice number format", _R, "MIRO reference"),
     "DATE_INVALID": CodeInfo("Invoice date not acceptable", _R, "MIRO invoice date"),
+    "INJECTION_ATTEMPT": CodeInfo("Hidden instructions in the document", _R, "None (Duly control)"),
     "QR_MISMATCH": CodeInfo("Printed invoice differs from signed e-invoice", _A, "J1IG e-invoice / IRP portal"),
     "QR_SIGNATURE_INVALID": CodeInfo("e-invoice QR not signed by the IRP", _A, "J1IG e-invoice / IRP portal"),
     "EINVOICE_QR_MISSING": CodeInfo("Signed e-invoice QR missing", _R, "J1IG e-invoice"),
