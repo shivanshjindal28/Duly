@@ -200,6 +200,7 @@ class InvoiceDetail(InvoiceSummary):
     bank_ifsc: str | None
     irn: str | None
     ai_mode: str | None
+    origin: str  # upload | ers (self-billed from a receipt; no document)
     lines: list[LineOut]
     document: DocumentOut | None
     fields: list[FieldOut]
@@ -286,7 +287,7 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
         supplier_gstin=inv.supplier_gstin, buyer_gstin=inv.buyer_gstin, place_of_supply=inv.place_of_supply,
         currency=inv.currency, taxable_total=inv.taxable_total, cgst=inv.cgst, sgst=inv.sgst, igst=inv.igst,
         bank_account_masked=("XXXXXX" + inv.bank_account_last4) if inv.bank_account_last4 else None,
-        bank_ifsc=inv.bank_ifsc, irn=inv.irn, ai_mode=inv.ai_mode,
+        bank_ifsc=inv.bank_ifsc, irn=inv.irn, ai_mode=inv.ai_mode, origin=inv.origin or "upload",
         lines=[LineOut.model_validate(ln, from_attributes=True) for ln in inv.lines],
         document=DocumentOut.model_validate(doc, from_attributes=True) if doc else None,
         fields=[FieldOut(field=r.field, value=r.value, confidence=r.confidence, page=r.page, bbox=r.bbox,

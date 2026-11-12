@@ -62,6 +62,7 @@ class Invoice(Base):
     decision: Mapped[Decision | None] = mapped_column(String(7))
     current_owner: Mapped[str] = mapped_column(String(80), default="AP clerk")
     ai_mode: Mapped[str | None] = mapped_column(String(10))  # live | cached | offline
+    origin: Mapped[str] = mapped_column(String(10), default="upload")  # upload | ers (self-billed from a receipt)
     processed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     # A FLAG routed for approval anyway: who, when, and the written justification.
     override_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

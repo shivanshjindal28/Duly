@@ -29,6 +29,7 @@ from app.duplicates.detector import DupView, assess
 from app.ingestion.injection import injection_reasons
 from app.ingestion.qr import einvoice_reasons
 from app.workflow.approvals import sync_after_match
+from app.workflow.ers import ORIGIN as ERS_ORIGIN, ers_reasons, is_ers
 
 # Invoices whose quantities count as "already invoiced" against a PO line.
 _CONSUMING = (InvoiceStatus.PENDING_APPROVAL, InvoiceStatus.APPROVED, InvoiceStatus.PAID)
@@ -126,8 +127,13 @@ def duplicate_check(db: Session, inv: Invoice, doc: InvoiceDoc):
     """Compare with every earlier, non-rejected invoice (so an original is never flagged as a copy)."""
     docs = {d.id: d for d in db.scalars(select(Document))}
     earlier = []
-    for o in db.scalars(select(Invoice).options(selectinload(Invoice.lines))
-                        .where(Invoice.id < inv.id, Invoice.status != InvoiceStatus.REJECTED)):
+    q = select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id < inv.id,
+                                                                    Invoice.status != InvoiceStatus.REJECTED)
+    if is_ers(inv):
+        # ERS settlements are one per receipt by construction: two trips of the same value are not
+        # copies of each other. A supplier invoice is still compared with every settlement.
+        q = q.where(Invoice.origin != ERS_ORIGIN)
+    for o in db.scalars(q):
         bank = _account(o.bank_account_enc) if o.bank_account_enc else None
         earlier.append(dup_view(o, docs.get(o.document_id), bank))
     return assess(dup_view(inv, docs.get(inv.document_id), doc.bank_account), earlier)
@@ -161,6 +167,7 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     _matches, dup_reasons = duplicate_check(db, inv, doc)
     qr_reasons = einvoice_reasons(doc, inv.qr_status, inv.qr_payload, supplier.e_invoice_applicable)
     qr_reasons += injection_reasons(inv.injection)
+    qr_reasons += ers_reasons(inv, po)
     outcome = decide(doc, build_po_view(db, po, inv.id) if po else None, _supplier_view(supplier),
                      tol, plant_gstin(db), clock.today(), tuple(dup_reasons + qr_reasons))
 

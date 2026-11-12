@@ -74,8 +74,10 @@ class S4HanaAdapterStub(ErpAdapter):
                 "SupplierInvoiceItemText": line.description[:50],
             }
             if pl is not None and po is not None and po.is_service:
-                ses = self.db.scalar(select(ServiceEntrySheet).where(ServiceEntrySheet.po_line_id == pl.id)
-                                     .order_by(ServiceEntrySheet.id.desc()))
+                q = select(ServiceEntrySheet).where(ServiceEntrySheet.po_line_id == pl.id)
+                if inv.origin == "ers":  # an ERS settlement belongs to exactly one service entry
+                    q = q.where(ServiceEntrySheet.ses_number == inv.invoice_number.removeprefix("ERS-"))
+                ses = self.db.scalar(q.order_by(ServiceEntrySheet.id.desc()))
                 if ses:
                     ref |= {"ServiceEntrySheet": ses.ses_number, "ServiceEntrySheetItem": "1"}
                 else:
@@ -149,6 +151,9 @@ class S4HanaAdapterStub(ErpAdapter):
         if inv.bank_account_enc and s:
             if decrypt_str(inv.bank_account_enc) != decrypt_str(s.bank_account_enc):
                 warnings.append("Bank account on the invoice differs from the vendor master; SAP pays the master account only.")
+        if inv.origin == "ers":
+            warnings.append("Evaluated receipt settlement: in SAP this document is created by MRRL from the receipt "
+                            "(ERS indicator on the vendor and PO item); the payload shows the equivalent supplier invoice.")
         if org and inv.buyer_gstin and inv.buyer_gstin != org.gstin:
             warnings.append("Buyer GSTIN on the invoice is not Plant X's GSTIN.")
         return ErpPosting(

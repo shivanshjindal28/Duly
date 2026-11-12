@@ -107,6 +107,8 @@ export interface InvoiceDetail extends InvoiceSummary {
   bank_ifsc: string | null;
   irn: string | null;
   ai_mode: string | null;
+  /** upload, or ers: self-billed by Duly from a goods receipt / service entry (no document). */
+  origin: "upload" | "ers";
   lines: InvoiceLine[];
   document: { original_filename: string; mime_type: string; pages: number; sha256: string; size_bytes: number } | null;
   fields: ExtractedFieldOut[];

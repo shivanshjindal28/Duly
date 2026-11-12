@@ -21,6 +21,7 @@ interface OpenPO {
   supplier_name: string;
   po_date: string;
   is_service: boolean;
+  ers: boolean;
   lines: POLine[];
   receipts: { number: string; kind: string; posted_at: string }[];
 }
@@ -74,10 +75,23 @@ function POCard({ po }: { po: OpenPO }) {
             {po.supplier_name} · ordered {fmtDate(po.po_date)}
           </p>
         </div>
-        <span className="chip chip-neutral">
-          <Icon size={13} aria-hidden="true" /> {po.is_service ? "Services (ML81N)" : "Goods (MIGO 101)"}
+        <span className="po-card-chips">
+          {po.ers ? (
+            <span className="chip chip-info" title="Evaluated receipt settlement: your posting is the bill">
+              ERS: settled from receipt
+            </span>
+          ) : null}
+          <span className="chip chip-neutral">
+            <Icon size={13} aria-hidden="true" /> {po.is_service ? "Services (ML81N)" : "Goods (MIGO 101)"}
+          </span>
         </span>
       </header>
+      {po.ers ? (
+        <p className="muted small po-ers-note">
+          No supplier invoice on this PO: when you post, Duly settles the receipt at the PO price and it goes straight
+          to approval and payment. Post only what was actually delivered.
+        </p>
+      ) : null}
       <table className="table po-lines">
         <thead>
           <tr>

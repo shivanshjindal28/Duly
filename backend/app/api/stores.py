@@ -46,6 +46,7 @@ class OpenPOOut(BaseModel):
     supplier_name: str
     po_date: date
     is_service: bool
+    ers: bool
     lines: list[POLineOut]
     receipts: list[ReceiptOut]
 
@@ -73,9 +74,10 @@ class PostingOut(BaseModel):
     rechecked: int
     released: int
     message: str
+    ers_settled: bool = False
 
 
-def _posting(number: str, kind: str, results: list[Rematch]) -> PostingOut:
+def _posting(number: str, kind: str, results: list[Rematch], ers_settled: bool = False) -> PostingOut:
     released = sum(r.released for r in results)
     label = "GR" if kind == "GR" else "service entry"
     if not results:
@@ -83,7 +85,10 @@ def _posting(number: str, kind: str, results: list[Rematch]) -> PostingOut:
     else:
         msg = (f"{label} {number} posted. Duly re-checked {len(results)} waiting invoice"
                f"{'s' if len(results) > 1 else ''}; {released} released from block.")
-    return PostingOut(number=number, kind=kind, rechecked=len(results), released=released, message=msg)
+    if ers_settled:
+        msg += " ERS: Duly settled this receipt at the PO price; the supplier does not send an invoice."
+    return PostingOut(number=number, kind=kind, rechecked=len(results), released=released, message=msg,
+                      ers_settled=ers_settled)
 
 
 @router.get("/open-pos", response_model=list[OpenPOOut])
@@ -105,7 +110,7 @@ def open_pos(db: Session = Depends(get_db)) -> list[OpenPOOut]:
         receipts += [ReceiptOut(number=s.ses_number, kind="SES", posted_at=s.posted_at)
                      for s in db.scalars(select(ServiceEntrySheet).where(ServiceEntrySheet.po_id == po.id))]
         out.append(OpenPOOut(po_number=po.po_number, supplier_name=names[po.supplier_id], po_date=po.po_date,
-                             is_service=po.is_service, lines=lines,
+                             is_service=po.is_service, ers=po.ers, lines=lines,
                              receipts=sorted(receipts, key=lambda r: r.posted_at, reverse=True)))
     return out
 
@@ -113,18 +118,18 @@ def open_pos(db: Session = Depends(get_db)) -> list[OpenPOOut]:
 @router.post("/goods-receipts", response_model=PostingOut, status_code=status.HTTP_201_CREATED)
 def goods_receipt(body: GRIn, user: User = Depends(require_roles(Role.STORES)), db: Session = Depends(get_db)) -> PostingOut:
     try:
-        gr, results = post_goods_receipt(db, user, body.po_number, [(ln.po_line_id, ln.qty) for ln in body.lines])
+        gr, results, settled = post_goods_receipt(db, user, body.po_number, [(ln.po_line_id, ln.qty) for ln in body.lines])
     except ReceiptError as e:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
-    return _posting(gr.gr_number, "GR", results)
+    return _posting(gr.gr_number, "GR", results, settled is not None)
 
 
 @router.post("/service-entries", response_model=PostingOut, status_code=status.HTTP_201_CREATED)
 def service_entry(body: SESIn, user: User = Depends(require_roles(Role.STORES)), db: Session = Depends(get_db)) -> PostingOut:
     try:
-        ses, results = post_service_entry(db, user, body.po_number, body.po_line_id, body.value, body.description)
+        ses, results, settled = post_service_entry(db, user, body.po_number, body.po_line_id, body.value, body.description)
     except ReceiptError as e:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e
-    return _posting(ses.ses_number, "SES", results)
+    return _posting(ses.ses_number, "SES", results, settled is not None)

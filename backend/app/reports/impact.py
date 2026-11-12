@@ -140,7 +140,7 @@ def measured(db: Session) -> dict:
     on_time = [r for r in paid_msme if r.status == "on_time"]
 
     fields = db.execute(select(ExtractionResult.confidence, ExtractionResult.value)
-                        .where(ExtractionResult.source != "manual")).all()
+                        .where(ExtractionResult.source.not_in(("manual", "ers")))).all()  # ERS: not read from a document
     threshold = float(policy.get("confidence_threshold", 0.85))
     needs_review = sum(1 for c, v in fields if v is not None and c < threshold)
     corrections = db.scalar(select(func.count()).select_from(ExtractionResult).where(

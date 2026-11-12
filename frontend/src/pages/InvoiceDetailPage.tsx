@@ -141,6 +141,18 @@ export function InvoiceDetailPage() {
               selected={selected}
               onSelect={setSelected}
             />
+          ) : inv.origin === "ers" ? (
+            <div className="ers-note">
+              <p>
+                <strong>Self-billed settlement (ERS).</strong> PO {inv.po_number} is on evaluated receipt settlement:
+                the supplier sends no invoice. Duly created this payable from receipt{" "}
+                <span className="mono">{inv.invoice_number.replace(/^ERS-/, "")}</span> at the PO price and GST rate,
+                and the same rules engine checked it.
+              </p>
+              <p className="muted small">
+                Every field below comes from the PO and the receipt, so nothing needs reading or review.
+              </p>
+            </div>
           ) : (
             <p className="muted">No document.</p>
           )}
@@ -157,7 +169,8 @@ export function InvoiceDetailPage() {
               Extracted fields
             </h2>
             <span className="chip chip-neutral">
-              <Cpu size={12} aria-hidden="true" /> {AI_MODE[inv.ai_mode ?? "offline"] ?? inv.ai_mode}
+              <Cpu size={12} aria-hidden="true" />{" "}
+              {inv.origin === "ers" ? "No reading: ERS" : AI_MODE[inv.ai_mode ?? "offline"] ?? inv.ai_mode}
             </span>
           </div>
           <FieldsPanel

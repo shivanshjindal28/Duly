@@ -183,6 +183,7 @@ class POSeed:
     status: str = "open"
     created_by: str | None = None
     po_days_ago: int = 30
+    ers: bool = False
 
 
 PURCHASE_ORDERS: list[POSeed] = [
@@ -220,6 +221,9 @@ PURCHASE_ORDERS: list[POSeed] = [
     POSeed("4500001014", "V100103", "S5 bearings: INV/0042 (history) resubmitted as a photo 'INV-42'",
            [("BRG-6205", "Ball bearing 6205 2RS", "8482", "50", "NOS", "450.00", "18")], [("50", 12)],
            po_days_ago=25),
+    POSeed("4500001015", "V100105", "Freight on evaluated receipt settlement (ERS): stores' SES settles it, no invoice",
+           [("FRT-TRK-02", "Truck freight Dahej to Bhiwandi", "996511", "6", "TRIP", "22000.00", "12")],
+           [None], is_service=True, ers=True, po_days_ago=10),
     POSeed("4500000990", "V100105", "Closed PO (PO_CLOSED demo)",
            [("FRT-TNK-01", "Bulk tanker freight Dahej to Taloja", "996511", "4", "TRIP", "38000.00", "12")],
            [None], is_service=True, status="closed", po_days_ago=120),
@@ -245,6 +249,7 @@ def seed_procurement(db: Session) -> dict[str, int]:
         s = suppliers[spec.supplier_code]
         po = PurchaseOrder(po_number=spec.po_number, supplier_id=s.id, po_date=today - timedelta(days=spec.po_days_ago),
                            status=spec.status, payment_terms_days=s.payment_terms_days, is_service=spec.is_service,
+                           ers=spec.ers,
                            created_by_user_id=users[spec.created_by].id if spec.created_by else None)
         db.add(po)
         db.flush()

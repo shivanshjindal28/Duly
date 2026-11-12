@@ -54,6 +54,15 @@ passed into `decide(..., extra_reasons)` so the engine itself stays pure, and th
 | EINVOICE_VERIFIED | info | Signed QR verified and matches the printed invoice | J1IG |
 | EINVOICE_NOT_APPLICABLE | info | Supplier below the e-invoice threshold | J1IG |
 | INJECTION_ATTEMPT | flag | Hidden or instruction-like text found in the document; the AI's reading is quarantined (`ingestion/injection.py`) | None (Duly control) |
+| ERS_SETTLEMENT | info | Self-billed settlement created by Duly from a GR / SES on an ERS purchase order, at the PO price (`workflow/ers.py`) | MRRL evaluated receipt settlement |
+| ERS_PO_INVOICE | flag | A supplier invoice was uploaded against an ERS purchase order, whose receipts Duly settles itself: check it is not a second bill (if it re-bills settled trips, SES_VALUE_EXCEEDED / QTY_EXCEEDS_GR also blocks it) | Block R · MRRL / ME23N ERS indicator |
+
+**Evaluated receipt settlement (ERS).** POs flagged `ers` (seeded: 4500001015, Konkan freight) need no supplier
+invoice. When stores posts a GR or SES on one, Duly creates the payable `ERS-<receipt number>` from the receipt at the
+PO price and GST rate (CGST+SGST or IGST by state), logs every field with source `ers`, and runs it through this same
+engine and the approval route. One settlement per receipt (the number is unique); ERS settlements are not compared
+with each other for near-duplicates (two trips of the same value are not copies), but every uploaded invoice is
+compared with them.
 
 All tolerances are policy data (`backend/app/core/policy_defaults.py`, stored versioned in the `policies` table). They are assumptions, editable by admin, and every change is audited.
 

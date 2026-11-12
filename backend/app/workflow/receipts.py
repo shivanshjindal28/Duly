@@ -3,7 +3,8 @@ automatic re-match of every invoice waiting on that PO.
 
 When a GR arrives for an invoice blocked with MISSING_GR, the engine runs again (trigger
 "gr_posted:<GR number>") and, if the invoice is now clean, it is released without anyone
-touching it.
+touching it. On an ERS PO the receipt itself is settled first (workflow/ers.py): Duly
+creates the self-billed payable, so the supplier sends no invoice.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.core import audit, clock
 from app.core.enums import Decision, InvoiceStatus
 from app.models import GoodsReceipt, GRLine, Invoice, POLine, PurchaseOrder, ServiceEntrySheet, User
+from app.workflow import ers
 from app.workflow.matching import run_match
 
 # Invoices that a new receipt can change. Approved or paid invoices are final.
@@ -71,7 +73,7 @@ def rematch_waiting(db: Session, po: PurchaseOrder, trigger: str) -> list[Rematc
 
 
 def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tuple[int, Decimal]]
-                       ) -> tuple[GoodsReceipt, list[Rematch]]:
+                       ) -> tuple[GoodsReceipt, list[Rematch], Invoice | None]:
     po = _open_po(db, po_number)
     if po.is_service:
         raise ReceiptError(f"PO {po_number} is for services: post a service entry sheet instead.")
@@ -99,13 +101,14 @@ def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tupl
     audit.queue(db, "gr.posted", "goods_receipt", gr.gr_number,
                 after={"po": po.po_number, "movement_type": "101",
                        "lines": [{"po_line_id": i, "qty": q} for i, q in lines]})
+    settled = ers.settle(db, po, "GR", gr.gr_number, [(po_lines[i], q) for i, q in lines])
     results = rematch_waiting(db, po, trigger=f"gr_posted:{gr.gr_number}")
     db.commit()
-    return gr, results
+    return gr, results, settled
 
 
 def post_service_entry(db: Session, user: User, po_number: str, po_line_id: int, value: Decimal,
-                       description: str) -> tuple[ServiceEntrySheet, list[Rematch]]:
+                       description: str) -> tuple[ServiceEntrySheet, list[Rematch], Invoice | None]:
     po = _open_po(db, po_number)
     if not po.is_service:
         raise ReceiptError(f"PO {po_number} is for goods: post a goods receipt instead.")
@@ -123,6 +126,7 @@ def post_service_entry(db: Session, user: User, po_number: str, po_line_id: int,
     db.flush()
     audit.queue(db, "ses.posted", "service_entry", ses.ses_number,
                 after={"po": po.po_number, "po_line_id": pl.id, "value": value})
+    settled = ers.settle(db, po, "SES", ses.ses_number, [(pl, value)])
     results = rematch_waiting(db, po, trigger=f"ses_posted:{ses.ses_number}")
     db.commit()
-    return ses, results
+    return ses, results, settled

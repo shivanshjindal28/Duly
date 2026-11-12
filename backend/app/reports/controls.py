@@ -225,7 +225,7 @@ def build(db: Session, period_from: date, period_to: date) -> ControlsReport:
     exc = [ev(by_id[i], "approved with low-confidence fields never reviewed") for i in unreviewed]
     exc += [{"detail": f"match event #{e.id} not marked as a rules decision"} for e in ai_decided]
     reviewed = sum(1 for r in results if r.source == "manual")
-    models = Counter(f"{r.model} / {r.prompt_version}" for r in results if r.source != "manual")
+    models = Counter(f"{r.model} / {r.prompt_version}" for r in results if r.source not in ("manual", "ers"))
     controls.append(ControlResult(
         "C-09", "AI governance", "AI never decides; low-confidence AI output is checked by a person.",
         "AI only extracts and explains; the rules engine (no AI import, enforced by a test) decides; fields below "

@@ -96,6 +96,7 @@ class DemoCheck:
         self.step("S12+", "S12 clerk review logged -> matched", self._s12_review, ("S12",))
         self.step("S01+", "S01 L1 then L2 approve with MFA", self._s01_approvals, ("S01",))
         self.step("PAY", "S10/S11 approved -> payment run: MSME first, TDS", self._payment_run, ("S10", "S11"))
+        self.step("ERS", "ERS freight: stores posts a trip -> self-billed, touchless", self._ers)
         self.step("CHAT", "Chatbot offline: answer + cross-supplier refusal", self._chat)
         self.step("AI", "AI kill switch: offline and back", self._ai_switch)
         self.step("CHAIN", "Audit chain verifies; tamper demo detected and restored", self._chain)
@@ -197,6 +198,18 @@ class DemoCheck:
         d = self.detail("S04")
         assert d["decision"] == "APPROVE" and d["status"] == "pending_approval", (d["decision"], d["status"])
         return f"GR {r.json().get('number', '')} -> APPROVE, routed to approval"
+
+    def _ers(self) -> str:
+        h = self.login(STORES)
+        po = next(p for p in self.client.get("/api/stores/open-pos").json() if p["po_number"] == "4500001015")
+        assert po["ers"], po
+        r = self.client.post("/api/stores/service-entries", headers=h, json={
+            "po_number": "4500001015", "po_line_id": po["lines"][0]["id"], "value": "22000.00"})
+        assert r.status_code == 201 and r.json()["ers_settled"], r.text[:200]
+        inv = self.db.scalar(select(Invoice).where(Invoice.invoice_number == f"ERS-{r.json()['number']}"))
+        assert inv is not None and inv.origin == "ers", "no ERS settlement created"
+        assert inv.total == D("24640.00") and inv.status == "approved", (inv.total, inv.status)
+        return f"SES {r.json()['number']} -> {inv.invoice_number} Rs {inv.total} (incl. IGST 12%), approved by P-01"
 
     def _s05_compare(self) -> str:
         self.login(CLERK)

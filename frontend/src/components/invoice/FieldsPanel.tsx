@@ -22,6 +22,7 @@ const SOURCE_LABEL: Record<string, string> = {
   qr: "Signed QR",
   rule: "Rule",
   manual: "Human reviewed",
+  ers: "PO + receipt",
   none: "Not found",
 };
 

@@ -68,7 +68,7 @@ def trust(db: Session = Depends(get_db)) -> dict:
     matches = db.scalars(select(AuditEvent.after).where(AuditEvent.action == "invoice.matched")).all()
     fields = db.execute(select(ExtractionResult.source, ExtractionResult.confidence, ExtractionResult.value,
                                ExtractionResult.model, ExtractionResult.prompt_version)).all()
-    extracted = [f for f in fields if f.source != "manual"]
+    extracted = [f for f in fields if f.source not in ("manual", "ers")]  # ERS settlements are not read from a document
     reviews = [f for f in fields if f.source == "manual"]
     corrected = db.scalar(select(func.count()).select_from(ExtractionResult).where(
         ExtractionResult.source == "manual", ExtractionResult.value != ExtractionResult.previous_value)) or 0

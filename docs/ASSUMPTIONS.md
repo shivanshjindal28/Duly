@@ -83,9 +83,14 @@ Council notifications: verify before any real use.
 
 ## Data and demo assumptions
 - Volume for the impact model: 3,000 invoices a month (editable on the Impact page; see docs/IMPACT.md).
-- The seeded history (about 250 invoices over 90 days, 68 POs) is synthetic, produced by replaying business
+- The seeded history (about 250 invoices over 90 days, 69 POs in total) is synthetic, produced by replaying business
   events through Duly's own engine and workflow with the clock set to past dates.
 - e-invoice QRs are signed by a local **Sandbox IRP** key. Production would trust the real IRP public key
   (`IRP_PUBLIC_KEY_PATH`).
+- **Evaluated receipt settlement (ERS)** is set per PO (as SAP sets the ERS indicator on the PO item); the seeded
+  ERS PO is 4500001015 (Konkan, truck freight, 6 trips at ₹22,000, GST 12%). Other Konkan POs are still invoiced on
+  paper. GST: in India a registered supplier still issues the tax invoice that gives Plant X its input tax credit;
+  the ERS settlement drives the payment, and the supplier's tax invoice would be linked to it for GST returns (not
+  built). Verify the GST treatment of freight (GTA forward charge vs reverse charge) with the tax team.
 - SAP configuration values in the posting preview (company code PX01, plant PX10, tax codes, withholding tax
   types) are fictional.

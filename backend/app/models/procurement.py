@@ -23,6 +23,9 @@ class PurchaseOrder(Base):
     status: Mapped[str] = mapped_column(String(10), default="open")  # open | closed
     payment_terms_days: Mapped[int] = mapped_column(Integer, default=60)
     is_service: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Evaluated receipt settlement (SAP ERS / MRRL): Duly settles from the GR / SES at PO price;
+    # the supplier sends no invoice.
+    ers: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = created_at_col()
 
     lines: Mapped[list[POLine]] = relationship(back_populates="po", order_by="POLine.line_no")
