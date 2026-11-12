@@ -1,0 +1,40 @@
+/* Supplier portal: simpler, friendlier, larger targets than the AP console. */
+.portal { max-width: 1000px; font-size: 15px; }
+.portal.lang-hi { font-family: "IBM Plex Sans Devanagari", var(--font-sans); }
+.portal-sub { font-size: 13px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.portal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.portal-actions .btn { height: 40px; padding: 0 16px; }
+.portal-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi-alert { border-color: #F3BCD6; background: var(--color-block-bg); }
+.kpi-alert .kpi-value { color: var(--color-block-text); }
+
+.pinv-list { display: flex; flex-direction: column; gap: 14px; }
+.pinv { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.pinv-action { border-left: 4px solid var(--color-magenta); }
+.pinv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.pinv-head h2 { font-size: 17px; }
+.pinv-head p { font-size: 13px; }
+.pinv-amount { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.pinv-amount .num { font-size: 19px; font-weight: 600; }
+.pinv-facts { display: flex; flex-wrap: wrap; gap: 28px; margin: 0; }
+.pinv-facts > div { display: flex; flex-direction: column; gap: 2px; }
+.pinv-facts dt { font-size: 12px; color: var(--color-text-secondary); display: flex; gap: 4px; align-items: center; }
+.pinv-facts dd { margin: 0; font-weight: 500; }
+.countdown { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--color-approve-text); }
+.countdown.is-soon { color: var(--color-flag-text); }
+.countdown.is-over { color: var(--color-block-text); }
+
+.todo { border-radius: var(--radius-sm); padding: 10px 14px; }
+.todo h3 { display: flex; align-items: center; gap: 6px; font-size: 14px; margin-bottom: 4px; }
+.todo ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.todo-you { background: var(--color-block-bg); color: var(--color-block-text); border: 1px solid #F3BCD6; }
+.todo-them { background: var(--color-primary-soft); color: var(--color-primary-hover); border: 1px solid #C6D8F0; }
+.todo-none { display: flex; gap: 6px; align-items: center; color: var(--color-approve-text); font-size: 14px; }
+.pinv-link { align-self: flex-start; font-size: 13px; }
+.portal-help { font-size: 13px; }
+
+@media (max-width: 800px) {
+  .portal-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pinv-head { flex-direction: column; }
+  .pinv-amount { align-items: flex-start; }
+}

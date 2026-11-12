@@ -7,6 +7,9 @@ import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-sans-devanagari/400.css";
+import "@fontsource/ibm-plex-sans-devanagari/600.css";
+import "./i18n";
 import { applyTokens } from "./theme/tokens";
 import "./theme/global.css";
 import "./theme/common.css";
@@ -16,6 +19,7 @@ import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { AuditPage } from "./pages/AuditPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QueuePage } from "./pages/QueuePage";
+import { SupplierPortalPage } from "./pages/SupplierPortalPage";
 import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
@@ -67,6 +71,7 @@ const router = createBrowserRouter([
               { path: "/audit", element: <AuditPage /> },
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/queue", element: <QueuePage /> },
+              { path: "/portal", element: <SupplierPortalPage /> },
             ],
           },
         ],

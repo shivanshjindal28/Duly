@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 21:45 IST by Shivansh (Claude Code)
+Last updated: 2026-11-12 22:30 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,7 +12,7 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 120 tests (about 15 s; OCR model loads once)
+cd backend && python -m pytest    # 122 tests (about 15 s; OCR model loads once)
 cd frontend && npm run typecheck
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
@@ -20,7 +20,7 @@ cd frontend && npm run typecheck
 - After any model change, re-run `python scripts/seed.py --reset` (no migrations yet).
 
 ## Done
-- **Phase 0 complete.**
+- **Phase 0 and Phase 1 complete** (core expectations 1 to 5 working end to end).
 - Step 1: repo layout, `.gitignore`, `.gitattributes` (LF), `.env.example`, README, `docs/MASTER_PROMPT.md`, PROGRESS.md, `run.py`. Slides in `docs/brief/` (7 images).
 - Step 2 backend: FastAPI app, `/api/health`, SQLAlchemy models for every core entity (spec section 8), AES-GCM field encryption (bank accounts, TOTP secrets), Argon2id hashing, GSTIN check digit + synthetic generator, versioned default policy v1 (`app/core/policy_defaults.py`), `scripts/seed.py --reset` (Plant X, 6 suppliers, 14 users across all 6 roles, approvers L1/L2/L3 with MFA secrets), security headers.
 - Step 2 frontend: Vite + React 18 + TS, design tokens (`frontend/src/theme/tokens.ts`, AA-checked), app shell (navy sidebar, top bar with entity, AI mode and role badges, skip link), login page, Duly 5-stop rail component, per-role Overview page (server-reported permissions + system status).
@@ -33,6 +33,7 @@ cd frontend && npm run typecheck
 - **Phase 1 step 9**: approval workflow (`workflow/approvals.py`). DoA from policy data: clean match <= Rs 50,000 approved by policy P-01 (touchless), <= Rs 10 lakh L1, <= Rs 1 crore L1 then L2, above L1/L2/L3. Route opens automatically when a match is APPROVE (hook in `run_match`), closes when a re-match turns FLAG/BLOCK. Clerk override of a FLAG with >= 15-char justification (never touchless, always >= 2 approvers); BLOCK cannot be overridden. SoD: no approving an invoice you processed, a PO you created, or two steps of one invoice; clerks get an explicit SoD refusal. MFA step-up (TOTP, pyotp) above Rs 10 lakh; demo-mode QR on the approver's Overview (`GET /api/auth/mfa-setup`, own account only). Approve / reject (reason) / send back (comment) / ask supplier. SLA 48 h per step; overdue steps escalate so the next level can act (`escalate_overdue`, evaluated lazily). Time-boxed delegation. Demo clock with persisted offset (`core/clock.py`, admin `/admin/demo`, `POST /api/admin/clock/advance|reset`, DEMO_MODE only). UI: approval timeline + actions in the invoice decision pane, `/approvals` queue (actionable first, SoD conflicts listed with reason) + delegation card. Verified in the browser: Rohan sees QR, queue shows SoD on freight PO, approves Rs 15 lakh with a real TOTP code -> "Awaiting L2", then sees the SoD note.
 - **Phase 1 step 10**: tamper-evident audit trail (`core/audit.py`). `hash = SHA256(prev_hash + canonical_json(event))`, head (id:hash) signed with an Ed25519 key in `backend/data/keys/audit_ed25519.pem`. Events are queued on the request session (`audit.queue`) and written only after that transaction commits (SQLAlchemy after_commit hook, process lock) so rolled-back actions leave no entry. Recorded: logins (ok/failed/locked), logout, upload+extraction summary, every match (actor `system`, `ai_decided: false`), field reviews (before/after, reason), routing, approvals (level, MFA, delegation), rejections, send-backs, info requests, overrides, escalations, SoD refusals (`security.sod_refused`), GR/SES postings, demo clock changes, chain verifications, seeding. `GET /api/audit/verify` pinpoints the first broken event (edited content or broken link) and detects truncation via the signed head. `scripts/tamper_demo.py [--restore]` and admin "Run tamper demo / Restore" edit a row with raw SQL. UI: `/audit` (auditor, admin) with Verify, chain-of-blocks view (broken block highlighted), filterable event table; invoice detail shows that invoice's audit trail for staff. Verified live: tamper -> "Chain broken at event #24" -> restore -> verified.
 - **Phase 1 step 11**: exceptions dashboard + work queue (`api/dashboard.py`, all numbers computed live). KPIs: in queue, value on hold, touchless rate (approved by P-01 / all approved), avg cycle time (upload -> final approval), MSME due <= 7 days (+ overdue), duplicates prevented (counts DUPLICATE/POSSIBLE_DUPLICATE reasons; 0 until B1). Open exceptions by type (Recharts bar, block vs flag colour + legend), by age buckets, by supplier (value at risk, oldest), MSME due-date heatmap (-7..+30 days, overdue highlighted). Every chart/tile drills down to `/queue?...`. Queue: URL filters (status, reason, supplier, age, MSME due), sortable columns, saved views (localStorage), CSV export, keyboard J/K/Enter, A approve (approvers, no-MFA invoices), R/F open. Contract and statutory MSME due dates now set at acceptance (GR/SES) in `run_match` via `payments/msme.py`. A test proves each dashboard count equals its drill-down queue length.
+- **Phase 1 step 12**: supplier portal (`/portal`, `GET /api/portal`, supplier only, own data). Header with MSME status, Udyam no., terms (MSME: paid within N days of acceptance), masked bank account; tiles (open, need your action, next expected payment, paid so far); a card per invoice with Duly rail, supplier-friendly stage, expected payment date, MSME statutory due date + countdown, "What you need to do" (e.g. exact credit-note amount = excess qty x PO price x (1 + GST)) and "What Plant X is doing" (e.g. waiting for GR, re-checked automatically); payment history table (UTRs appear with the Phase 3 payment run). English / Hindi via i18next with reviewed JSON files (`frontend/src/i18n/en.json`, `hi.json`), IBM Plex Sans Devanagari bundled for offline. Suppliers' nav: My invoices + Upload (generic Invoices list now staff only). Verified in the browser in both languages.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -48,7 +49,8 @@ cd frontend && npm run typecheck
 2. Phase 1 step 11: exceptions dashboard (type, supplier, age, drill-down) + work queue with keyboard shortcuts.
 2. Phase 1 step 12: supplier portal (invoice list with Duly rail, owner, plain-language block reasons, MSME countdown).
 2. Phase 2 step 13: Claude extraction with structured output, per-field confidence and boxes, response cache by SHA-256, AI mode badge (offline parser stays the fallback).
-3. Phase 2 step 14: duplicate detection (5 signals) + side-by-side compare.
+2. Phase 2 step 14: duplicate detection (5 signals) + side-by-side compare.
+3. Phase 2 step 15: "Where is my payment?" chatbot with scoped tools, guardrails, offline intent fallback, English/Hindi (the portal footer currently says "coming soon"; update it when done).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -70,6 +72,7 @@ cd frontend && npm run typecheck
 - Extraction results are append-only: a human correction adds a new row with source=manual; the latest row per field wins.
 - Bank account numbers are masked in `extraction_results`; the full number is only stored encrypted on the invoice.
 - HSN/SAC rate table (`validation/hsn.py`) is a labelled assumption; ambiguous codes list every allowed rate.
+- Supplier to-dos are message codes + params from the server, rendered from i18n files; no internal data (approver names, SAP refs) is sent to suppliers. Language choice is a per-browser preference (localStorage).
 - MSME clock starts at acceptance (GR/SES date) whatever the match outcome; traders excluded; no written agreement = 15 days.
 - Dashboard data is sparse until Phase 4 seeds ~250 historical invoices; charts and KPIs are already live queries, not placeholders.
 - Recharts 3.10.1 (React 18 compatible, 0 audit findings).
@@ -104,3 +107,5 @@ Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they a
 - S1 Rs 15 lakh catalyst: APPROVE -> L1 then L2 with MFA works end to end (tested in API tests and browser).
 - S6, S9 decisions are covered by engine tests; generated demo PDFs come in Phase 4.
 - Separate logins for all 6 roles, cross-tenant denial: works.
+- Supplier can see where each invoice is, why, what to do and when it will be paid (en/hi): works.
+- Dev DB invoices uploaded before step 11 have no MSME due date; run `python scripts/seed.py --reset` and re-upload to see countdowns.

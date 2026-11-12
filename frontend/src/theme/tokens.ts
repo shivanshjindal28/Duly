@@ -37,7 +37,7 @@ export const tokens = {
     focus: "#0A7189",
   },
   font: {
-    sans: '"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif',
+    sans: '"IBM Plex Sans", "IBM Plex Sans Devanagari", system-ui, -apple-system, "Segoe UI", sans-serif',
     mono: '"IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, monospace',
   },
   radius: { sm: "3px", md: "6px" },

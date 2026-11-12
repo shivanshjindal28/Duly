@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Stamp,
   Upload,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { api, type Health } from "../api/client";
@@ -33,13 +34,14 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "Workspace",
     items: [
       { to: "/", label: "Overview", icon: LayoutDashboard, roles: "all" },
+      { to: "/portal", label: "My invoices", icon: Wallet, roles: ["supplier"] },
       { to: "/dashboard", label: "Dashboard", icon: BarChart3, roles: ["clerk", "approver", "auditor", "admin"] },
       { to: "/queue", label: "Work queue", icon: ListChecks, roles: ["clerk", "approver", "auditor", "admin"] },
       {
         to: "/invoices",
         label: "Invoices",
         icon: FileText,
-        roles: ["supplier", "clerk", "approver", "auditor", "admin"],
+        roles: ["clerk", "approver", "auditor", "admin"],
       },
       { to: "/upload", label: "Upload invoice", icon: Upload, roles: ["supplier", "clerk"] },
       { to: "/receiving", label: "Receiving", icon: PackageCheck, roles: ["stores"] },
