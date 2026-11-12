@@ -1,0 +1,311 @@
+{
+  "generated_on": "2026-11-12",
+  "generator": "scripts/generate_invoices.py",
+  "note": "Synthetic documents for the Duly demo; Plant X and every party are fictional. Upload each file as the listed supplier (or as an AP clerk on their behalf). Expected results assume a fresh `python scripts/seed.py --reset` (history included) and the scenarios uploaded in this order.",
+  "sandbox_irp_public_key": "keys/sandbox_irp_public.pem",
+  "scenarios": [
+    {
+      "id": "S01",
+      "title": "Clean catalyst invoice, signed e-invoice QR, full GR",
+      "file": "invoices/S01_catalyst_clean_einvoice.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "billing@sahyadri-catalysts.example",
+      "supplier": "Sahyadri Catalysts & Additives Ltd",
+      "invoice_number": "SCA/26-27/0912",
+      "invoice_date": "2026-11-10",
+      "po_number": "4500001001",
+      "expected": {
+        "decision": "APPROVE",
+        "status": "pending_approval",
+        "reason_codes": [
+          "EINVOICE_VERIFIED"
+        ],
+        "total": "1504500.00",
+        "approval_levels": [
+          1,
+          2
+        ],
+        "mfa_required": true
+      },
+      "story": "Sahyadri uploads its e-invoice. Duly reads it, verifies the IRP-signed QR, matches PO and GR: APPROVE. Rs 15 lakh needs L1 then L2, both with MFA.",
+      "next_step": "Log in as Rohan (L1) then Kavita (L2); each approval asks for an authenticator code.",
+      "bytes": 57284
+    },
+    {
+      "id": "S02",
+      "title": "Additive billed 3.2% above the PO price",
+      "file": "invoices/S02_additive_price_variance.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "billing@sahyadri-catalysts.example",
+      "supplier": "Sahyadri Catalysts & Additives Ltd",
+      "invoice_number": "SCA/26-27/0913",
+      "invoice_date": "2026-11-10",
+      "po_number": "4500001002",
+      "expected": {
+        "decision": "FLAG",
+        "status": "flagged",
+        "reason_codes": [
+          "PRICE_VARIANCE",
+          "EINVOICE_VERIFIED"
+        ],
+        "variance_amount": "39680.00"
+      },
+      "story": "Unit price Rs 639.84 vs PO Rs 620.00: FLAG with the exact rupee difference.",
+      "next_step": "Clerk can route it with a written justification (override) or ask for a credit note.",
+      "bytes": 57133
+    },
+    {
+      "id": "S03",
+      "title": "Bearings: 100 billed, 80 received",
+      "file": "invoices/S03_bearings_qty_exceeds_gr.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "invoices@kesar-spares.example",
+      "supplier": "Kesar Engineering Spares",
+      "invoice_number": "INV/0071",
+      "invoice_date": "2026-11-11",
+      "po_number": "4500001003",
+      "expected": {
+        "decision": "BLOCK",
+        "status": "blocked",
+        "reason_codes": [
+          "QTY_EXCEEDS_GR"
+        ],
+        "received": "80",
+        "invoiced": "100"
+      },
+      "story": "Kesar bills 100 bearings; stores received 80. BLOCK with the cumulative received vs invoiced view.",
+      "next_step": "Supplier portal shows the exact credit note needed for the 20 bearings not received.",
+      "bytes": 5954
+    },
+    {
+      "id": "S04",
+      "title": "Packaging invoice before the goods arrive",
+      "file": "invoices/S04_packaging_missing_gr.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "accounts@navrang-pack.example",
+      "supplier": "Navrang Packaging Works",
+      "invoice_number": "NPW-311",
+      "invoice_date": "2026-11-11",
+      "po_number": "4500001004",
+      "expected": {
+        "decision": "BLOCK",
+        "status": "blocked",
+        "reason_codes": [
+          "MISSING_GR"
+        ],
+        "after_gr_decision": "APPROVE"
+      },
+      "story": "Navrang invoices 20,000 FFS bags before delivery: BLOCK MISSING_GR. Stores posts the GR live and Duly re-checks automatically: released to approval.",
+      "next_step": "Log in as Imran (stores), post GR for PO 4500001004 (20,000 bags): invoice becomes APPROVE.",
+      "bytes": 5361
+    },
+    {
+      "id": "S05",
+      "title": "Bearings invoice resubmitted as a phone photo, number INV-42",
+      "file": "invoices/S05_bearings_duplicate_photo.jpg",
+      "kind": "photo",
+      "mime": "image/jpeg",
+      "upload_as": "invoices@kesar-spares.example",
+      "supplier": "Kesar Engineering Spares",
+      "invoice_number": "INV-42",
+      "invoice_date": "2026-11-03",
+      "po_number": "4500001014",
+      "expected": {
+        "decision": "BLOCK",
+        "status": "blocked",
+        "reason_codes": [
+          "DUPLICATE"
+        ],
+        "duplicate_of": "INV/0042"
+      },
+      "story": "INV/0042 is already in Duly (approved, awaiting payment). The same invoice comes back as a WhatsApp photo numbered INV-42: BLOCK DUPLICATE with side-by-side evidence.",
+      "next_step": "Open 'Compare' to see both documents and the matching signals.",
+      "bytes": 226381
+    },
+    {
+      "id": "S06",
+      "title": "Pump impellers with a different bank account",
+      "file": "invoices/S06_impellers_bank_mismatch.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "invoices@kesar-spares.example",
+      "supplier": "Kesar Engineering Spares",
+      "invoice_number": "INV/0072",
+      "invoice_date": "2026-11-10",
+      "po_number": "4500001009",
+      "expected": {
+        "decision": "BLOCK",
+        "status": "blocked",
+        "reason_codes": [
+          "BANK_MISMATCH"
+        ]
+      },
+      "story": "The invoice asks for payment to a new account. BLOCK BANK_MISMATCH and a security alert; the only way to change bank details is the maker-checker workflow with a call-back and cooling period.",
+      "next_step": "Show the security alert in the audit trail and the Bank changes page.",
+      "bytes": 5362
+    },
+    {
+      "id": "S07",
+      "title": "Pallets invoice with hidden white text for the AI",
+      "file": "invoices/S07_pallets_prompt_injection.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "accounts@navrang-pack.example",
+      "supplier": "Navrang Packaging Works",
+      "invoice_number": "NPW-312",
+      "invoice_date": "2026-11-10",
+      "po_number": "4500001010",
+      "expected": {
+        "decision": "FLAG",
+        "status": "flagged",
+        "reason_codes": [
+          "INJECTION_ATTEMPT"
+        ]
+      },
+      "story": "White 4-pt text tells the AI to approve and change the bank account. Duly finds it before any AI reads the page: FLAG INJECTION_ATTEMPT, AI output quarantined.",
+      "next_step": "Open the injection panel: hidden text verbatim, where it is, what it tries to do.",
+      "bytes": 5548
+    },
+    {
+      "id": "S08",
+      "title": "Catalyst PDF with an edited total, original signed QR",
+      "file": "invoices/S08_catalyst_edited_total_qr_mismatch.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "billing@sahyadri-catalysts.example",
+      "supplier": "Sahyadri Catalysts & Additives Ltd",
+      "invoice_number": "SCA/26-27/0950",
+      "invoice_date": "2026-11-09",
+      "po_number": "4500001011",
+      "expected": {
+        "decision": "BLOCK",
+        "status": "blocked",
+        "reason_codes": [
+          "QR_MISMATCH"
+        ],
+        "printed_total": "519500.00",
+        "signed_total": "501500.00"
+      },
+      "story": "Someone changed the printed total to Rs 5,19,500 after the IRP signed Rs 5,01,500. Trust the signed QR, not the pixels: BLOCK QR_MISMATCH.",
+      "next_step": "Open the e-invoice panel: printed vs signed values.",
+      "bytes": 56998
+    },
+    {
+      "id": "S09A",
+      "title": "Intra-state seals invoice charging IGST",
+      "file": "invoices/S09a_seals_wrong_tax_type.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "invoices@kesar-spares.example",
+      "supplier": "Kesar Engineering Spares",
+      "invoice_number": "INV/0073",
+      "invoice_date": "2026-11-11",
+      "po_number": "4500001012",
+      "expected": {
+        "decision": "FLAG",
+        "status": "flagged",
+        "reason_codes": [
+          "TAX_MISMATCH"
+        ]
+      },
+      "story": "Gujarat supplier to a Gujarat plant must charge CGST+SGST, not IGST: FLAG TAX_MISMATCH.",
+      "next_step": "Ask the supplier for a corrected invoice.",
+      "bytes": 5345
+    },
+    {
+      "id": "S09B",
+      "title": "Calibration invoice with an invalid GSTIN check digit",
+      "file": "invoices/S09b_calibration_invalid_gstin.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "lab@dakshin-cal.example",
+      "supplier": "Dakshin Calibration Labs",
+      "invoice_number": "DCL-2026-118",
+      "invoice_date": "2026-11-11",
+      "po_number": "4500001008",
+      "expected": {
+        "decision": "BLOCK",
+        "status": "blocked",
+        "reason_codes": [
+          "GSTIN_INVALID"
+        ]
+      },
+      "story": "The printed supplier GSTIN fails the check-digit test: BLOCK GSTIN_INVALID.",
+      "next_step": "Supplier must reissue with the correct GSTIN.",
+      "bytes": 5365
+    },
+    {
+      "id": "S10",
+      "title": "MSME jumbo bags on day 41 of 45",
+      "file": "invoices/S10_msme_jumbo_bags_scan.pdf",
+      "kind": "scan",
+      "mime": "application/pdf",
+      "upload_as": "accounts@navrang-pack.example",
+      "supplier": "Navrang Packaging Works",
+      "invoice_number": "NPW-305",
+      "invoice_date": "2026-10-03",
+      "po_number": "4500001005",
+      "expected": {
+        "decision": "APPROVE",
+        "status": "pending_approval",
+        "reason_codes": [],
+        "msme_days_left": 4,
+        "approval_levels": [
+          1
+        ]
+      },
+      "story": "Navrang (micro enterprise) delivered 41 days ago. After L1 approval it goes to the top of the payment run with a countdown; the MSME guardian shows the interest and tax exposure if it slips.",
+      "next_step": "Rohan approves (L1), then open Payments: NPW-305 is first, 4 days left.",
+      "bytes": 167467
+    },
+    {
+      "id": "S11",
+      "title": "Turnaround maintenance services with SES",
+      "file": "invoices/S11_services_with_ses_tds.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "billing@tapti-services.example",
+      "supplier": "Tapti Turnaround Services",
+      "invoice_number": "TTS/TA/2026/017",
+      "invoice_date": "2026-11-10",
+      "po_number": "4500001006",
+      "expected": {
+        "decision": "APPROVE",
+        "status": "pending_approval",
+        "reason_codes": [],
+        "tds": "8400.00",
+        "approval_levels": [
+          1
+        ]
+      },
+      "story": "No goods receipt for services: the service entry sheet is the receipt. APPROVE, and the payment run withholds contractor TDS (2% = Rs 8,400).",
+      "next_step": "After L1 approval the payment run shows TDS Rs 8,400.",
+      "bytes": 5390
+    },
+    {
+      "id": "S12",
+      "title": "Blurry, tilted phone photo",
+      "file": "invoices/S12_ffs_bags_blurry_photo.jpg",
+      "kind": "blurry",
+      "mime": "image/jpeg",
+      "upload_as": "accounts@navrang-pack.example",
+      "supplier": "Navrang Packaging Works",
+      "invoice_number": "NPW-313",
+      "invoice_date": "2026-11-11",
+      "po_number": "4500001013",
+      "expected": {
+        "decision": "",
+        "status": "needs_review",
+        "reason_codes": [],
+        "after_review_decision": "APPROVE"
+      },
+      "story": "Low OCR confidence: Duly does not guess. Uncertain fields are highlighted for the clerk; every correction is logged with before/after, reviewer and reason.",
+      "next_step": "Log in as Asha (clerk), review the highlighted fields; after review the invoice is matched.",
+      "bytes": 43187
+    }
+  ]
+}

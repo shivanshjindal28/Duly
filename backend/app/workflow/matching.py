@@ -8,9 +8,10 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import timedelta
 from decimal import Decimal
+from functools import lru_cache
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core import audit, clock
 from app.core.crypto import decrypt_str
@@ -115,12 +116,19 @@ def dup_view(inv: Invoice, doc_row: Document | None, bank_account: str | None) -
     )
 
 
+@lru_cache(maxsize=8192)
+def _account(enc: str) -> str:
+    """Decrypted bank account per ciphertext (each stored ciphertext is immutable)."""
+    return decrypt_str(enc)
+
+
 def duplicate_check(db: Session, inv: Invoice, doc: InvoiceDoc):
     """Compare with every earlier, non-rejected invoice (so an original is never flagged as a copy)."""
     docs = {d.id: d for d in db.scalars(select(Document))}
     earlier = []
-    for o in db.scalars(select(Invoice).where(Invoice.id < inv.id, Invoice.status != InvoiceStatus.REJECTED)):
-        bank = decrypt_str(o.bank_account_enc) if o.bank_account_enc else None
+    for o in db.scalars(select(Invoice).options(selectinload(Invoice.lines))
+                        .where(Invoice.id < inv.id, Invoice.status != InvoiceStatus.REJECTED)):
+        bank = _account(o.bank_account_enc) if o.bank_account_enc else None
         earlier.append(dup_view(o, docs.get(o.document_id), bank))
     return assess(dup_view(inv, docs.get(inv.document_id), doc.bank_account), earlier)
 

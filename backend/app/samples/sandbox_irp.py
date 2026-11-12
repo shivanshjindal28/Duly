@@ -13,16 +13,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, date, datetime
+from datetime import date
 
 import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from app.core.config import KEYS_DIR
+from app.core import clock
+from app.core.config import KEYS_DIR, REPO_ROOT
 
 PRIVATE = "sandbox_irp_private.pem"
 PUBLIC = "sandbox_irp_public.pem"
+# Public key of the sandbox IRP that signed the git-tracked demo invoices (written by
+# scripts/generate_invoices.py; public half only).
+DEMO_PUBLIC_KEY = REPO_ROOT / "demo" / "keys" / PUBLIC
 ISSUER = "Sandbox IRP (Duly demo)"
 
 
@@ -58,6 +62,6 @@ def sign(seller_gstin: str, buyer_gstin: str, doc_no: str, doc_date: date, total
     data = {
         "SellerGstin": seller_gstin, "BuyerGstin": buyer_gstin, "DocNo": doc_no, "DocTyp": "INV",
         "DocDt": doc_date.strftime("%d/%m/%Y"), "TotInvVal": float(total), "ItemCnt": item_count,
-        "MainHsnCode": main_hsn, "Irn": irn_value, "IrnDt": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
+        "MainHsnCode": main_hsn, "Irn": irn_value, "IrnDt": clock.now().astimezone(clock.IST).strftime("%Y-%m-%d %H:%M:%S"),
     }
     return jwt.encode({"data": json.dumps(data, separators=(",", ":")), "iss": ISSUER}, _keypair(), algorithm="RS256")

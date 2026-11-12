@@ -18,15 +18,17 @@ from app.seed import reset_and_seed, seed  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(description="Seed the Duly database with synthetic data.")
     parser.add_argument("--reset", action="store_true", help="drop all tables first")
+    parser.add_argument("--no-history", action="store_true",
+                        help="skip the ~250 historical invoices (faster; dashboards stay nearly empty)")
     args = parser.parse_args()
 
     db = SessionLocal()
     try:
         if args.reset:
-            counts = reset_and_seed(db)
+            counts = reset_and_seed(db, history=not args.no_history)
         else:
             create_all()
-            counts = seed(db)
+            counts = seed(db, history=not args.no_history)
     finally:
         db.close()
     print("Seeded:", ", ".join(f"{k}={v}" for k, v in counts.items()))

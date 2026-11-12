@@ -6,6 +6,7 @@ the invoice to human review.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -22,7 +23,7 @@ from app.ingestion.extract_text import acquire_tokens, render_pages
 from app.ingestion.hardening import harden
 from app.ingestion.injection import Finding, is_injection, scan_pdf, scan_text, to_json
 from app.ingestion.tokens import group_lines
-from app.ingestion.qr import verify as verify_qr
+from app.ingestion.qr import QrResult, verify as verify_qr
 from app.ingestion.storage import sha256, store
 from app.core.enums import InvoiceStatus, Role
 from app.models import Document, ExtractionResult, Invoice, InvoiceLine, Policy, Supplier, User
@@ -83,6 +84,8 @@ def pending_review(db: Session, invoice_id: int) -> list[str]:
     latest = latest_fields(db, invoice_id)
     low = [k for k, r in latest.items() if r.source != "manual" and r.value is not None and r.confidence < threshold]
     missing = [k for k in KEY_FIELDS if k in latest and latest[k].value is None]
+    # A line whose HSN/SAC cell OCR could not read: the tax-rate check needs it, so a human enters it.
+    missing += [k for k, r in latest.items() if k.endswith(".hsn_sac") and r.value is None and r.source != "manual"]
     return low + missing
 
 
@@ -108,6 +111,26 @@ def _date(value: str | None) -> date | None:
         return None
 
 
+@dataclass
+class Ingested:
+    """Everything read from one document before it becomes an invoice."""
+
+    filename: str
+    data: bytes
+    kind: str  # pdf | jpg | png
+    mime: str
+    pages: int
+    sha256: str
+    phash: str | None
+    extracted: ExtractedInvoice
+    ai_mode: str
+    ai_fallback: str | None
+    quarantined: dict | None
+    qr: QrResult
+    findings: list[Finding] = field(default_factory=list)
+    injected: bool = False
+
+
 def process_upload(db: Session, user: User, filename: str, data: bytes, supplier_id: int | None = None) -> Invoice:
     clean = harden(filename, data)
     tokens, method = acquire_tokens(clean.data, clean.kind)
@@ -124,10 +147,22 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
     # Signed e-invoice QR on the first pages (photos are used as they are).
     qr = verify_qr(render_pages(clean.data, clean.kind, dpi=200)[:2] if clean.kind == "pdf"
                    else render_pages(clean.data, clean.kind))
+    return create_invoice(db, user, supplier, Ingested(
+        filename=filename, data=clean.data, kind=clean.kind, mime=clean.mime, pages=clean.pages, sha256=file_hash,
+        phash=page1_phash(clean.data, clean.kind), extracted=extracted, ai_mode=ai_mode, ai_fallback=ai_fallback,
+        quarantined=quarantined, qr=qr, findings=findings, injected=injected))
 
+
+def create_invoice(db: Session, user: User, supplier: Supplier, ing: Ingested) -> Invoice:
+    """Store the document, the invoice, its lines and every extracted field, then run the rules.
+
+    Shared by live uploads and the seeded invoice history (which supplies the text-layer
+    reading and the known QR result directly, so seeding stays fast)."""
+    extracted, qr, findings, injected = ing.extracted, ing.qr, ing.findings, ing.injected
+    filename, ai_mode, ai_fallback, quarantined = ing.filename, ing.ai_mode, ing.ai_fallback, ing.quarantined
     doc = Document(
-        original_filename=filename[:255], stored_name=store(clean.data, clean.kind), mime_type=clean.mime,
-        size_bytes=len(clean.data), sha256=file_hash, phash=page1_phash(clean.data, clean.kind), pages=clean.pages, uploaded_by_user_id=user.id,
+        original_filename=filename[:255], stored_name=store(ing.data, ing.kind), mime_type=ing.mime,
+        size_bytes=len(ing.data), sha256=ing.sha256, phash=ing.phash, pages=ing.pages, uploaded_by_user_id=user.id,
     )
     db.add(doc)
     db.flush()

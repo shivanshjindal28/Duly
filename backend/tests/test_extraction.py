@@ -59,6 +59,39 @@ def test_tilted_blurry_phone_photo_keeps_rows_together(pdf):
     assert ex.header["po_number"].value == "4500001234"
 
 
+def _ocr_row(*cells: str):
+    from app.ingestion.tokens import Token
+
+    return [Token(text, 1, (0.05 + i * 0.07, 0.40, 0.11 + i * 0.07, 0.41), 0.95, "ocr") for i, text in enumerate(cells)]
+
+
+def test_ocr_row_with_item_code_glued_to_description():
+    """Seen on a scanned PDF: 'PKG-FIBC-1TJumbobagFIBC1tonn' (code and description in one token)."""
+    ex = parse(_ocr_row("PKG-FIBC-1TJumbobagFIBC1tonn", "6305", "400", "NOS", "385.00", "1,54,000.00", "5",
+                        "3,850.00", "3,850.00", "0.00"), "ocr")
+    row = ex.lines[0]
+    assert row["item_code"].value == "PKG-FIBC-1T" and row["description"].value == "JumbobagFIBC1tonn"
+    assert row["hsn_sac"].value == "6305" and row["qty"].value == "400"
+
+
+def test_ocr_row_without_hsn_is_kept_for_review():
+    """Seen on a blurry photo: OCR lost the HSN cell. Keep the row; the HSN becomes a review item."""
+    ex = parse(_ocr_row("PKG-FFS-50", "FFS", "bag50kgPE", "5000NOS", "21.00", "1,05,000.00", "18", "9,450.00",
+                        "9,450.00", "0.00"), "ocr")
+    row = ex.lines[0]
+    assert row["item_code"].value == "PKG-FFS-50" and row["qty"].value == "5000" and row["uom"].value == "NOS"
+    assert row["hsn_sac"].value is None
+
+
+def test_text_layer_row_needs_hsn():
+    """The PDF text layer never drops a cell, so a text row without an HSN is not an item line."""
+    from app.ingestion.tokens import Token
+
+    cells = ("PKG-FFS-50", "FFS", "bag", "5000", "NOS", "21.00", "1,05,000.00", "18", "9,450.00", "9,450.00", "0.00")
+    tokens = [Token(t, 1, (0.05 + i * 0.07, 0.4, 0.11 + i * 0.07, 0.41), 1.0, "text") for i, t in enumerate(cells)]
+    assert parse(tokens, "text").lines == []
+
+
 def test_ocr_extraction_of_scanned_image(pdf):
     page = render_pages(pdf, "pdf", dpi=170)[0]
     buf = io.BytesIO()

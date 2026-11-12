@@ -29,13 +29,27 @@ class QrResult:
 
 
 def trusted_public_key() -> bytes:
-    path = get_settings().irp_public_key_path
-    if path:
-        with open(path, "rb") as f:
-            return f.read()
-    from app.samples.sandbox_irp import public_key_pem
+    return trusted_public_keys()[0]
 
-    return public_key_pem()
+
+def trusted_public_keys() -> list[bytes]:
+    """IRP signing keys a QR may be signed with.
+
+    Configured (`IRP_PUBLIC_KEY_PATH`, e.g. the NIC IRP key in production): that key only.
+    Otherwise the demo Sandbox IRP: this laptop's sandbox key, plus (DEMO_MODE only) the public
+    half of the sandbox key that signed the git-tracked demo invoices (`demo/keys/`), so the
+    committed scenario PDFs verify on every teammate's laptop. No private key is ever committed.
+    """
+    settings = get_settings()
+    if settings.irp_public_key_path:
+        with open(settings.irp_public_key_path, "rb") as f:
+            return [f.read()]
+    from app.samples.sandbox_irp import DEMO_PUBLIC_KEY, public_key_pem
+
+    keys = [public_key_pem()]
+    if settings.demo_mode and DEMO_PUBLIC_KEY.exists() and DEMO_PUBLIC_KEY.read_bytes() not in keys:
+        keys.append(DEMO_PUBLIC_KEY.read_bytes())
+    return keys
 
 
 def _variants(img):
@@ -107,13 +121,16 @@ def verify(images) -> QrResult:
     if not candidates:
         return QrResult("none")
     token = candidates[0]
-    try:
-        claims = jwt.decode(token, trusted_public_key(), algorithms=["RS256"], options={"verify_aud": False})
-        return QrResult("valid", json.loads(claims["data"]))
-    except jwt.InvalidSignatureError:
-        error = "signature does not match the trusted IRP key"
-    except (jwt.InvalidTokenError, KeyError, ValueError) as e:
-        error = f"not a valid signed e-invoice QR ({type(e).__name__})"
+    error = "signature does not match the trusted IRP key"
+    for key in trusted_public_keys():
+        try:
+            claims = jwt.decode(token, key, algorithms=["RS256"], options={"verify_aud": False})
+            return QrResult("valid", json.loads(claims["data"]))
+        except jwt.InvalidSignatureError:
+            continue
+        except (jwt.InvalidTokenError, KeyError, ValueError) as e:
+            error = f"not a valid signed e-invoice QR ({type(e).__name__})"
+            break
     try:  # show what the forged QR claims, clearly marked as unverified
         unverified = json.loads(jwt.decode(token, options={"verify_signature": False})["data"])
     except Exception:  # noqa: BLE001

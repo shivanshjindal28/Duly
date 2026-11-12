@@ -20,8 +20,11 @@ python -m venv .venv
 pip install -r backend/requirements.txt
 cd frontend && npm install && cd ..
 cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
-python scripts/seed.py --reset
+python scripts/seed.py --reset   # ~25 s: master data + ~250 historical invoices (add --no-history for a bare DB)
 ```
+
+## Demo invoices
+The 12 demo scenarios are ready-made files in `demo/invoices/`. `demo/manifest.json` lists each file, whom to upload it as, the expected result and the next step to show. Regenerate them with `python scripts/generate_invoices.py` (synthetic data only).
 
 ## Run
 ```bash

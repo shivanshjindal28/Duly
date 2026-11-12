@@ -11,13 +11,14 @@ from decimal import Decimal
 from dataclasses import dataclass
 
 import pyotp
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.crypto import encrypt_str
 from app.core.db import create_all, drop_all
 from app.core.passwords import hash_password
 from app.core.policy_defaults import DEFAULT_POLICY
-from app.models import Organisation, Policy, Supplier, User
+from app.models import Organisation, Policy, PurchaseOrder, Supplier, User
 from app.core.enums import EnterpriseType, MsmeCategory, Role
 from app.validation.gstin import make_gstin
 
@@ -99,8 +100,11 @@ STAFF: list[tuple[str, str, str, Role, int | None]] = [
 ]
 
 
-def seed(db: Session) -> dict[str, int]:
-    """Insert seed data into an empty schema. Returns counts per entity."""
+def seed(db: Session, history: bool = False) -> dict[str, int]:
+    """Insert seed data into an empty schema. Returns counts per entity.
+
+    history=True also replays ~250 invoices over the last 90 days through the real engine and
+    workflow (`app/seed_history.py`) for dashboards, payment runs and impact numbers."""
     global _rng
     _rng = random.Random(20261112)  # same synthetic GSTINs and accounts on every reset
     plant_pan = _pan("C", "Plant X")
@@ -146,8 +150,16 @@ def seed(db: Session) -> dict[str, int]:
     counts = seed_procurement(db)
     from app.core import audit
 
-    audit.queue(db, "system.seeded", "database", None, after={"synthetic": True, **counts},
-                actor=audit.SYSTEM)
+    if history:
+        from app.seed_history import seed_history
+
+        db.commit()
+        counts.update(seed_history(db))
+        counts["purchase_orders"] = db.scalar(select(func.count()).select_from(PurchaseOrder))
+    audit.queue(db, "system.seeded", "database", None, actor=audit.SYSTEM, after={
+        "synthetic": True, **counts,
+        "note": ("history replayed through the real engine and workflow with the business clock set to past dates"
+                 if history else "no invoice history")})
     db.commit()
     return {
         "organisations": 1,
@@ -205,6 +217,9 @@ PURCHASE_ORDERS: list[POSeed] = [
            [("SEAL-M60", "Mechanical seal 60 mm", "8484", "6", "NOS", "9400.00", "18")], [("6", 3)]),
     POSeed("4500001013", "V100102", "S12 FFS bags: blurry low-confidence photo",
            [("PKG-FFS-50", "FFS bag 50 kg PE", "3923", "5000", "NOS", "21.00", "18")], [("5000", 5)]),
+    POSeed("4500001014", "V100103", "S5 bearings: INV/0042 (history) resubmitted as a photo 'INV-42'",
+           [("BRG-6205", "Ball bearing 6205 2RS", "8482", "50", "NOS", "450.00", "18")], [("50", 12)],
+           po_days_ago=25),
     POSeed("4500000990", "V100105", "Closed PO (PO_CLOSED demo)",
            [("FRT-TNK-01", "Bulk tanker freight Dahej to Taloja", "996511", "4", "TRIP", "38000.00", "12")],
            [None], is_service=True, status="closed", po_days_ago=120),
@@ -258,8 +273,19 @@ def seed_procurement(db: Session) -> dict[str, int]:
     return {"purchase_orders": len(PURCHASE_ORDERS), "goods_receipts": grs, "service_entry_sheets": sess}
 
 
-def reset_and_seed(db: Session) -> dict[str, int]:
+def reset_and_seed(db: Session, history: bool = False) -> dict[str, int]:
     db.close()
     drop_all()
     create_all()
-    return seed(db)
+    _clear_runtime_files()
+    return seed(db, history=history)
+
+
+def _clear_runtime_files() -> None:
+    """Stored documents and rendered page images belong to the dropped database."""
+    import shutil
+
+    from app.core.config import DATA_DIR
+
+    for sub in ("uploads", "pages"):
+        shutil.rmtree(DATA_DIR / sub, ignore_errors=True)

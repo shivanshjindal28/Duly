@@ -36,6 +36,9 @@ if _is_sqlite:
     def _sqlite_pragmas(dbapi_conn, _record):  # pragma: no cover - trivial
         cur = dbapi_conn.cursor()
         cur.execute("PRAGMA journal_mode=WAL")
+        # WAL + NORMAL: never corrupts; only the last commits can be lost on power failure (the
+        # SQLite-recommended pairing). FULL made every commit an fsync and the seed 3x slower.
+        cur.execute("PRAGMA synchronous=NORMAL")
         cur.execute("PRAGMA foreign_keys=ON")
         cur.execute("PRAGMA busy_timeout=5000")
         cur.close()

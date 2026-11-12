@@ -6,12 +6,16 @@ from datetime import UTC, datetime
 from sqlalchemy import DateTime, Numeric
 from sqlalchemy.orm import mapped_column
 
+from app.core import clock
+
 Money = Numeric(16, 2, asdecimal=True)
 Qty = Numeric(16, 3, asdecimal=True)
 
 
 def utcnow() -> datetime:
-    return datetime.now(UTC)
+    """Default for record timestamps: the business clock (UTC), so received / matched / posted
+    times line up with SLA timers and due dates when the demo clock is advanced."""
+    return clock.now().astimezone(UTC)
 
 
 def created_at_col():

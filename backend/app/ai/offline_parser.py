@@ -40,6 +40,10 @@ _MONEY_RE = re.compile(r"^[0-9][0-9,]*\.\d{2}$")
 _NUM_RE = re.compile(r"^[0-9][0-9,]*(?:\.\d+)?$")
 _HSN_RE = re.compile(r"^\d{4,8}$")
 _UOM_RE = re.compile(r"^[A-Za-z]{1,5}$")
+# Item codes: letters/digits with at least one hyphen or digit ("BRG-6205", "PKG-FIBC-1T").
+_CODE_RE = re.compile(r"^(?=.*[-0-9])[A-Za-z0-9][A-Za-z0-9\-/.]*$")
+# An upper-case code with a description glued on by OCR: split before the first "Xx".
+_GLUED_CODE_RE = re.compile(r"^((?:[A-Z0-9]+-)+[A-Z0-9]*?)(?=[A-Z][a-z])")
 # Row tokenizer. OCR glues neighbouring cells, so split amounts ("4,050.004,050.00") and
 # quantity+unit ("100NOS") before falling back to whitespace-separated pieces.
 _PIECE_RE = re.compile(
@@ -137,10 +141,21 @@ def _parse_row(line: TextLine) -> dict[str, ExtractedField] | None:
     head = rest[:-4]
     if head and head[0][0].isdigit() and len(head[0][0]) <= 3:
         head = head[1:]  # leading line number (OCR sometimes drops it, so it is optional)
-    if len(head) < 2 or not _HSN_RE.match(head[-1][0]):
+    hsn = None
+    if head and _HSN_RE.match(head[-1][0]):
+        hsn, head = head[-1], head[:-1]
+    elif line.tokens[0].source == "text":
+        return None  # the text layer never loses a cell: no HSN means this is not a line row
+    if not head or not _CODE_RE.match(head[0][0]):
         return None
-    hsn, code = head[-1], head[0]
-    desc_span = (head[1][1][0], head[-2][1][1]) if len(head) > 2 else None
+    code = head[0]
+    desc_start = head[1][1][0] if len(head) > 1 else None
+    glued = _GLUED_CODE_RE.match(code[0])
+    if glued:  # OCR glued the item code to the description: "PKG-FIBC-1TJumbobag..."
+        start = code[1][0]
+        code = (glued.group(1), (start, start + len(glued.group(1))))
+        desc_start = code[1][1]
+    desc_span = (desc_start, head[-1][1][1]) if desc_start is not None else None
 
     # On OCR text a broken row equation usually means a misread digit: lower numeric confidence.
     q, p, v = (Decimal(_num(x[0]) or "0") for x in (qty, unit_price, taxable))
@@ -161,10 +176,15 @@ def _parse_row(line: TextLine) -> dict[str, ExtractedField] | None:
     else:
         description = ExtractedField(value=None, source=line.tokens[0].source)
 
+    if hsn is not None:
+        hsn_field = f(hsn, hsn[0])
+    else:  # OCR lost the HSN cell: keep the row, and ask a human for the code
+        hsn_field = ExtractedField(value=None, source=line.tokens[0].source)
+
     return {
         "item_code": f(code, code[0].upper()),
         "description": description,
-        "hsn_sac": f(hsn, hsn[0]),
+        "hsn_sac": hsn_field,
         "qty": f(qty, _num(qty[0]), num_factor),
         "uom": f(uom, uom[0].upper()),
         "unit_price": f(unit_price, _num(unit_price[0]), num_factor),

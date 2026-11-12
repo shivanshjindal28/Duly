@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 06:45 IST by Shivansh (Claude Code)
+Last updated: 2026-11-12 21:15 IST by Aaron (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -9,15 +9,18 @@ python -m venv .venv
 pip install -r backend/requirements.txt
 cd frontend && npm install && cd ..
 cp .env.example .env              # optional: everything has safe demo defaults
-python scripts/seed.py --reset
+python scripts/seed.py --reset   # ~25 s incl. ~250 historical invoices; --no-history for a bare DB
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 159 tests (about 25 s; OCR model loads once)
+cd backend && python -m pytest    # 173 tests (about 90 s; the last file reseeds with history and runs all 12 demo files)
 cd frontend && npm run typecheck
+python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/manifest.json
 ```
 - Open http://localhost:5173. With `DEMO_MODE=true` (default) the login page lists one-click demo personas.
 - Seed: 14 users, demo password `Duly@2026` for all (synthetic). API docs at http://127.0.0.1:8000/api/docs.
 - After any model change, re-run `python scripts/seed.py --reset` (no migrations yet).
+- Demo files: `demo/invoices/` (12 scenarios, 13 files: S9 has a and b) and `demo/manifest.json` (upload as whom, expected result, next step). Upload them in manifest order after a fresh reset.
+- Python 3.12 is required (3.13+/3.14 lack wheels for some pinned packages, e.g. rapidocr-onnxruntime). On Windows: `py -3.12 -m venv .venv`.
 
 ## Done
 - **Phase 0, 1 and 2 complete** (core expectations 1 to 5 and bonus B1 to B3 working end to end).
@@ -43,6 +46,12 @@ cd frontend && npm run typecheck
 - **Phase 3 step 19 (D3)**: bank-detail fraud. BANK_MISMATCH block (engine) now also raises `security.bank_mismatch_alert`. Bank change workflow (`workflow/bank_changes.py`, `/api/bank-changes`): supplier requests -> AP clerk proposes after the out-of-band call-back checklist (number on file, known contact, bank proof) -> cooling period (policy `bank_change_cooling_hours`, 72) -> finance approver (not maker/requester) approves -> vendor master updated (AES-GCM), blocked/flagged invoices re-matched (trigger `bank_change_approved:<id>`). Every step audited; accounts masked everywhere. UI: bank card in supplier portal (en/hi), staff `/bank-changes` page. Controls report C-06 now tests real requests.
 - **Phase 3 step 20 (D4 + D5)**: MSME guardian and smart payment run. `payments/msme.py`: statutory due date, MSMED s.16 interest (3 x RBI bank rate, monthly rests, pro-rated by 30-day months), tax deduction at risk (s.43B(h) / s.37(2)(g), assumed tax rate, rule text in a tooltip), half-year periods. `payments/tds.py`: TDS under s.393 (formerly 194C/194J/194Q) from the policy table "verify with tax team" (contractor 1%/2% with 30k single / 1L yearly thresholds, technical 2%, professional 10%, goods 0.1% above 50L). `payments/run.py`: proposal (overdue first, then MSME due before next run + 7-day buffer, then early-payment discounts whose annualised return beats the 9% cost of funds, then contract-term invoices due before the next run; everything else deferred with the reason), cash kept / days-payable effect, release by a finance approver only (simulated UTR `DULYN...`, TDS withheld, invoice -> paid, audit `payment.released`), MSME rows and the half-yearly "MSME dues outstanding beyond 45 days" (Form I data). API `/api/payments/run`, `/run/release`, `/history`, `/msme`. UI `/payments`. Supplier portal + chatbot show the payment and UTR. Controls C-08 reuses the same interest function. Suppliers got `tds_section` and an early-payment discount (Sahyadri 1% in 10 days).
 - **Phase 3 step 21 (D6)**: SAP-ready by design. `backend/app/erp/`: `ErpAdapter` interface, `LocalErpAdapter` (SQLite PO / GR / SES reads; the demo's system of record), `S4HanaAdapterStub` (never calls SAP) building the OData V2 requests: PO read (API_PURCHASEORDER_PROCESS_SRV), GR read (API_MATERIAL_DOCUMENT_SRV, movement type 101) and the supplier-invoice deep insert (API_SUPPLIERINVOICE_PROCESS_SRV A_SupplierInvoice with to_SuplrInvcItemPurOrdRef (PO item + GR material document or service entry sheet), to_SupplierInvoiceTax per GST tax code, to_SupplierInvoiceWhldgTax from the supplier's TDS section, PaymentBlockingReason R when not approved, warnings for unmapped lines / missing GR / bank mismatch). `GET /api/invoices/{id}/sap-preview` (staff only). UI: "SAP posting preview" bottom drawer on the invoice detail (key fields, warnings, reads, copyable JSON, Esc closes); SAP tooltips (`components/SapTerm.tsx`: ME23N, MIGO 101, SES, MIRO, tolerance keys PP / DQ / BD, payment block R) on the match matrix and the decision card.
+- **Phase 4 step 22**: demo invoices + seeded history.
+  - `app/samples/scenarios.py` defines the 12 scenarios once (spec, file, uploader, expected decision / status / reason codes / figures, story, next step), built on seeded POs and supplier master data. `app/samples/photos.py`: seeded phone photo (keystone, tilt, shadow, noise, JPEG), blurry photo (S12) and image-only scanned PDF (S10). `scripts/generate_invoices.py` writes `demo/invoices/` (13 files, ~1 MB) + `demo/manifest.json` + `demo/keys/sandbox_irp_public.pem` from a throwaway DB.
+  - New PO 4500001014 (S5: 50 bearings). S5's original INV/0042 is part of the history (touchless, awaiting payment); the demo file is a photo numbered INV-42 -> BLOCK DUPLICATE.
+  - `app/seed_history.py`: ~250 invoices over 90 days (68 POs in total) replayed as a time-ordered event stream through the real code with `clock.travel_to` (GR/SES postings with auto re-match, `create_invoice`, clerk overrides, approvals with real TOTP codes and SLA escalations, rejections, resubmitted duplicates, one maker-checker bank change, 11 weekly payment runs). Result on reset: ~160 paid, ~65 approved, a handful pending approval / flagged / blocked / rejected; touchless ~28%, avg cycle ~2.4 days, duplicates prevented 7, all 10 controls effective, audit chain verifies.
+  - `pipeline.create_invoice` split out of `process_upload` (shared by uploads and history). Offline parser: OCR item code glued to description is split ("PKG-FIBC-1TJumbo..."); an OCR row whose HSN cell is lost is kept and the HSN becomes a review item (`pending_review`). Duplicate check preloads lines (was N+1) and caches decrypted accounts.
+  - Tests: `test_zzz_demo_scenarios.py` (runs last: reseeds with history, uploads all 13 committed files in manifest order, checks every expectation, then S4 GR release, S12 review, S1 L1+L2 with MFA, S10/S11 approval -> S10 first in the payment run with 4 days left, S11 TDS 8,400, chain verifies) + 3 parser unit tests.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -50,9 +59,9 @@ cd frontend && npm run typecheck
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 4 step 22: invoice generator script for all 12 scenarios + image variants into `demo/invoices/` with `demo/manifest.json`; seed ~250 historical invoices (incl. some approved / paid so the payment run, MSME guardian and dashboard have data).
-2. Phase 4 step 23: `scripts/demo_check.py` running every scenario end to end; Playwright smoke test.
-3. Phase 4 step 24: Impact, Architecture, Trust and Assumptions pages; demo controls (AI mode switch, reset demo).
+1. Phase 4 step 23: `scripts/demo_check.py` (and `make demo-check`): reset with history, run the 12 manifest scenarios through the API, verify the chain, check the chatbot offline fallback, print a green/red table. Most logic already exists in `backend/tests/test_zzz_demo_scenarios.py`: move the shared steps into a module both use. Then a Playwright smoke test of the demo path.
+2. Phase 4 step 24: Impact, Architecture, Trust and Assumptions pages; demo controls (AI mode switch, "Reset demo data" = `reset_and_seed(db, history=True)`, ~25 s so show progress).
+3. Phase 4 step 25-26: UI polish pass and docs (DEMO_SCRIPT.md can follow `demo/manifest.json` stories and next steps).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -88,7 +97,7 @@ cd frontend && npm run typecheck
 - `AI_MODE=cached` lets the team pre-warm `backend/data/ai_cache/` with a key once and then demo with live-quality extraction fully offline.
 - Supplier to-dos are message codes + params from the server, rendered from i18n files; no internal data (approver names, SAP refs) is sent to suppliers. Language choice is a per-browser preference (localStorage).
 - MSME clock starts at acceptance (GR/SES date) whatever the match outcome; traders excluded; no written agreement = 15 days.
-- Dashboard data is sparse until Phase 4 seeds ~250 historical invoices; charts and KPIs are already live queries, not placeholders.
+- Dashboard, payment run, MSME guardian and controls report get their data from the seeded history (step 22); all are live queries, not placeholders.
 - Recharts 3.10.1 (React 18 compatible, 0 audit findings).
 - Audit events are written after commit in their own transaction (not inside the business transaction): guarantees no phantom events; the tiny risk is a crash between the two commits losing an event, acceptable for the demo and noted for production (outbox pattern).
 - Audit `ts` uses the business clock (so it lines up with SLA timers in demo mode). Automated decisions (matches, routing, P-01, escalations) are recorded with actor `system`.
@@ -108,16 +117,27 @@ cd frontend && npm run typecheck
 - TDS base is the taxable value (excl. GST). PAN 4th character P/H = individual/HUF (1% contractor rate), others 2%. Yearly thresholds use taxable value already paid to that supplier this FY. A labelled assumption, not tax advice.
 - Tax deduction at risk uses an assumed corporate tax rate of 25.17% (policy `corporate_tax_rate_pct`) only to show the size of the effect.
 - SAP configuration values (company code PX01, plant PX10, business place PX24, GST tax codes G*/I*, withholding tax types TC/TJ/TQ, payment terms keys Z<days>) are fictional and live in `erp/base.py`; field names follow the S/4HANA OData entity types, but verify against the target system's $metadata before any real integration. The preview is available for any invoice: unapproved ones show payment block R.
-- Runtime data (`backend/data/*.db`, uploads, keys, ai_cache) is git-ignored; demo invoices under `demo/invoices/` will be tracked.
+- Runtime data (`backend/data/*.db`, uploads, keys, ai_cache) is git-ignored; demo invoices under `demo/invoices/` are tracked.
+- History is replayed through the real engine/workflow with the business clock moved (`clock.travel_to`, in memory only), not written as finished rows: every decision, due date, payment and audit event is what Duly would have produced. Audit events therefore carry their historical timestamps; the final `system.seeded` event says so. `reset_and_seed(db, history=False)` stays the default so the normal test suite keeps a small DB; `scripts/seed.py` turns history on.
+- Model timestamp defaults (`models/base.utcnow`) now use the business clock, so received/matched/posted times line up with SLA timers and due dates when the demo clock is advanced. Sessions, lockouts and MFA still use real time.
+- E-invoice QR on sample PDFs is now a 1-bit image (8 px per module, no smoothing) instead of reportlab vectors: thousands of vector rectangles made each e-invoice ~0.37 s to parse (pdfminer) and 190 KB. Measured: decodes at 120/150/200/300 dpi and from a phone photo, 15x faster text extraction, 58 KB. Supersedes the "QR drawn as vectors" note above.
+- Trusted IRP keys: if `IRP_PUBLIC_KEY_PATH` is set, only that key. Otherwise this laptop's sandbox key plus (DEMO_MODE only) `demo/keys/sandbox_irp_public.pem`, the public half of the key that signed the committed demo PDFs, so they verify on every laptop. No private key is committed; regenerating the demo files writes a new public key (commit both together).
+- SQLite `PRAGMA synchronous=NORMAL` with WAL (SQLite's recommended pairing: no corruption risk, only the last commits can be lost on power failure). The history seed makes ~3,000 commits.
+- `seed.py --reset` also deletes `backend/data/uploads` and `backend/data/pages` (they belong to the dropped DB).
+- History design choices: quantities per supplier item never repeat within 34 days and never equal a demo scenario's quantity (so genuine repeat orders and the demo files are not near-duplicates); the one bank change (Konkan, maker-checker) happens before the first history invoice so no history invoice ends up BANK_MISMATCH; Kesar's numbering is anchored so the S5 original is exactly INV/0042 (an assert fires if Kesar gets too many POs).
+- S12 blurry recipe kept at 130 dpi / blur 0.9 / JPEG 40: stronger blur either loses the line row or makes confident misreads (e.g. GSTIN D->O at 0.9+ confidence). It yields one review item (HSN not read).
+- S10 is an image-only scanned PDF (OCR path) and still APPROVEs; S5 is a phone photo.
 
 ## Known bugs
+- OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
+- History: a few old duplicates stay BLOCKED forever (there is no clerk "reject a blocked invoice" action), so the 45+ day age bucket is never empty. Realistic, but a reject action for blocked invoices would be a small useful addition.
 - Live Claude extraction is untested against the real API on this laptop (no key). Before the demo: set ANTHROPIC_API_KEY, upload the demo invoices once (fills the cache), then consider AI_MODE=cached.
 - The browser pane in this environment is narrower than a laptop screen, so the three-pane layout was checked via DOM measurements at 1600 px (grid 488/390/390 px) and visually only in the stacked narrow layout.
 - None known. Visual layout has been checked through the accessibility tree and DOM, not by eye (the browser pane could not take screenshots this session). Have a quick look at the login page and shell on first run.
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.
 
 ## Demo status (which demo scenarios work end to end)
-Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they are produced by the test fixtures / an ad-hoc script.
+All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset` and are checked by `test_zzz_demo_scenarios.py` in manifest order (verified via the API in tests; dashboard and a history invoice checked in the browser). Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
 - S2 price variance: works (FLAG, exact ₹39,680).
 - S3 qty exceeds GR: works (BLOCK, cumulative view).
 - S4 missing GR: works end to end (BLOCK, stores posts GR live, auto re-match releases it).
