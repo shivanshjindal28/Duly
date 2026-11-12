@@ -12,7 +12,7 @@ from app import __version__
 from app.api import (about, admin, approvals, audit, auth, bank_changes, chat, dashboard, health, impact, invoices, payments,
                      portal, reports, stores, suppliers)
 from app.core.config import get_settings
-from app.core import clock
+from app.core import clock, runtime
 from app.core.db import SessionLocal, create_all
 from app.core.ratelimit import limiter
 
@@ -79,6 +79,7 @@ async def lifespan(_app: FastAPI):
     db = SessionLocal()
     try:
         clock.load_offset(db)  # demo clock offset survives restarts
+        runtime.load_ai_mode(db)  # so does the admin's AI mode switch
     finally:
         db.close()
     yield

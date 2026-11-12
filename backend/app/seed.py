@@ -274,10 +274,13 @@ def seed_procurement(db: Session) -> dict[str, int]:
 
 
 def reset_and_seed(db: Session, history: bool = False) -> dict[str, int]:
+    from app.core import clock
+
     db.close()
     drop_all()
     create_all()
     _clear_runtime_files()
+    clock.load_offset(db)  # the demo clock starts again at real time (its setting was dropped)
     return seed(db, history=history)
 
 

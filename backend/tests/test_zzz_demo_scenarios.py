@@ -7,11 +7,10 @@ fallback and the audit chain.
 from __future__ import annotations
 
 from app.demo_check import DemoCheck
-from app.seed import reset_and_seed
 
 
 def test_demo_check_is_all_green(client, db):
-    checks = DemoCheck(client, db).run(reset=lambda: reset_and_seed(db, history=True))
+    checks = DemoCheck(client, db).run()  # resets with history via the admin endpoint
     failed = [c for c in checks if not c.ok]
     assert len(checks) >= 24
     assert not failed, "\n".join(f"{c.name}: {c.detail}" for c in failed)

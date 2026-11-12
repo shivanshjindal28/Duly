@@ -45,3 +45,11 @@
 .small { font-size: 12px; }
 .strong { font-weight: 600; }
 .btn-sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
+
+/* Shared action and status styles (also used across pages). */
+.btn-danger { color: var(--color-block-text); border-color: #F3BCD6; }
+.btn-danger:hover { background: var(--color-block-bg); }
+.alert-success { background: var(--color-approve-bg); color: var(--color-approve-text); border: 1px solid #BFE5CF; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

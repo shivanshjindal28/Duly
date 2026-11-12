@@ -83,9 +83,9 @@ class DemoCheck:
         return self.client.get(f"/api/invoices/{self.inv[sid]['id']}").json()
 
     # ------------------------------------------------------------------ the run
-    def run(self, reset: Callable[[], dict] | None = None) -> list[Check]:
-        if reset is not None:
-            self.step("seed", "Reset demo data with 90-day history", lambda: self._seed(reset))
+    def run(self, reset: bool = True) -> list[Check]:
+        if reset:
+            self.step("seed", "Reset demo data (admin button, 90-day history)", self._seed)
         self.step("history", "History: KPIs, payments, controls, chain", self._history)
         for sc in self.manifest["scenarios"]:
             self.step(sc["id"], f"{sc['id']} {sc['title']}", lambda sc=sc: self._scenario(sc))
@@ -97,13 +97,35 @@ class DemoCheck:
         self.step("S01+", "S01 L1 then L2 approve with MFA", self._s01_approvals, ("S01",))
         self.step("PAY", "S10/S11 approved -> payment run: MSME first, TDS", self._payment_run, ("S10", "S11"))
         self.step("CHAT", "Chatbot offline: answer + cross-supplier refusal", self._chat)
+        self.step("AI", "AI kill switch: offline and back", self._ai_switch)
         self.step("CHAIN", "Audit chain verifies; tamper demo detected and restored", self._chain)
         return self.checks
 
-    def _seed(self, reset: Callable[[], dict]) -> str:
-        counts = reset()
+    def _seed(self) -> str:
+        h = self.login(ADMIN)
+        r = self.client.post("/api/admin/reset-demo", headers=h)
+        assert r.status_code == 200, r.text[:200]
+        counts = r.json()["counts"]
         assert counts.get("history_invoices", 0) >= 200, counts
-        return f"{counts['history_invoices']} history invoices, {counts['purchase_orders']} POs"
+        self.login(ADMIN)  # same user ids after the reset: the session survives
+        clock = self.client.get("/api/admin/clock").json()
+        assert clock["offset_hours"] == 0, clock
+        return (f"{counts['history_invoices']} history invoices, {counts['purchase_orders']} POs "
+                f"in {r.json()['seconds']:.0f} s")
+
+    def _ai_switch(self) -> str:
+        h = self.login(ADMIN)
+        before = self.client.get("/api/admin/ai-mode").json()
+        r = self.client.post("/api/admin/ai-mode", headers=h, json={"mode": "offline"}).json()
+        assert r["effective"] == "offline" and r["overridden"], r
+        assert self.client.get("/api/health").json()["ai_mode"] == "offline"
+        restore = before["configured"] if before["overridden"] else "default"
+        back = self.client.post("/api/admin/ai-mode", headers=h, json={"mode": restore}).json()
+        assert back["effective"] == before["effective"], (before, back)
+        logged = self.db.scalar(select(func.count()).select_from(AuditEvent)
+                                .where(AuditEvent.action == "demo.ai_mode_changed"))
+        assert logged >= 2, "AI mode changes not audited"
+        return f"offline, then back to {back['effective']}; both changes audited"
 
     def _history(self) -> str:
         invoices = self.db.scalars(select(Invoice)).all()

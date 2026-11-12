@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-12 22:05 IST by Aaron (Claude Code)
+Last updated: 2026-11-12 22:50 IST by Aaron (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -12,9 +12,9 @@ cp .env.example .env              # optional: everything has safe demo defaults
 python scripts/seed.py --reset   # ~25 s incl. ~250 historical invoices; --no-history for a bare DB
 python scripts/tamper_demo.py   # optional: break the audit chain; --restore to undo
 python run.py                     # backend :8000, frontend :5173 (Ctrl+C stops both)
-cd backend && python -m pytest    # 172 tests (about 90 s; the last file reseeds with history and runs the demo check)
+cd backend && python -m pytest    # 178 tests (about 90 s; the last file resets via the admin endpoint and runs the demo check)
 cd frontend && npm run typecheck
-python scripts/demo_check.py      # 24-step green/red table, isolated temp DB, AI offline (~45 s); exit 1 on any failure
+python scripts/demo_check.py      # 25-step green/red table, isolated temp DB, AI offline (~45 s); exit 1 on any failure
 cd frontend && npm run e2e        # Playwright demo path (own stack on :8100/:5180); first `npx playwright install chromium` or set PW_CHANNEL=msedge
 python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/manifest.json
 ```
@@ -59,6 +59,13 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
   - `scripts/demo_check.py` prints the green/red table (isolated temp DB and AI offline by default; `--live-db` resets the real DB before and after; `--ai`). `Makefile` with `demo-check`, `seed`, `run`, `test`, `typecheck`, `generate`, `e2e`. `test_zzz_demo_scenarios.py` now just runs `DemoCheck` and asserts all green.
   - Playwright 1.59.1 (`frontend/playwright.config.ts`, `frontend/e2e/demo-path.spec.ts`, `npm run e2e`): own backend via `scripts/e2e_server.py` (fresh DB with history in a temp folder, AI offline, :8100) + Vite on :5180 (`DULY_WEB_PORT` / `DULY_API_URL` in vite.config). 5 tests: Navrang uploads S04 -> blocked; stores posts GR -> "1 released from block", clerk sees "Awaiting L1"; dashboard KPIs; Kesar asks the assistant about INV/0042 -> expected payment; auditor verifies the chain. Passed in Edge (`PW_CHANNEL=msedge`), ~42 s.
   - Chat fixes found by the check: with history, "the bearings" matches many invoices, so the "which invoice?" question now lists only open invoices, newest five; a reply that is just an invoice number is read as a status question; "INV/0042" now resolves to the literal number (and the original before a blocked copy), not to the duplicate "INV-42".
+- **Phase 4 step 24**: About pages and demo controls.
+  - Impact (`/impact`, `reports/impact.py`, `api/impact.py`): measured live (touchless with zero human touches, first-pass match, avg + P90 cycle, exceptions by root cause, duplicates caught Rs, MSME on-time %, AI fields to review / corrected %) and the spec 11 projection evaluated in the browser: every assumption editable (localStorage, reset to defaults), measured ones default to the data, each figure shows its formula with values. Headline: AP hours saved a month (~155 h at 28% touchless) and net value a year. `docs/IMPACT.md` is the same model.
+  - Architecture (`/architecture`): `docs/ARCHITECTURE.md` (components flowchart, invoice lifecycle sequence, data model ER, scaling path) served by `/api/architecture` and rendered with Mermaid 12.2.0 (lazy-loaded, bundled, offline) by `components/Markdown.tsx`; live system status (DB, AI mode + model, OCR, audit chain verified + events, policy version).
+  - Trust & controls (`/trust`, `/api/trust`): the spec 12 controls, each with live evidence (engine decisions vs decided by AI = 0, fields below threshold / reviewed / corrected, injection found / quarantined, chat refusals, MFA approvals, SoD refusals, lockouts, encrypted bank accounts, chain + signed head, extractor/model/prompt versions), model card and the AI-use declaration.
+  - Scenario & assumptions (`/assumptions`, `/api/assumptions`): Plant X story, focus user/problem, supplier master table, tolerances, DoA bands, MSME/payments, TDS table and HSN rates, all read from the active policy and master data.
+  - Demo controls (`/admin/demo`): "Reset demo data" (`POST /api/admin/reset-demo`, two-click confirm, progress, ~21 s; admin stays signed in; clock back to real time; AI mode kept; `demo.reset` audited) and the AI mode switch (`GET/POST /api/admin/ai-mode`: auto / live / cached / offline / default = back to .env; live refused without a key; persisted in app_settings by `core/runtime.py`, loaded at startup; `demo.ai_mode_changed` audited). Menu section "About Duly" for staff.
+  - Checks: DemoCheck now resets through the admin endpoint and tests the AI switch (25 steps); Playwright +2 tests (AI mode badge, About pages) = 7. New tests `test_impact.py`, `test_about.py`.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -66,9 +73,9 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 4 step 24: Impact page (measured half from live data: touchless, first-pass match, avg + P90 cycle, exceptions by cause, duplicates count and Rs, MSME on-time %, AI fields needing review %; projected half with editable assumptions and the spec 11 formulas), Architecture page (Mermaid shared with docs/ARCHITECTURE.md), Trust & controls page, Scenario & assumptions page.
-2. Demo controls on `/admin/demo`: "Reset demo data" (`reset_and_seed(db, history=True)`, ~25 s: show progress, DEMO_MODE only, audited) and the AI mode switch (live / cached / offline). Add both to `DemoCheck` and the Playwright test.
-3. Phase 4 step 25-26: UI polish pass and docs (DEMO_SCRIPT.md can follow `demo/manifest.json` stories and next steps; the chatbot demo is a two-turn conversation: "When will I get paid for the bearings?" -> "INV/0042").
+1. Phase 4 step 25: UI polish pass: spacing, empty states, focus rings, contrast check, Hindi strings, Lighthouse accessibility >= 95 on main screens; command palette (Ctrl/Cmd+K) from spec section 9 is not built yet; footer link to the AI declaration.
+2. Phase 4 step 26: docs from spec section 13: ASSUMPTIONS.md, CONTROLS.md, AI_DECLARATION.md, DEMO_SCRIPT.md (follow `demo/manifest.json` stories and next steps; the chatbot demo is two turns: "When will I get paid for the bearings?" -> "INV/0042"; start with Reset demo data and AI mode offline), QA_PREP.md (25 questions). ARCHITECTURE.md and IMPACT.md exist; keep the Trust and Assumptions pages and the new docs saying the same thing.
+3. Phase 5 (only if time remains): supplier risk card (D8), credit-note flow, clerk "reject a blocked invoice" action.
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -137,6 +144,12 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - `demo_check.py` runs in-process (FastAPI TestClient) against a temp database by default, so it can run while `python run.py` is up and never disturbs the stage database. The Playwright test owns its stack on other ports for the same reason.
 - Playwright: `@playwright/test` is a pinned dev dependency; the browser is either Playwright's Chromium (`npx playwright install chromium`, downloaded once by Playwright) or an installed Edge/Chrome via `PW_CHANNEL`. Not part of the app's runtime, so the "pip and npm only" rule still holds.
 - vite.config declares `process` itself instead of adding @types/node (the tsconfig stays browser-only).
+- Mermaid 12.2.0 instead of 11.x: 11.x depends on KaTeX ^0.16, which has a (low) prototype-pollution advisory; 12.2.0 is past it and `npm audit` is clean again. Loaded with a dynamic import so only the Architecture page pays for it.
+- The Architecture page renders the docs file itself through `/api/architecture` (not a copy in the frontend), so the diagram cannot drift from docs/ARCHITECTURE.md. The flowchart is top-to-bottom: left-to-right squeezed the text unreadably small.
+- Impact projection is computed in the browser (formulas in ImpactPage.tsx, defaults and reasons in reports/impact.py) so judges can change an assumption and see the effect live; edits never reach the server.
+- "Touchless" on the Impact page is stricter than on the dashboard: approved by policy P-01 AND no field review AND no override.
+- Reset demo data keeps the admin's AI mode override (re-written after the tables are recreated) and resets the demo clock; the reset itself is the first event of the new audit chain after `system.seeded`.
+- Shared `.btn-danger`, `.alert-success`, `.spin` moved into theme/common.css (they lived in single pages' CSS and only worked because every page is imported eagerly).
 
 ## Known bugs
 - OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
@@ -147,7 +160,7 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.
 
 ## Demo status (which demo scenarios work end to end)
-`python scripts/demo_check.py`: 24/24 green (all 12 scenarios + follow-ups, chatbot offline, chain + tamper). Playwright demo path: 5/5 in Edge. All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset`. Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
+`python scripts/demo_check.py`: 25/25 green (reset via the admin button, all 12 scenarios + follow-ups, chatbot offline, AI kill switch, chain + tamper). Playwright demo path: 7/7 in Edge. All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset`. Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
 - S2 price variance: works (FLAG, exact ₹39,680).
 - S3 qty exceeds GR: works (BLOCK, cumulative view).
 - S4 missing GR: works end to end (BLOCK, stores posts GR live, auto re-match releases it).

@@ -61,9 +61,11 @@ def main() -> int:
     print(f"{bold}Duly demo check{end}  ({'live database' if args.live_db else 'isolated temp database'}, "
           f"AI {'as configured' if args.ai else 'offline'}) ... about a minute")
     try:
+        if not args.live_db:
+            reset_and_seed(db)  # a bare seed so the admin who presses "Reset demo data" exists
         with TestClient(app) as client:
             check = DemoCheck(client, db)
-            checks = check.run(reset=lambda: reset_and_seed(db, history=True))
+            checks = check.run()  # resets through the admin "Reset demo data" endpoint
         if args.live_db and not args.keep:
             reset_and_seed(db, history=True)  # leave a fresh demo database for the stage
     finally:

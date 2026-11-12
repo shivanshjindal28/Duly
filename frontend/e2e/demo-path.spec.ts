@@ -60,6 +60,25 @@ test("supplier asks the payment assistant (offline) about INV/0042", async ({ pa
   await expect(chat.getByText(/Expected payment/).first()).toBeVisible();
 });
 
+test("admin switches the AI mode; the badge follows", async ({ page }) => {
+  await signInAs(page, "Sanjay Patil");
+  await page.goto("/admin/demo");
+  await page.getByRole("radio", { name: /Cached/ }).click();
+  await expect(page.getByText("AI: cached")).toBeVisible();
+  await page.getByRole("button", { name: "Use the .env setting" }).click();
+  await expect(page.getByText("AI: offline (OCR)")).toBeVisible();
+});
+
+test("impact, trust and architecture pages show live data", async ({ page }) => {
+  await signInAs(page, "Meera Iyer");
+  await page.goto("/impact");
+  await expect(page.getByText(/AP hours saved a month/).first()).toBeVisible();
+  await page.goto("/trust");
+  await expect(page.getByRole("heading", { name: "AI never decides" })).toBeVisible();
+  await page.goto("/architecture");
+  await expect(page.locator(".md-diagram svg").first()).toBeVisible();
+});
+
 test("auditor verifies the tamper-evident audit chain", async ({ page }) => {
   await signInAs(page, "Meera Iyer");
   await page.goto("/audit");
