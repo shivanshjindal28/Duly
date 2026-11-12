@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 06:10 IST by Shivansh (Claude Code)
+Last updated: 2026-11-13 06:45 IST by Shivansh (Claude Code)
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -42,6 +42,7 @@ cd frontend && npm run typecheck
 - **Phase 3 step 18 (D2)**: prompt-injection shield (`ingestion/injection.py`). Before any AI reads a PDF: finds white / near-white, tiny (< 3.5 pt) and off-page text runs, PDF metadata, and instruction-like phrasing (override instructions, addressed to an AI, approve the invoice, change payment details, bypass controls, ...); for images, visible OCR text. Hidden words are dropped from the parser's tokens (hidden text cannot change extracted values). If found, the AI's reading is quarantined (stored, shown, never used); the AI's own `suspicious_text` report also quarantines. Engine reason `INJECTION_ATTEMPT` (flag) with findings as evidence. UI: injection panel on the invoice (hidden text verbatim, where, what it tries to do; quarantined AI values vs values used). Scenario 7 verified live.
 - **Phase 3 step 19 (D3)**: bank-detail fraud. BANK_MISMATCH block (engine) now also raises `security.bank_mismatch_alert`. Bank change workflow (`workflow/bank_changes.py`, `/api/bank-changes`): supplier requests -> AP clerk proposes after the out-of-band call-back checklist (number on file, known contact, bank proof) -> cooling period (policy `bank_change_cooling_hours`, 72) -> finance approver (not maker/requester) approves -> vendor master updated (AES-GCM), blocked/flagged invoices re-matched (trigger `bank_change_approved:<id>`). Every step audited; accounts masked everywhere. UI: bank card in supplier portal (en/hi), staff `/bank-changes` page. Controls report C-06 now tests real requests.
 - **Phase 3 step 20 (D4 + D5)**: MSME guardian and smart payment run. `payments/msme.py`: statutory due date, MSMED s.16 interest (3 x RBI bank rate, monthly rests, pro-rated by 30-day months), tax deduction at risk (s.43B(h) / s.37(2)(g), assumed tax rate, rule text in a tooltip), half-year periods. `payments/tds.py`: TDS under s.393 (formerly 194C/194J/194Q) from the policy table "verify with tax team" (contractor 1%/2% with 30k single / 1L yearly thresholds, technical 2%, professional 10%, goods 0.1% above 50L). `payments/run.py`: proposal (overdue first, then MSME due before next run + 7-day buffer, then early-payment discounts whose annualised return beats the 9% cost of funds, then contract-term invoices due before the next run; everything else deferred with the reason), cash kept / days-payable effect, release by a finance approver only (simulated UTR `DULYN...`, TDS withheld, invoice -> paid, audit `payment.released`), MSME rows and the half-yearly "MSME dues outstanding beyond 45 days" (Form I data). API `/api/payments/run`, `/run/release`, `/history`, `/msme`. UI `/payments`. Supplier portal + chatbot show the payment and UTR. Controls C-08 reuses the same interest function. Suppliers got `tds_section` and an early-payment discount (Sahyadri 1% in 10 days).
+- **Phase 3 step 21 (D6)**: SAP-ready by design. `backend/app/erp/`: `ErpAdapter` interface, `LocalErpAdapter` (SQLite PO / GR / SES reads; the demo's system of record), `S4HanaAdapterStub` (never calls SAP) building the OData V2 requests: PO read (API_PURCHASEORDER_PROCESS_SRV), GR read (API_MATERIAL_DOCUMENT_SRV, movement type 101) and the supplier-invoice deep insert (API_SUPPLIERINVOICE_PROCESS_SRV A_SupplierInvoice with to_SuplrInvcItemPurOrdRef (PO item + GR material document or service entry sheet), to_SupplierInvoiceTax per GST tax code, to_SupplierInvoiceWhldgTax from the supplier's TDS section, PaymentBlockingReason R when not approved, warnings for unmapped lines / missing GR / bank mismatch). `GET /api/invoices/{id}/sap-preview` (staff only). UI: "SAP posting preview" bottom drawer on the invoice detail (key fields, warnings, reads, copyable JSON, Esc closes); SAP tooltips (`components/SapTerm.tsx`: ME23N, MIGO 101, SES, MIRO, tolerance keys PP / DQ / BD, payment block R) on the match matrix and the decision card.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
 
@@ -49,9 +50,9 @@ cd frontend && npm run typecheck
 - Nothing half-done.
 
 ## Next (in order)
-1. Phase 3 step 21: SAP posting preview + `erp/` adapter (ErpAdapter, LocalErpAdapter, S4HanaAdapterStub building the supplier-invoice OData payload) + SAP tooltips (D6).
-2. Phase 4 step 22: invoice generator script for all 12 scenarios + image variants into `demo/invoices/` with `demo/manifest.json`; seed ~250 historical invoices (incl. some approved / paid so the payment run, MSME guardian and dashboard have data).
-3. Phase 4 step 23: `scripts/demo_check.py` running every scenario end to end; Playwright smoke test.
+1. Phase 4 step 22: invoice generator script for all 12 scenarios + image variants into `demo/invoices/` with `demo/manifest.json`; seed ~250 historical invoices (incl. some approved / paid so the payment run, MSME guardian and dashboard have data).
+2. Phase 4 step 23: `scripts/demo_check.py` running every scenario end to end; Playwright smoke test.
+3. Phase 4 step 24: Impact, Architecture, Trust and Assumptions pages; demo controls (AI mode switch, reset demo).
 
 ## Key decisions
 - Spec file moved from repo root to `docs/MASTER_PROMPT.md` as the spec instructs. Slides and spec agree (palette, wording); no conflicts found.
@@ -106,6 +107,7 @@ cd frontend && npm run typecheck
 - Payment run: releasing is an approver (finance manager) action; clerks, auditors and admins can see the proposal. MSME invoices go into a run if their statutory due date is before the next run plus `payments.msme_buffer_days` (7). Non-MSME invoices are never paid early unless the discount's annualised return beats `payments.cost_of_funds_pct`. All three numbers are policy assumptions.
 - TDS base is the taxable value (excl. GST). PAN 4th character P/H = individual/HUF (1% contractor rate), others 2%. Yearly thresholds use taxable value already paid to that supplier this FY. A labelled assumption, not tax advice.
 - Tax deduction at risk uses an assumed corporate tax rate of 25.17% (policy `corporate_tax_rate_pct`) only to show the size of the effect.
+- SAP configuration values (company code PX01, plant PX10, business place PX24, GST tax codes G*/I*, withholding tax types TC/TJ/TQ, payment terms keys Z<days>) are fictional and live in `erp/base.py`; field names follow the S/4HANA OData entity types, but verify against the target system's $metadata before any real integration. The preview is available for any invoice: unapproved ones show payment block R.
 - Runtime data (`backend/data/*.db`, uploads, keys, ai_cache) is git-ignored; demo invoices under `demo/invoices/` will be tracked.
 
 ## Known bugs
@@ -130,6 +132,7 @@ Scenario PDFs are not generated into `demo/` yet (Phase 4 step 22); today they a
 - S6 bank details differ: works (BLOCK BANK_MISMATCH + security alert; change via maker-checker + cooling releases it).
 - S7 hidden white-text instruction: works (FLAG INJECTION_ATTEMPT, AI output quarantined when AI is on).
 - B3 controls report (screen + PDF): works.
+- D5 payment run (MSME first, TDS, UTR to supplier portal) and D6 SAP posting preview: work in the browser.
 - B2 chatbot demo (precise answer + logged refusal), en/hi, offline: works.
 - Supplier can see where each invoice is, why, what to do and when it will be paid (en/hi): works.
 - Dev DB invoices uploaded before step 11 have no MSME due date; run `python scripts/seed.py --reset` and re-upload to see countdowns.

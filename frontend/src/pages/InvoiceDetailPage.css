@@ -188,3 +188,6 @@
 .inj-table caption { text-align: left; font-size: 12px; font-weight: 600; padding: 4px 0; color: var(--color-text-secondary); }
 .inj-table th[scope="row"] { font-weight: 500; text-align: left; color: var(--color-text-secondary); }
 .inj-note { font-size: 12px; color: var(--color-text-secondary); }
+.detail-rail { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.detail-rail > :first-child { flex: 1; min-width: 0; }
+.detail-sap { flex: none; }

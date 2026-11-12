@@ -1,6 +1,7 @@
 import type { MatchOut, Severity } from "../../api/types";
 import { inr, pct, qty } from "../../lib/format";
 import { SeverityIcon } from "../StatusChip";
+import { SapTerm } from "../SapTerm";
 
 /** PO | GR | Invoice | Variance per line. Variance cells carry the severity of the matching reason. */
 export function MatchMatrix({ match, isService }: { match: MatchOut | null; isService: boolean }) {
@@ -24,16 +25,16 @@ export function MatchMatrix({ match, isService }: { match: MatchOut | null; isSe
             <th scope="col">PO line</th>
             <th scope="col">Description</th>
             <th scope="col" className="num-col">
-              PO qty
+              <SapTerm term="PO">PO qty</SapTerm>
             </th>
             <th scope="col" className="num-col">
-              {isService ? "SES accepted" : "Received (GR)"}
+              {isService ? <SapTerm term="SES">SES accepted</SapTerm> : <SapTerm term="GR">Received (GR)</SapTerm>}
             </th>
             <th scope="col" className="num-col">
               Invoiced before
             </th>
             <th scope="col" className="num-col">
-              This invoice
+              <SapTerm term="MIRO">This invoice</SapTerm>
             </th>
             <th scope="col" className="num-col">
               PO price
@@ -42,10 +43,10 @@ export function MatchMatrix({ match, isService }: { match: MatchOut | null; isSe
               Invoice price
             </th>
             <th scope="col" className="num-col">
-              Price var.
+              <SapTerm term="PP">Price var.</SapTerm>
             </th>
             <th scope="col" className="num-col">
-              Qty var.
+              <SapTerm term="DQ">Qty var.</SapTerm>
             </th>
           </tr>
         </thead>

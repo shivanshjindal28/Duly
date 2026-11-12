@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Cpu, Eye, FileText } from "lucide-react";
+import { ArrowLeft, Cpu, Database, Eye, FileText } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import type { InvoiceDetail } from "../api/types";
 import { DulyRail } from "../components/DulyRail";
@@ -14,6 +14,7 @@ import { InvoiceAuditTrail } from "../components/invoice/InvoiceAuditTrail";
 import { useAuth } from "../auth/AuthContext";
 import { FieldsPanel } from "../components/invoice/FieldsPanel";
 import { MatchMatrix } from "../components/invoice/MatchMatrix";
+import { SapPreviewDrawer } from "../components/invoice/SapPreviewDrawer";
 import { StatusChip } from "../components/StatusChip";
 import { fmtDate, inr } from "../lib/format";
 import "./InvoiceDetailPage.css";
@@ -25,6 +26,7 @@ export function InvoiceDetailPage() {
   const { id } = useParams();
   const { me } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
+  const [sapOpen, setSapOpen] = useState(false);
   const q = useQuery({ queryKey: ["invoice", id], queryFn: () => api<InvoiceDetail>(`/invoices/${id}`) });
 
   if (q.isLoading) {
@@ -92,8 +94,14 @@ export function InvoiceDetailPage() {
         </dl>
         <div className="detail-rail">
           <DulyRail completed={inv.rail} showDocs />
+          {me && me.role !== "supplier" ? (
+            <button type="button" className="btn btn-sm detail-sap" onClick={() => setSapOpen(true)}>
+              <Database size={14} aria-hidden="true" /> SAP posting preview
+            </button>
+          ) : null}
         </div>
       </header>
+      {sapOpen ? <SapPreviewDrawer invoiceId={inv.id} onClose={() => setSapOpen(false)} /> : null}
 
       {inv.pending_review.length > 0 ? (
         <div className="review-banner" role="status">

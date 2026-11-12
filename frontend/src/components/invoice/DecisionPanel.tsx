@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { MatchOut, ReasonOut, Severity } from "../../api/types";
 import { fmtDateTime } from "../../lib/format";
 import { DecisionChip, SeverityIcon } from "../StatusChip";
+import { SapTerm } from "../SapTerm";
 
 const ORDER: Record<Severity, number> = { block: 0, flag: 1, info: 2 };
 
@@ -53,6 +54,11 @@ export function DecisionPanel({ match, onLine, invoiceId }: { match: MatchOut | 
         <DecisionChip decision={match.decision} large />
         <p className="decision-summary">{SUMMARY[match.decision]}</p>
       </div>
+      {match.decision === "BLOCK" ? (
+        <p className="decision-block-sap">
+          <SapTerm term="R">In SAP this invoice would carry payment block R</SapTerm>
+        </p>
+      ) : null}
       {actionable.length > 0 ? (
         <ul className="reasons" aria-label="Reasons">
           {actionable.map((r, i) => (

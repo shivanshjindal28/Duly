@@ -7,6 +7,7 @@ clerks (on behalf of a supplier, e.g. invoices received by email).
 """
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -25,7 +26,8 @@ from app.ingestion.storage import path_of
 from app.core import clock
 from app.core.enums import InvoiceStatus, Role
 from app.engine.catalog import info
-from app.models import Document, Invoice, MatchResult, ReasonCode, Supplier, User
+from app.erp import S4HanaAdapterStub
+from app.models import Document, Invoice, MatchResult, PurchaseOrder, ReasonCode, Supplier, User
 from app.models.base import as_utc
 from app.workflow import approvals as wf
 from app.workflow.lifecycle import rail_progress
@@ -473,3 +475,21 @@ def duplicates(invoice_id: int, scope: SupplierScope = Depends(get_scope), db: S
             fields=_compare_fields(inv, other, doc, odoc),
         ))
     return DuplicatesOut(invoice_id=inv.id, pages=doc.pages if doc else 0, matches=out)
+
+
+@router.get("/{invoice_id}/sap-preview")
+def sap_preview(invoice_id: int, user: User = Depends(require_roles(Role.CLERK, Role.APPROVER, Role.AUDITOR, Role.ADMIN)),
+                db: Session = Depends(get_db)) -> dict:
+    """SAP posting preview (D6): the S/4HANA supplier-invoice request Duly would send (never sent)."""
+    inv = db.get(Invoice, invoice_id)
+    if inv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
+    stub = S4HanaAdapterStub(db)
+    post = stub.post_supplier_invoice(inv, dry_run=True)
+    po_number = db.get(PurchaseOrder, inv.po_id).po_number if inv.po_id else (inv.po_number_text or "")
+    reads = [asdict(stub.read_purchase_order(po_number)), asdict(stub.read_goods_receipts(po_number))] if po_number else []
+    return {"posting": asdict(post), "reads": reads, "ready": inv.status in (InvoiceStatus.APPROVED, InvoiceStatus.PAID),
+            "transaction": "MIRO (Enter Incoming Invoice)",
+            "note": "Duly runs beside SAP S/4HANA (for example as an SAP BTP extension); SAP stays the system of record. "
+                    "This request is built, not sent. Company code, plant, tax codes and withholding tax types are "
+                    "fictional configuration."}
