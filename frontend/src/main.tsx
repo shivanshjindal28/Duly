@@ -27,6 +27,7 @@ import { SupplierPortalPage } from "./pages/SupplierPortalPage";
 import { SupplierRiskPage } from "./pages/SupplierRiskPage";
 import { DemoControlsPage } from "./pages/DemoControlsPage";
 import { ImpactPage } from "./pages/ImpactPage";
+import { InboxPage } from "./pages/InboxPage";
 import { ArchitecturePage } from "./pages/ArchitecturePage";
 import { AssumptionsPage } from "./pages/AssumptionsPage";
 import { TrustPage } from "./pages/TrustPage";
@@ -76,6 +77,7 @@ const router = createBrowserRouter([
               { path: "/invoices/:id", element: <InvoiceDetailPage /> },
               { path: "/invoices/:id/compare", element: <ComparePage /> },
               { path: "/upload", element: <UploadPage /> },
+              { path: "/inbox", element: <InboxPage /> },
               { path: "/receiving", element: <ReceivingPage /> },
               { path: "/approvals", element: <ApprovalsPage /> },
               { path: "/admin/demo", element: <DemoControlsPage /> },

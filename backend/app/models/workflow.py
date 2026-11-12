@@ -139,3 +139,24 @@ class Policy(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = created_at_col()
+
+
+class InboundEmail(Base):
+    """An email that reached the AP mailbox (simulated: no mail server). Each invoice attachment
+    becomes an invoice through the normal upload pipeline; the sender is checked against the vendor master."""
+    __tablename__ = "inbound_emails"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(200), unique=True)
+    from_addr: Mapped[str] = mapped_column(String(200))
+    from_name: Mapped[str | None] = mapped_column(String(200))
+    to_addr: Mapped[str] = mapped_column(String(200))
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(10), default="mailbox")  # mailbox | composed
+    sender_status: Mapped[str] = mapped_column(String(10))  # verified | internal | lookalike | unknown
+    sender_supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))  # matched or imitated
+    status: Mapped[str] = mapped_column(String(15), default="received")  # processed | partly | rejected | no_attachment
+    attachments: Mapped[list] = mapped_column(JSON, default=list)  # per attachment: outcome, invoice, error
+    fetched_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -3,7 +3,7 @@ from app.models.invoice import CreditNote, CreditNoteLine, Document, ExtractionR
 from app.models.org import Organisation, Supplier, User
 from app.models.procurement import GoodsReceipt, GRLine, POLine, PurchaseOrder, ServiceEntrySheet
 from app.models.workflow import (AppSetting, ApprovalStep, AuditEvent, BankChangeRequest, ChatSession, Delegation,
-                                 Payment, Policy)
+                                 InboundEmail, Payment, Policy)
 
 __all__ = [
     "AppSetting",
@@ -18,6 +18,7 @@ __all__ = [
     "ExtractionResult",
     "GRLine",
     "GoodsReceipt",
+    "InboundEmail",
     "Invoice",
     "InvoiceLine",
     "MatchResult",

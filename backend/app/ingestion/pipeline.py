@@ -129,9 +129,12 @@ class Ingested:
     qr: QrResult
     findings: list[Finding] = field(default_factory=list)
     injected: bool = False
+    origin: str = "upload"  # upload | email
+    source_email_id: int | None = None
 
 
-def process_upload(db: Session, user: User, filename: str, data: bytes, supplier_id: int | None = None) -> Invoice:
+def process_upload(db: Session, user: User, filename: str, data: bytes, supplier_id: int | None = None,
+                   source_email_id: int | None = None) -> Invoice:
     clean = harden(filename, data)
     tokens, method = acquire_tokens(clean.data, clean.kind)
     file_hash = sha256(clean.data)
@@ -150,7 +153,8 @@ def process_upload(db: Session, user: User, filename: str, data: bytes, supplier
     return create_invoice(db, user, supplier, Ingested(
         filename=filename, data=clean.data, kind=clean.kind, mime=clean.mime, pages=clean.pages, sha256=file_hash,
         phash=page1_phash(clean.data, clean.kind), extracted=extracted, ai_mode=ai_mode, ai_fallback=ai_fallback,
-        quarantined=quarantined, qr=qr, findings=findings, injected=injected))
+        quarantined=quarantined, qr=qr, findings=findings, injected=injected,
+        origin="email" if source_email_id else "upload", source_email_id=source_email_id))
 
 
 def create_invoice(db: Session, user: User, supplier: Supplier, ing: Ingested) -> Invoice:
@@ -185,6 +189,7 @@ def create_invoice(db: Session, user: User, supplier: Supplier, ing: Ingested) -
         qr_status=qr.status, qr_payload=qr.payload, qr_error=qr.error,
         injection={"found": injected, "findings": to_json(findings), "ai_quarantined": quarantined},
         ai_mode=ai_mode, processed_by_user_id=user.id if user.role == Role.CLERK else None,
+        origin=ing.origin, source_email_id=ing.source_email_id,
     )
     db.add(invoice)
     db.flush()

@@ -158,6 +158,10 @@ def card(s: Supplier, facts: Facts, today: date) -> dict:
     if injections:
         reasons.append({"level": "high", "text": f"{len(injections)} invoice(s) with hidden instructions aimed "
                                                  "at an AI reader."})
+    spoofed = [i for i in invs if "EMAIL_SENDER_UNVERIFIED" in i.codes]
+    if spoofed:
+        reasons.append({"level": "watch", "text": f"{len(spoofed)} invoice(s) in this supplier's name emailed from an "
+                                                  "address not on the vendor master (possible impersonation)."})
     if recent_change and recent_change >= today - timedelta(days=RECENT_BANK_CHANGE_DAYS):
         reasons.append({"level": "watch", "text": f"Bank account changed on {recent_change:%d %b %Y} "
                                                   f"(within {RECENT_BANK_CHANGE_DAYS} days): check first payments."})

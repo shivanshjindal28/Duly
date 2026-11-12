@@ -27,7 +27,7 @@ from app.core import clock
 from app.core.enums import InvoiceStatus, Role
 from app.engine.catalog import info
 from app.erp import S4HanaAdapterStub
-from app.models import CreditNote, Document, Invoice, MatchResult, PurchaseOrder, ReasonCode, Supplier, User
+from app.models import CreditNote, Document, InboundEmail, Invoice, MatchResult, PurchaseOrder, ReasonCode, Supplier, User
 from app.models.base import as_utc
 from app.workflow import approvals as wf
 from app.workflow.credit_notes import OPEN_FOR_CREDIT, CreditNoteError, can_credit, net_total
@@ -218,6 +218,14 @@ class CreditSuggestionOut(BaseModel):
     reason_code: str
 
 
+def _source_email(db: Session, inv: Invoice) -> dict | None:
+    em = db.get(InboundEmail, inv.source_email_id) if inv.source_email_id else None
+    if em is None:
+        return None
+    return {"from_addr": em.from_addr, "from_name": em.from_name, "subject": em.subject,
+            "received_at": em.received_at, "sender_status": em.sender_status}
+
+
 def _credit_notes(db: Session, inv: Invoice) -> list[CreditNoteOut]:
     notes = db.scalars(select(CreditNote).where(CreditNote.invoice_id == inv.id).order_by(CreditNote.id)).all()
     if not notes:
@@ -245,7 +253,8 @@ class InvoiceDetail(InvoiceSummary):
     bank_ifsc: str | None
     irn: str | None
     ai_mode: str | None
-    origin: str  # upload | ers (self-billed from a receipt; no document)
+    origin: str  # upload | email | ers (self-billed from a receipt; no document)
+    source_email: dict | None  # for emailed invoices: from, subject, received_at, sender_status
     lines: list[LineOut]
     document: DocumentOut | None
     fields: list[FieldOut]
@@ -337,6 +346,7 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
         currency=inv.currency, taxable_total=inv.taxable_total, cgst=inv.cgst, sgst=inv.sgst, igst=inv.igst,
         bank_account_masked=("XXXXXX" + inv.bank_account_last4) if inv.bank_account_last4 else None,
         bank_ifsc=inv.bank_ifsc, irn=inv.irn, ai_mode=inv.ai_mode, origin=inv.origin or "upload",
+        source_email=_source_email(db, inv),
         lines=[LineOut.model_validate(ln, from_attributes=True) for ln in inv.lines],
         document=DocumentOut.model_validate(doc, from_attributes=True) if doc else None,
         fields=[FieldOut(field=r.field, value=r.value, confidence=r.confidence, page=r.page, bbox=r.bbox,

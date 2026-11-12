@@ -4,11 +4,11 @@
 
 Duly reads supplier invoices (PDF, scan or phone photo), checks them against purchase orders and goods receipts, and approves, flags or blocks each one with a clear reason. A deterministic rules engine makes every decision; AI only reads documents and answers supplier questions, and the whole product also runs offline.
 
-What it does: separate logins for six roles · extraction with per-field confidence and human review · three-way match with SAP-style tolerances · approvals by delegation of authority with MFA and segregation of duties · tamper-evident audit chain · exceptions dashboard and work queue · supplier portal in English and Hindi · duplicate detection · "Where is my payment?" chatbot · controls report for auditors · signed e-invoice QR verification · prompt-injection shield · bank-detail fraud block · MSME 45-day guardian and smart payment run with TDS · SAP S/4HANA posting preview · supplier risk cards · evaluated receipt settlement (self-billing) for freight · supplier credit notes that release over-billing blocks · Impact, Trust & controls, Architecture and Assumptions pages.
+What it does: separate logins for six roles · extraction with per-field confidence and human review · three-way match with SAP-style tolerances · approvals by delegation of authority with MFA and segregation of duties · tamper-evident audit chain · exceptions dashboard and work queue · supplier portal in English and Hindi · duplicate detection · "Where is my payment?" chatbot · controls report for auditors · signed e-invoice QR verification · prompt-injection shield · bank-detail fraud block · MSME 45-day guardian and smart payment run with TDS · SAP S/4HANA posting preview · supplier risk cards · evaluated receipt settlement (self-billing) for freight · supplier credit notes that release over-billing blocks · email-in (simulated AP mailbox with lookalike-sender detection) · Impact, Trust & controls, Architecture and Assumptions pages.
 
 Built for LYB Mumbai Hackathon 2026, Round 2, Problem Statement 4. Plant X is a fictional company and all data in this repo is synthetic.
 
-> Status: feature-complete for the demo (Phases 0 to 4). Live status: [PROGRESS.md](PROGRESS.md). Full spec: [docs/MASTER_PROMPT.md](docs/MASTER_PROMPT.md).
+> Status: feature-complete for the demo (Phases 0 to 5). Live status: [PROGRESS.md](PROGRESS.md). Full spec: [docs/MASTER_PROMPT.md](docs/MASTER_PROMPT.md).
 
 ## Requirements
 - Python 3.12 (3.13 and newer lack wheels for some pinned packages; on Windows: `py -3.12 -m venv .venv`)

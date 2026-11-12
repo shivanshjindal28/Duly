@@ -28,6 +28,7 @@ export function InvoiceDetailPage() {
   const { me } = useAuth();
   const [selected, setSelected] = useState<string | null>(null);
   const [sapOpen, setSapOpen] = useState(false);
+  const staff = me?.role === "clerk" || me?.role === "auditor" || me?.role === "admin";  // roles that open the AP mailbox
   const q = useQuery({ queryKey: ["invoice", id], queryFn: () => api<InvoiceDetail>(`/invoices/${id}`) });
 
   if (q.isLoading) {
@@ -157,6 +158,17 @@ export function InvoiceDetailPage() {
           ) : (
             <p className="muted">No document.</p>
           )}
+          {inv.source_email ? (
+            <p className={`small ${inv.source_email.sender_status === "verified" || inv.source_email.sender_status === "internal" ? "muted" : "sev-flag"}`}>
+              Received by email from <span className="mono">{inv.source_email.from_addr}</span>, "{inv.source_email.subject}"
+              {staff ? (
+                <>
+                  {" "}
+                  (<Link to="/inbox">AP mailbox</Link>)
+                </>
+              ) : null}
+            </p>
+          ) : null}
           {inv.document ? (
             <p className="doc-hash mono" title="SHA-256 fingerprint of the stored file">
               sha256 {inv.document.sha256.slice(0, 16)}…

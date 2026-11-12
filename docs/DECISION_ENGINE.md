@@ -59,6 +59,17 @@ passed into `decide(..., extra_reasons)` so the engine itself stays pure, and th
 
 | CREDIT_NOTE_APPLIED | info | The match is net of the supplier's credit note(s) against this invoice; message gives the numbers, the amount credited and the net payable (`workflow/credit_notes.py`) | MIRO credit memo / FB60 |
 
+| EMAIL_RECEIVED | info | Invoice arrived by email from a registered address of its own supplier, or forwarded by a Plant X colleague (`ingestion/email_in.py`) | Inbound channel |
+| EMAIL_SENDER_UNVERIFIED | flag | Invoice arrived by email from an address that is not registered for the supplier on the invoice: a lookalike domain (also a `security.email_lookalike_sender` alert), another supplier's address, or an unknown sender | Block R · XK03 vendor email / call-back |
+
+**Email-in (simulated AP mailbox).** Suppliers email invoices to `ap@plantx.example`. There is no mail server (the
+demo runs offline): messages are real MIME emails that a clerk fetches from a simulated mailbox (three samples built
+from seeded POs 4500001016 / 4500001017) or composes in the app. Each PDF / JPG / PNG attachment goes through the
+normal upload pipeline as that clerk (hardening, OCR / text, supplier identified by the GSTIN on the invoice, never
+by the sender); other files are refused with a reason. The sender's domain is compared with the supplier domains on
+the vendor master (contact and portal users): equal = verified, Plant X's own domain = internal, rapidfuzz ratio of
+85+ to a supplier domain without being equal = lookalike, else unknown. A Message-ID is received only once.
+
 **Credit notes.** A BLOCK cannot be overridden; an over-billed invoice is resolved by the supplier's credit note.
 The supplier (own invoice) or the AP clerk enters it against a blocked or flagged invoice; the form is prefilled
 with the exact credit that clears the QTY_EXCEEDS_GR (quantity) or SES_VALUE_EXCEEDED (value) exception. Duly prices

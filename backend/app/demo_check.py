@@ -98,6 +98,7 @@ class DemoCheck:
         self.step("S01+", "S01 L1 then L2 approve with MFA", self._s01_approvals, ("S01",))
         self.step("PAY", "S10/S11 approved -> payment run: MSME first, TDS", self._payment_run, ("S10", "S11"))
         self.step("ERS", "ERS freight: stores posts a trip -> self-billed, touchless", self._ers)
+        self.step("MAIL", "Email-in: fetch AP mailbox -> clean, lookalike sender, non-invoice", self._mail)
         self.step("CHAT", "Chatbot offline: answer + cross-supplier refusal", self._chat)
         self.step("AI", "AI kill switch: offline and back", self._ai_switch)
         self.step("CHAIN", "Audit chain verifies; tamper demo detected and restored", self._chain)
@@ -215,6 +216,20 @@ class DemoCheck:
         assert D(d["total"]) - D(d["net_total"]) == D(s[0]["total"]), (d["total"], d["net_total"])
         return (f"CN/0071 credits 20 bearings Rs {s[0]['total']}: APPROVE, routed on the net "
                 f"Rs {d['net_total']} (invoice Rs {d['total']})")
+
+    def _mail(self) -> str:
+        h = self.login(CLERK)
+        r = self.client.post("/api/inbox/fetch", headers=h)
+        assert r.status_code == 200 and r.json()["fetched"] == 3, r.text[:200]
+        emails = {e["sender_status"]: e for e in self.client.get("/api/inbox").json()["emails"]
+                  if e["status"] != "rejected"}
+        clean = self.client.get(f"/api/invoices/{emails['verified']['attachments'][0]['invoice_id']}").json()
+        fake = self.client.get(f"/api/invoices/{emails['lookalike']['attachments'][0]['invoice_id']}").json()
+        assert clean["decision"] == "APPROVE" and clean["status"] == "approved", (clean["decision"], clean["status"])
+        assert fake["decision"] == "FLAG" and any(x["code"] == "EMAIL_SENDER_UNVERIFIED"
+                                                   for x in fake["match"]["reasons"]), fake["decision"]
+        return (f"{clean['invoice_number']} APPROVE touchless; {fake['invoice_number']} from "
+                f"{emails['lookalike']['from_addr']} FLAG; statement .xlsx rejected")
 
     def _ers(self) -> str:
         h = self.login(STORES)

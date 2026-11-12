@@ -1,0 +1,25 @@
+/* AP mailbox (email-in) */
+.inbox-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+.inbox-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.mail-list { display: flex; flex-direction: column; gap: 12px; }
+.mail { padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.mail-head p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.mail-head .chip { flex: none; gap: 5px; }
+.mail-subject { font-size: 15px; font-weight: 600; margin: 0; }
+.mail-sender { margin: 0; }
+.mail .alert { margin: 0; display: flex; gap: 6px; align-items: flex-start; }
+.mail-body summary { cursor: pointer; color: var(--color-text-secondary); }
+.mail-body pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; margin: 6px 0 0; padding: 10px 12px;
+  background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: 6px; }
+.mail-atts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mail-atts li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.compose { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.compose h2 { margin: 0; }
+.compose-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.compose-send { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 640px) {
+  .mail-head { flex-direction: column; }
+  .compose-row { grid-template-columns: minmax(0, 1fr); }
+}

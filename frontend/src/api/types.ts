@@ -108,7 +108,14 @@ export interface InvoiceDetail extends InvoiceSummary {
   irn: string | null;
   ai_mode: string | null;
   /** upload, or ers: self-billed by Duly from a goods receipt / service entry (no document). */
-  origin: "upload" | "ers";
+  origin: "upload" | "email" | "ers";
+  source_email: {
+    from_addr: string;
+    from_name: string | null;
+    subject: string;
+    received_at: string;
+    sender_status: "verified" | "internal" | "lookalike" | "unknown";
+  } | null;
   lines: InvoiceLine[];
   document: { original_filename: string; mime_type: string; pages: number; sha256: string; size_bytes: number } | null;
   fields: ExtractedFieldOut[];
