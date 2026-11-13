@@ -67,6 +67,11 @@ class Proposal:
     tds: Decimal
     net: Decimal
     interest_if_late: Decimal  # MSMED s.16 interest accrued so far (overdue MSME only)
+    # Amounts above are in `currency` (the invoice's). INR equivalents at the invoice's FX rate:
+    currency: str = "INR"
+    fx_rate: Decimal = Decimal(1)
+    gross_inr: Decimal = Decimal(0)
+    net_inr: Decimal = Decimal(0)
 
 
 @dataclass
@@ -161,10 +166,15 @@ def plan(db: Session) -> RunPlan:
         out.items.append(Proposal(
             inv.id, inv.invoice_number, s.id, s.name, is_msme, inv.invoice_date, inv.due_date, inv.msme_due_date,
             days_left, pay, rule, reason, total, taxable, disc, apr, t.section, t.label, t.rate_pct,
-            t.amount, total - disc - t.amount, interest))
+            t.amount, total - disc - t.amount, interest,
+            inv.currency, inv.fx_rate or Decimal(1), _inr(total, inv), _inr(total - disc - t.amount, inv)))
     order = {"overdue": 0, "msme": 1, "discount": 2, "terms": 3, "defer": 4}
     out.items.sort(key=lambda x: (order[x.rule], x.msme_due_date or x.due_date or date.max, x.invoice_number))
     return out
+
+
+def _inr(amount: Decimal, inv: Invoice) -> Decimal:
+    return (amount * (inv.fx_rate or Decimal(1))).quantize(TWO)
 
 
 def summary(pl: RunPlan) -> dict:
@@ -173,19 +183,22 @@ def summary(pl: RunPlan) -> dict:
     defer = [i for i in pl.items if not i.pay]
 
     def wdays(items: list[Proposal], when) -> Decimal | None:
-        rows = [(i.gross, (when(i) - i.invoice_date).days) for i in items if i.invoice_date]
+        rows = [(i.gross_inr, (when(i) - i.invoice_date).days) for i in items if i.invoice_date]
         tot = sum((g for g, _ in rows), Decimal(0))
         return (sum((g * d for g, d in rows), Decimal(0)) / tot).quantize(Decimal("0.1")) if tot else None
 
-    kept = sum((i.gross for i in defer), Decimal(0))
-    kept_days = [(i.gross, ((i.msme_due_date or i.due_date) - pl.run_date).days) for i in defer if (i.msme_due_date or i.due_date)]
+    kept = sum((i.gross_inr for i in defer), Decimal(0))
+    kept_days = [(i.gross_inr, ((i.msme_due_date or i.due_date) - pl.run_date).days) for i in defer
+                 if (i.msme_due_date or i.due_date)]
     kept_tot = sum((g for g, _ in kept_days), Decimal(0))
     return {
         "invoices_to_pay": len(pay),
-        "gross": sum((i.gross for i in pay), Decimal(0)),
-        "discounts": sum((i.discount for i in pay), Decimal(0)),
-        "tds": sum((i.tds for i in pay), Decimal(0)),
-        "cash_out": sum((i.net for i in pay), Decimal(0)),
+        # All totals in INR (each invoice at its FX rate).
+        "gross": sum((i.gross_inr for i in pay), Decimal(0)),
+        "discounts": sum(((i.discount * i.fx_rate).quantize(TWO) for i in pay), Decimal(0)),
+        "tds": sum(((i.tds * i.fx_rate).quantize(TWO) for i in pay), Decimal(0)),
+        "cash_out": sum((i.net_inr for i in pay), Decimal(0)),
+        "currencies": sorted({i.currency for i in pay}),
         "msme_in_run": sum(1 for i in pay if i.msme),
         "deferred_count": len(defer),
         "cash_kept": kept,
@@ -234,7 +247,8 @@ def release(db: Session, user: User, invoice_ids: list[int]) -> tuple[str, list[
         p = Payment(invoice_id=iid, payment_run_id=run_id, gross_amount=item.gross, tds_amount=t.amount,
                     tds_section=t.section, tds_rate_pct=t.rate_pct, discount_amount=disc,
                     net_amount=item.gross - disc - t.amount, utr=_utr(today), released_by_user_id=user.id,
-                    reason=item.reason[:200], paid_at=now)
+                    reason=item.reason[:200], paid_at=now, currency=item.currency, fx_rate=item.fx_rate,
+                    net_inr=((item.gross - disc - t.amount) * item.fx_rate).quantize(TWO))
         db.add(p)
         inv.status = InvoiceStatus.PAID
         inv.current_owner = "Paid"

@@ -69,10 +69,25 @@ class GRLine(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     gr_id: Mapped[int] = mapped_column(ForeignKey("goods_receipts.id"), index=True)
     po_line_id: Mapped[int] = mapped_column(ForeignKey("po_lines.id"), index=True)
-    qty: Mapped[Decimal] = mapped_column(Qty)
-    uom: Mapped[str] = mapped_column(String(6))
+    qty: Mapped[Decimal] = mapped_column(Qty)  # in the PO unit
+    uom: Mapped[str] = mapped_column(String(6))  # the PO unit
+    # What stores entered, if in another unit (e.g. 12 BOX for a PO in NOS); qty above is converted.
+    entered_qty: Mapped[Decimal | None] = mapped_column(Qty)
+    entered_uom: Mapped[str | None] = mapped_column(String(6))
 
     gr: Mapped[GoodsReceipt] = relationship(back_populates="lines")
+
+
+class ItemUnit(Base):
+    """Item master pack size: 1 `unit` of `item_code` = `qty` `base_unit` (e.g. 1 BOX of BRG-6205 = 10 NOS)."""
+
+    __tablename__ = "item_units"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_code: Mapped[str] = mapped_column(String(40), index=True)
+    unit: Mapped[str] = mapped_column(String(6))
+    qty: Mapped[Decimal] = mapped_column(Qty)
+    base_unit: Mapped[str] = mapped_column(String(6))
 
 
 class ServiceEntrySheet(Base):

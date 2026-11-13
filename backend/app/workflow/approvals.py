@@ -30,7 +30,7 @@ from app.core.crypto import decrypt_str
 from app.core.enums import Decision, InvoiceStatus, Role, StepStatus
 from app.models import ApprovalStep, Delegation, Invoice, Policy, PurchaseOrder, User
 from app.models.base import as_utc
-from app.workflow.credit_notes import net_total
+from app.workflow.credit_notes import net_total, net_total_inr
 
 LEVEL_TITLE = {1: "L1 Finance Manager", 2: "L2 Plant Head", 3: "L3 CFO"}
 
@@ -80,7 +80,7 @@ def _owner_for(step: ApprovalStep) -> str:
 
 def _open_route(db: Session, inv: Invoice, override: bool) -> None:
     policy = _policy(db)
-    amount = net_total(db, inv)  # net of credit notes
+    amount = net_total_inr(db, inv)  # net of credit notes, in INR
     levels = required_levels(amount, policy, override)
     now = clock.now()
     if not levels:
@@ -203,7 +203,7 @@ def authority(db: Session, inv: Invoice, step: ApprovalStep, user: User) -> Auth
 
 
 def mfa_required(db: Session, inv: Invoice) -> bool:
-    return net_total(db, inv) > Decimal(str(_policy(db).get("mfa_threshold_inr", 1_000_000)))
+    return net_total_inr(db, inv) > Decimal(str(_policy(db).get("mfa_threshold_inr", 1_000_000)))
 
 
 def _check_mfa(db: Session, inv: Invoice, user: User, code: str | None) -> bool:

@@ -26,6 +26,13 @@ GUIDE: dict[str, tuple[str, str, str]] = {
                          "The supplier sends a corrected invoice billed to Plant X.", "supplier"),
     "CURRENCY_MISMATCH": ("The invoice currency differs from the PO, so the amounts cannot be compared.",
                           "The supplier re-bills in the PO currency, or the buyer amends the PO.", "supplier"),
+    "CURRENCY_CONVERTED": ("The invoice is in a different currency from the PO. Duly converted it at the policy exchange "
+                           "rate to compare prices, but the supplier may not be allowed to bill in this currency.",
+                           "The clerk checks the contract or asks the buyer; if accepted, override with a reason, otherwise "
+                           "the supplier re-bills in the PO currency.", "clerk"),
+    "UOM_MISMATCH": ("The invoice is in a unit Duly cannot convert to the PO unit, so quantities cannot be compared.",
+                     "Add the pack size to the item master (e.g. 1 BOX = 10 NOS) or ask the supplier to bill in the PO unit.",
+                     "clerk"),
     "PAYMENT_TERMS_MISMATCH": ("The supplier's terms differ from the PO; paying on their terms could mean paying early.",
                                "The clerk checks the terms; Duly pays on the PO terms unless finance agrees otherwise.", "clerk"),
     "LINE_NOT_ON_PO": ("Something was billed that was never ordered.",

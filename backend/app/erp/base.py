@@ -29,7 +29,12 @@ def sap_fiscal_year(d: date) -> str:
     return str(d.year if d.month >= 4 else d.year - 1)
 
 
-def tax_code(rate: float, inter_state: bool) -> str:
+IMPORT_TAX_CODE = "M0"  # import invoice: no GST on it (IGST is paid at customs). ASSUMPTION: company config.
+
+
+def tax_code(rate: float, inter_state: bool, imported: bool = False) -> str:
+    if imported:
+        return IMPORT_TAX_CODE
     return TAX_CODES.get(("inter" if inter_state else "intra", int(round(rate))), "G?")
 
 

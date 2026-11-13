@@ -129,7 +129,7 @@ def measured(db: Session) -> dict:
         hit = [i for i, c in ever.items() if c & set(codes)]
         if hit:
             causes.append({"key": key, "title": title, "count": len(hit),
-                           "value": sum((by_id[i].total for i in hit), Decimal(0)),
+                           "value": sum(((by_id[i].total_inr or by_id[i].total) for i in hit), Decimal(0)),
                            "codes": [{"code": c, "title": info(c).title} for c in codes]})
     causes.sort(key=lambda r: -r["count"])
 
@@ -147,8 +147,8 @@ def measured(db: Session) -> dict:
         ExtractionResult.source == "manual", ExtractionResult.previous_value.is_not(None),
         ExtractionResult.value != ExtractionResult.previous_value)) or 0
 
-    total_value = sum((i.total for i in invoices), Decimal(0))
-    msme_value = sum((i.total for i in invoices if suppliers.get(i.supplier_id) is not None
+    total_value = sum(((i.total_inr or i.total) for i in invoices), Decimal(0))
+    msme_value = sum(((i.total_inr or i.total) for i in invoices if suppliers.get(i.supplier_id) is not None
                       and suppliers[i.supplier_id].msme_category in ("micro", "small")), Decimal(0))
     bank_rate = float(policy.get("msme", {}).get("rbi_bank_rate_pct", 5.75))
     received = [as_utc(i.received_at) for i in invoices]
@@ -166,7 +166,7 @@ def measured(db: Session) -> dict:
         "root_causes": causes,
         "exceptions": sum(1 for c in ever.values() if c),
         "duplicates_caught": len(dup_ids),
-        "duplicates_value": sum((by_id[i].total for i in dup_ids), Decimal(0)),
+        "duplicates_value": sum(((by_id[i].total_inr or by_id[i].total) for i in dup_ids), Decimal(0)),
         "msme_paid": len(paid_msme),
         "msme_on_time_rate": _pct(len(on_time), len(paid_msme)),
         "msme_open": sum(1 for r in rows if r.status in ("open", "overdue")),

@@ -122,7 +122,7 @@ def build(db: Session, period_from: date, period_to: date) -> ControlsReport:
         "Exact match on normalised number + supplier + FY, IRN or file hash blocks; near-matches and look-alike scans flag.",
         f"Examined {len(invoices)} invoices; caught as duplicates or possible duplicates: {len(dups)}.",
         _result(len(invoices), exc), len(invoices), exc,
-        {"caught": len(dups), "value_caught": str(sum((i.total for i in dups), Decimal(0))),
+        {"caught": len(dups), "value_caught": str(sum(((i.total_inr or i.total) for i in dups), Decimal(0))),
          "blocked_exact": sum("DUPLICATE" in codes.get(i.id, set()) for i in dups)},
         [ev(i, ", ".join(sorted(codes[i.id] & {"DUPLICATE", "POSSIBLE_DUPLICATE"}))) for i in dups[:10]]))
 
@@ -130,7 +130,7 @@ def build(db: Session, period_from: date, period_to: date) -> ControlsReport:
     exc = []
     net = net_amounts(db, list(final))
     for i in final:
-        amount = net[i.id][1]
+        amount = net[i.id][1] * (i.fx_rate or Decimal(1))  # in INR
         done = [s for s in steps.get(i.id, []) if s.status == StepStatus.APPROVED]
         if any(s.by_policy for s in done):
             if i.override_justification or amount > Decimal(str(policy["doa"]["touchless_max_inr"])):

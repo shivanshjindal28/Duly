@@ -49,8 +49,8 @@ def po_line(id_, code, qty, uom, price, rate=18, received=0, invoiced=0, accepte
                       received_qty=D(str(received)), invoiced_qty=D(str(invoiced)), accepted_value=D(str(accepted)))
 
 
-def po(lines, gstin=KESAR_GSTIN, number="4500001003", service=False, status="open", terms=45) -> PoView:
-    return PoView(number, gstin, status, "INR", terms, service, tuple(lines))
+def po(lines, gstin=KESAR_GSTIN, number="4500001003", service=False, status="open", terms=45, currency="INR") -> PoView:
+    return PoView(number, gstin, status, currency, terms, service, tuple(lines))
 
 
 def run(doc, po_view, supplier=SUPPLIER_KESAR):
@@ -200,7 +200,7 @@ def test_no_po_no_pay():
 
 def test_po_closed_supplier_mismatch_currency():
     p = po([po_line(1, "BRG-6205", 100, "NOS", "450.00", received=100)], gstin=SAHYADRI_GSTIN, status="closed")
-    doc = invoice([line(1, "BRG-6205", 1, "NOS", "450.00")], currency="USD")
+    doc = invoice([line(1, "BRG-6205", 1, "NOS", "450.00")], currency="XYZ")  # no rate in the policy
     _, codes = run(doc, p)
     assert {("PO_CLOSED", "block"), ("SUPPLIER_MISMATCH", "block"), ("CURRENCY_MISMATCH", "block")} <= codes
 
@@ -249,3 +249,73 @@ def test_engine_has_no_ai_or_io_imports():
     import_ai = re.compile(r"^\s*(from|import)\s+app\.ai\b", re.MULTILINE)
     for f in (backend / "app" / "engine").glob("*.py"):
         assert not import_ai.search(f.read_text(encoding="utf-8")), f.name
+
+
+# --- Units: standard conversions and item pack sizes
+def test_pack_units_box_of_ten_converts_to_pieces():
+    pl = replace(po_line(1, "BRG-6205", 200, "NOS", "450.00", received=150), packs=(("BOX", D(10), "NOS"),))
+    doc = invoice([line(1, "BRG-6205", 12, "BOXES", "4500.00")])
+    out, codes = run(doc, po([pl]))
+    assert out.decision == Decision.APPROVE and codes == {("UOM_CONVERTED", "info")}
+    row = out.matrix[0]
+    assert row.invoice_qty == D(120) and row.invoice_price == D("450.00") and row.uom == "NOS"
+    assert row.invoice_uom == "BOX" and row.invoice_qty_billed == D(12)
+    msg = next(r.message for r in out.reasons if r.code == "UOM_CONVERTED")
+    assert "1 BOX = 10 NOS" in msg
+    # 16 boxes = 160 > 150 received: the quantity check works in pieces.
+    _, codes = run(invoice([line(1, "BRG-6205", 16, "BOX", "4500.00")]), po([pl]))
+    assert ("QTY_EXCEEDS_GR", "block") in codes
+
+
+def test_standard_units_and_unconvertible_unit():
+    p = po([po_line(1, "ADD-AO-1010", 2, "MT", "620000.00", received=2)])
+    out, codes = run(invoice([line(1, "ADD-AO-1010", 20, "QUINTAL", "62000.00")]), p)  # 20 quintal = 2 MT
+    assert out.decision == Decision.APPROVE and codes == {("UOM_CONVERTED", "info")}
+    _, codes = run(invoice([line(1, "ADD-AO-1010", 80, "BAG", "15500.00")]), p)  # no pack size for bags here
+    assert ("UOM_MISMATCH", "block") in codes
+    pl = replace(p.lines[0], packs=(("BAG", D(25), "KG"),))
+    out, codes = run(invoice([line(1, "ADD-AO-1010", 80, "BAG", "15500.00")]), po([pl]))  # 80 x 25 KG = 2 MT
+    assert out.decision == Decision.APPROVE and out.matrix[0].invoice_qty == D(2)
+
+
+# --- Currency: imports, conversion, missing rate
+def foreign_invoice(lines, currency="EUR", **kw):
+    zero = [replace(ln, gst_rate=D(0), cgst=D(0), sgst=D(0), igst=D(0)) for ln in lines]
+    return invoice(zero, supplier_gstin="DE-FICT-447101", buyer_gstin=PLANT_X_GSTIN, currency=currency, foreign=True,
+                   invoice_number="RPA-2026-11-0042", bank_account=None, bank_ifsc=None, **kw)
+
+
+def eur_po(price="38.50", received=500, currency="EUR"):
+    return po([po_line(1, "NUC-AGT-77", 500, "KG", price, rate=0, received=received)], gstin="DE-FICT-447101",
+              number="4500001018", currency=currency, terms=60)
+
+
+SUPPLIER_RHEIN = SupplierView("DE-FICT-447101", 60, "", "")
+
+
+def test_import_invoice_in_eur_matches_without_gst_rules():
+    out, codes = run(foreign_invoice([line(1, "NUC-AGT-77", 500, "KG", "38.50", rate=0)]), eur_po(), SUPPLIER_RHEIN)
+    assert out.decision == Decision.APPROVE and codes == set(), codes  # no GSTIN / tax-type / 16-char rules
+    assert out.matrix[0].currency == "EUR"
+    # Indian GST on an import invoice is wrong (IGST is paid at customs).
+    with_gst = foreign_invoice([line(1, "NUC-AGT-77", 500, "KG", "38.50", rate=0)])
+    with_gst = replace(with_gst, igst=D("100.00"), total=with_gst.total + D("100.00"))
+    _, codes = run(with_gst, eur_po(), SUPPLIER_RHEIN)
+    assert ("TAX_MISMATCH", "flag") in codes
+
+
+def test_price_variance_in_foreign_currency_uses_converted_rupee_tolerance():
+    # 38.80 vs 38.50 EUR = +0.78% (inside 1%), but 0.30 x 500 = EUR 150 > Rs 500 (= EUR 5.56): FLAG.
+    out, codes = run(foreign_invoice([line(1, "NUC-AGT-77", 500, "KG", "38.80", rate=0)]), eur_po(), SUPPLIER_RHEIN)
+    assert ("PRICE_VARIANCE", "flag") in codes
+    msg = next(r.message for r in out.reasons if r.code == "PRICE_VARIANCE")
+    assert "€38.80" in msg and "€38.50" in msg
+
+
+def test_cross_currency_invoice_is_converted_and_flagged():
+    # PO in EUR, invoice in USD at 84/90 = 0.9333 EUR per USD: 41.25 USD = 38.50 EUR.
+    out, codes = run(foreign_invoice([line(1, "NUC-AGT-77", 500, "KG", "41.25", rate=0)], currency="USD"),
+                     eur_po(), SUPPLIER_RHEIN)
+    assert ("CURRENCY_CONVERTED", "flag") in codes and out.decision == Decision.FLAG
+    assert out.matrix[0].invoice_price == D("38.50")
+    assert not any(c == "PRICE_VARIANCE" and s != "info" for c, s in codes)

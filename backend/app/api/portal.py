@@ -22,6 +22,7 @@ from app.core.enums import InvoiceStatus, Role, Severity
 from app.core.security import SupplierScope, get_scope, require_roles
 from app.models import Invoice, MatchResult, Payment, ReasonCode, Supplier
 from app.payments.msme import msme_eligible
+from app.workflow.credit_notes import in_line_unit
 from app.workflow.lifecycle import rail_progress
 
 router = APIRouter(prefix="/portal", tags=["supplier portal"], dependencies=[Depends(require_roles(Role.SUPPLIER))])
@@ -52,6 +53,7 @@ class PortalInvoice(BaseModel):
     invoice_date: date | None
     po_number: str | None
     total: Decimal
+    currency: str = "INR"
     status: str
     stage: str
     rail: int
@@ -62,6 +64,7 @@ class PortalInvoice(BaseModel):
 
 
 class PortalPayment(BaseModel):
+    currency: str = "INR"
     invoice_number: str
     paid_at: date
     gross: Decimal
@@ -107,7 +110,7 @@ def _todos(db: Session, inv: Invoice, codes: list[tuple[str, str]]) -> list[Todo
         line = lines.get(r.line_no) if r.line_no else None
         if r.code == "QTY_EXCEEDS_GR" and line is not None:
             excess = Decimal(str(ev.get("excess", "0")))
-            credit = excess * line.unit_price * (1 + line.gst_rate / 100)
+            credit = in_line_unit(db, line, excess) * line.unit_price * (1 + line.gst_rate / 100)  # excess is in PO units
             params = {"item": line.item_code or line.description, "excess": f"{excess.normalize():f}",
                       "uom": ev.get("uom", line.uom), "credit": _money(credit)}
         elif r.code == "PRICE_VARIANCE" and line is not None:
@@ -120,7 +123,7 @@ def _todos(db: Session, inv: Invoice, codes: list[tuple[str, str]]) -> list[Todo
             params = {"of": str(ev.get("duplicate_of", ""))}
         you_act = r.code not in ("MISSING_GR", "MISSING_SES", "PAYMENT_TERMS_MISMATCH", "POSSIBLE_DUPLICATE", "PRICE_VARIANCE",
                                  "BANK_ACCOUNT_SHARED", "INJECTION_ATTEMPT", "EMAIL_SENDER_UNVERIFIED", "ERS_PO_INVOICE",
-                                 "LINE_MAPPED")
+                                 "LINE_MAPPED", "CURRENCY_CONVERTED")
         out.append(Todo(code=r.code, severity=r.severity, you_act=you_act, params=params))
     return out
 
@@ -145,7 +148,7 @@ def build_portal(db: Session, supplier_id: int) -> PortalOut:
         open_msme = inv.msme_due_date and inv.status not in (InvoiceStatus.PAID, InvoiceStatus.REJECTED)
         invoices.append(PortalInvoice(
             id=inv.id, invoice_number=inv.invoice_number, invoice_date=inv.invoice_date, po_number=inv.po_number_text,
-            total=inv.total, status=inv.status, stage=STAGE[InvoiceStatus(inv.status)],
+            total=inv.total, currency=inv.currency or "INR", status=inv.status, stage=STAGE[InvoiceStatus(inv.status)],
             rail=rail_progress(inv, {c for c, _ in inv_codes}), expected_payment=expected,
             msme_due_date=inv.msme_due_date,
             msme_days_left=(inv.msme_due_date - today).days if open_msme else None,
@@ -154,6 +157,7 @@ def build_portal(db: Session, supplier_id: int) -> PortalOut:
     numbers = {i.id: i.invoice_number for i in invoices}
     payments = [
         PortalPayment(invoice_number=numbers.get(p.invoice_id, str(p.invoice_id)), paid_at=p.paid_at.date(),
+                      currency=p.currency or "INR",
                       gross=p.gross_amount, tds=p.tds_amount, net=p.net_amount, utr=p.utr)
         for p in db.scalars(select(Payment).join(Invoice, Invoice.id == Payment.invoice_id)
                             .where(Invoice.supplier_id == s.id).order_by(Payment.paid_at.desc()))

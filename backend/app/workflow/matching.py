@@ -17,10 +17,12 @@ from app.core import audit, clock
 from app.core.crypto import decrypt_str
 from app.core.enums import Decision, InvoiceStatus
 from app.engine.catalog import info
-from app.engine.decide import UOM_FACTORS, MatchOutcome, PoLineView, PoView, SupplierView, decide
+from app.engine import units
+from app.engine.decide import MatchOutcome, PoLineView, PoView, SupplierView, decide
 from app.engine.policy import Tolerances
 from app.engine.types import DocLine, InvoiceDoc, Reason
-from app.models import (Document, GoodsReceipt, GRLine, Invoice, InvoiceLine, MatchResult, Organisation, Policy, PurchaseOrder,
+from app.models import (Document, GoodsReceipt, GRLine, Invoice, InvoiceLine, ItemUnit, MatchResult, Organisation, Policy,
+                        PurchaseOrder,
                         ReasonCode, ServiceEntrySheet, Supplier)
 from app.models.base import as_utc
 from app.payments.msme import msme_eligible, statutory_due_date
@@ -43,8 +45,10 @@ _STATUS = {
 }
 
 
-def invoice_to_doc(inv: Invoice, credits: dict[int, tuple[Decimal, Decimal]] | None = None) -> InvoiceDoc:
-    """credits: invoice_line_id -> (qty, taxable value) credited by credit notes; the match uses the net."""
+def invoice_to_doc(inv: Invoice, credits: dict[int, tuple[Decimal, Decimal]] | None = None,
+                   foreign: bool = False) -> InvoiceDoc:
+    """credits: invoice_line_id -> (qty, taxable value) credited by credit notes; the match uses the net.
+    foreign: the supplier is non-resident (an import invoice: no Indian GST, a foreign tax ID)."""
     credits = credits or {}
     return InvoiceDoc(
         invoice_number=inv.invoice_number, invoice_date=inv.invoice_date, supplier_gstin=inv.supplier_gstin,
@@ -61,7 +65,27 @@ def invoice_to_doc(inv: Invoice, credits: dict[int, tuple[Decimal, Decimal]] | N
         ),
         bank_account=decrypt_str(inv.bank_account_enc) if inv.bank_account_enc else None,
         bank_ifsc=inv.bank_ifsc,
+        foreign=foreign,
     )
+
+
+def is_foreign(db: Session, supplier_id: int | None) -> bool:
+    s = db.get(Supplier, supplier_id) if supplier_id else None
+    return bool(s and (s.country or "IN") != "IN")
+
+
+def item_packs(db: Session, item_code: str) -> tuple[units.Pack, ...]:
+    """Pack sizes from the item master, e.g. (("BOX", 10, "NOS"),)."""
+    return tuple((u.unit, u.qty, u.base_unit) for u in db.scalars(select(ItemUnit).where(ItemUnit.item_code == item_code)))
+
+
+def fx_rate(policy_data: dict, currency: str) -> Decimal | None:
+    """INR per one unit of `currency` from the active policy (1 for INR, None if the policy has no rate)."""
+    c = (currency or "INR").upper()
+    if c == "INR":
+        return Decimal(1)
+    r = ((policy_data.get("fx") or {}).get("rates") or {}).get(c)
+    return Decimal(str(r)) if r else None
 
 
 def plant_gstin(db: Session) -> str:
@@ -73,12 +97,12 @@ def active_policy(db: Session) -> Policy:
 
 
 def validate_invoice(db: Session, inv: Invoice) -> list[Reason]:
-    return validate(invoice_to_doc(inv), plant_gstin(db), clock.today())
+    return validate(invoice_to_doc(inv, foreign=is_foreign(db, inv.supplier_id)), plant_gstin(db), clock.today())
 
 
-def _to_po_unit(qty: Decimal, uom: str, po_uom: str) -> Decimal:
-    u, p = (uom or "").upper(), (po_uom or "").upper()
-    return qty if u == p else qty * UOM_FACTORS.get((u, p), Decimal(1))
+def _to_po_unit(qty: Decimal, uom: str, po_uom: str, packs: tuple[units.Pack, ...] = ()) -> Decimal:
+    f = units.factor(uom, po_uom, packs)
+    return qty * (f if f is not None else Decimal(1))
 
 
 def build_po_view(db: Session, po: PurchaseOrder, exclude_invoice_id: int | None) -> PoView:
@@ -96,12 +120,14 @@ def build_po_view(db: Session, po: PurchaseOrder, exclude_invoice_id: int | None
         credited = credited_by_line(db, line_ids=[r[0] for r in prior_rows]) if prior_rows else {}
         zero = (Decimal(0), Decimal(0))
         prior = [(q - credited.get(lid, zero)[0], u, v - credited.get(lid, zero)[1]) for lid, q, u, v in prior_rows]
+        packs = item_packs(db, pl.item_code)
         lines.append(PoLineView(
             id=pl.id, line_no=pl.line_no, item_code=pl.item_code, description=pl.description, qty=pl.qty,
             uom=pl.uom, unit_price=pl.unit_price, gst_rate=pl.gst_rate,
             received_qty=Decimal(str(received)), accepted_value=Decimal(str(accepted)),
-            invoiced_qty=sum((_to_po_unit(q, u, pl.uom) for q, u, _ in prior), Decimal(0)),
+            invoiced_qty=sum((_to_po_unit(q, u, pl.uom, packs) for q, u, _ in prior), Decimal(0)),
             invoiced_value=sum((v for _, _, v in prior), Decimal(0)),
+            packs=packs,
         ))
     return PoView(po.po_number, supplier.gstin, po.status, po.currency, po.payment_terms_days, po.is_service,
                   tuple(lines))
@@ -173,7 +199,11 @@ def run_match(db: Session, inv: Invoice, trigger: str = "upload") -> MatchOutcom
     policy = active_policy(db)
     tol = Tolerances.from_policy(policy.data, policy.version)
     supplier = db.get(Supplier, inv.supplier_id)
-    doc = invoice_to_doc(inv, credited_by_line(db, [inv.id]))
+    doc = invoice_to_doc(inv, credited_by_line(db, [inv.id]), foreign=(supplier.country or "IN") != "IN")
+    # INR equivalent (approval limits, MFA, dashboards, payments) at the policy rate for this match.
+    rate = fx_rate(policy.data, inv.currency)
+    inv.fx_rate = rate if rate is not None else Decimal(1)
+    inv.total_inr = (inv.total * inv.fx_rate).quantize(Decimal("0.01"))
     _matches, dup_reasons = duplicate_check(db, inv, doc)
     qr_reasons = einvoice_reasons(doc, inv.qr_status, inv.qr_payload, supplier.e_invoice_applicable)
     qr_reasons += injection_reasons(inv.injection)

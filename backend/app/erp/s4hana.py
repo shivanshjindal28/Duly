@@ -54,23 +54,35 @@ class S4HanaAdapterStub(ErpAdapter):
                        f"?$filter=PurchaseOrder eq '{po_number}' and GoodsMovementType eq '101'&$format=json",
                        note="MIGO movement type 101 in the SAP GUI. Not called: the demo reads the local copy.")
 
-    def _item_refs(self, inv: Invoice, po: PurchaseOrder | None, inter_state: bool) -> tuple[list[dict], list[str]]:
+    def _item_refs(self, inv: Invoice, po: PurchaseOrder | None, inter_state: bool,
+                   imported: bool = False) -> tuple[list[dict], list[str]]:
+        from app.engine import units
+        from app.workflow.matching import item_packs
+
         items, warnings = [], []
         for n, line in enumerate(inv.lines, start=1):
             pl = self.db.get(POLine, line.po_line_id) if line.po_line_id else None
             if pl is None:
                 warnings.append(f"Invoice line {line.line_no} is not mapped to a PO line; SAP would reject this item.")
+            po_qty = line.qty
+            if pl is not None and units.norm(line.uom) != units.norm(pl.uom):
+                f = units.factor(line.uom, pl.uom, item_packs(self.db, pl.item_code))
+                if f is None:
+                    warnings.append(f"Invoice line {line.line_no}: {line.uom} cannot be converted to the order unit {pl.uom}.")
+                else:
+                    po_qty = line.qty * f
             ref: dict = {
                 "SupplierInvoice": "", "FiscalYear": "",  # assigned by SAP on post
                 "SupplierInvoiceItem": f"{n:06d}",
                 "PurchaseOrder": po.po_number if po else (inv.po_number_text or ""),
                 "PurchaseOrderItem": f"{pl.line_no:05d}" if pl else "",
                 "Plant": PLANT,
-                "TaxCode": tax_code(float(line.gst_rate), inter_state),
+                "TaxCode": tax_code(float(line.gst_rate), inter_state, imported),
                 "DocumentCurrency": inv.currency,
                 "SupplierInvoiceItemAmount": amt(line.taxable_value),
                 "PurchaseOrderQuantityUnit": pl.uom if pl else line.uom,
-                "QuantityInPurchaseOrderUnit": f"{line.qty:.3f}",
+                # MIRO posts the quantity in the order unit: convert what was billed (e.g. 12 BOX -> 120 NOS).
+                "QuantityInPurchaseOrderUnit": f"{po_qty:.3f}",
                 "SupplierInvoiceItemText": line.description[:50],
             }
             if pl is not None and po is not None and po.is_service:
@@ -101,7 +113,11 @@ class S4HanaAdapterStub(ErpAdapter):
         po = self.db.get(PurchaseOrder, inv.po_id) if inv.po_id else None
         org = self.db.scalar(select(Organisation))
         inter_state = bool(inv.igst and inv.igst > 0)
-        items, warnings = self._item_refs(inv, po, inter_state)
+        imported = bool(s and (s.country or "IN") != "IN")
+        items, warnings = self._item_refs(inv, po, inter_state, imported)
+        if inv.currency != "INR":
+            warnings.append(f"Posted in {inv.currency}; SAP translates it to INR with its own exchange-rate table (OB08). "
+                            f"Duly's INR figure (rate {inv.fx_rate:.4f}) is indicative.")
         doc_date = inv.invoice_date or clock.today()
         post_date = clock.today()
         approved = inv.status in (InvoiceStatus.APPROVED, InvoiceStatus.PAID)
@@ -112,7 +128,7 @@ class S4HanaAdapterStub(ErpAdapter):
         # GST per tax code (header tax lines).
         tax: dict[str, dict] = {}
         for line in inv.lines:
-            code = tax_code(float(line.gst_rate), inter_state)
+            code = tax_code(float(line.gst_rate), inter_state, imported)
             t = tax.setdefault(code, {"TaxCode": code, "DocumentCurrency": inv.currency,
                                       "TaxAmount": Decimal(0), "TaxBaseAmountInTransCrcy": Decimal(0)})
             t["TaxAmount"] += line.cgst + line.sgst + line.igst

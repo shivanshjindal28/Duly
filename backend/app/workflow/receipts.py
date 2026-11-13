@@ -72,13 +72,33 @@ def rematch_waiting(db: Session, po: PurchaseOrder, trigger: str) -> list[Rematc
     return out
 
 
-def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tuple[int, Decimal]]
+def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tuple]
                        ) -> tuple[GoodsReceipt, list[Rematch], Invoice | None]:
+    """lines: (po_line_id, qty) in the PO unit, or (po_line_id, qty, unit) in any unit convertible to it
+    (standard units or the item's pack sizes, e.g. 12 BOX for a PO in NOS). Stored in the PO unit."""
+    from app.engine import units
+    from app.workflow.matching import item_packs
+
     po = _open_po(db, po_number)
     if po.is_service:
         raise ReceiptError(f"PO {po_number} is for services: post a service entry sheet instead.")
     po_lines = {pl.id: pl for pl in po.lines}
-    lines = [(lid, q) for lid, q in lines if q != 0]
+    entered: dict[int, tuple[Decimal, str]] = {}
+    converted = []
+    for ln in lines:
+        line_id, qty = ln[0], Decimal(str(ln[1]))
+        unit = ln[2] if len(ln) > 2 and ln[2] else None
+        if qty == 0:
+            continue
+        pl = po_lines.get(line_id)
+        if pl is not None and unit and units.norm(unit) != units.norm(pl.uom):
+            f = units.factor(unit, pl.uom, item_packs(db, pl.item_code))
+            if f is None:
+                raise ReceiptError(f"Line {pl.line_no} ({pl.item_code}): {unit} cannot be converted to the PO unit {pl.uom}.")
+            entered[line_id] = (qty, units.norm(unit))
+            qty = (qty * f).quantize(Decimal("0.001"))
+        converted.append((line_id, qty))
+    lines = converted
     if not lines:
         raise ReceiptError("Enter a received quantity for at least one line.")
     for line_id, qty in lines:
@@ -96,11 +116,14 @@ def post_goods_receipt(db: Session, user: User, po_number: str, lines: list[tupl
     db.add(gr)
     db.flush()
     for line_id, qty in lines:
-        db.add(GRLine(gr_id=gr.id, po_line_id=line_id, qty=qty, uom=po_lines[line_id].uom))
+        e_qty, e_uom = entered.get(line_id, (None, None))
+        db.add(GRLine(gr_id=gr.id, po_line_id=line_id, qty=qty, uom=po_lines[line_id].uom,
+                      entered_qty=e_qty, entered_uom=e_uom))
     db.flush()
     audit.queue(db, "gr.posted", "goods_receipt", gr.gr_number,
                 after={"po": po.po_number, "movement_type": "101",
-                       "lines": [{"po_line_id": i, "qty": q} for i, q in lines]})
+                       "lines": [{"po_line_id": i, "qty": q, **({"entered": f"{entered[i][0]} {entered[i][1]}"}
+                                                              if i in entered else {})} for i, q in lines]})
     settled = ers.settle(db, po, "GR", gr.gr_number, [(po_lines[i], q) for i, q in lines])
     results = jobs.enqueue("rematch_after_gr", rematch_waiting, db, po, trigger=f"gr_posted:{gr.gr_number}").result
     db.commit()

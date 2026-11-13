@@ -30,7 +30,12 @@ HEADER_PATTERNS: dict[str, re.Pattern] = {
     "cgst": re.compile(r"^\s*cgst\s*[:\-]?\s*" + _AMT + r"\s*$", _I),
     "sgst": re.compile(r"^\s*sgst\s*[:\-]?\s*" + _AMT + r"\s*$", _I),
     "igst": re.compile(r"^\s*igst\s*[:\-]?\s*" + _AMT + r"\s*$", _I),
-    "total": re.compile(r"(?:total\s*invoice\s*value|grand\s*total|invoice\s*total)\s*[:\-]?\s*(?:₹|rs\.?|inr)?\s*" + _AMT, _I),
+    "total": re.compile(r"(?:total\s*invoice\s*value|grand\s*total|invoice\s*total)\s*[:\-]?\s*"
+                        r"(?:₹|rs\.?|inr|eur|usd|gbp|jpy|cny|sgd|aed|€|\$|£)?\s*" + _AMT, _I),
+    # Import invoices: printed currency and the foreign supplier's tax ID (used when there is no GSTIN).
+    "currency": re.compile(r"\bcurrency\s*[:\-]?\s*([A-Z]{3})\b", _I),
+    "supplier_tax_id": re.compile(r"\b(?:vat|tax)\s*(?:id|no|number|reg(?:istration)?\s*no)\.?\s*[:\-]?\s*"
+                                  r"([A-Z]{2}[A-Z0-9\-]{5,13})\b", _I),
     "bank_account": re.compile(r"a\s*/?\s*c\s*(?:no|number)?\.?\s*[:\-]?\s*(\d{9,18})\b", _I),
     "bank_ifsc": re.compile(r"ifsc\s*(?:code)?\s*[:\-]?\s*([A-Z]{4}0[A-Z0-9]{6})", _I),
     "irn": re.compile(r"\birn\s*[:\-]?\s*([0-9a-f]{64})", _I),
@@ -39,7 +44,7 @@ HEADER_PATTERNS: dict[str, re.Pattern] = {
 _MONEY_RE = re.compile(r"^[0-9][0-9,]*\.\d{2}$")
 _NUM_RE = re.compile(r"^[0-9][0-9,]*(?:\.\d+)?$")
 _HSN_RE = re.compile(r"^\d{4,8}$")
-_UOM_RE = re.compile(r"^[A-Za-z]{1,5}$")
+_UOM_RE = re.compile(r"^[A-Za-z]{1,6}$")
 # Item codes: letters/digits with at least one hyphen or digit ("BRG-6205", "PKG-FIBC-1T").
 _CODE_RE = re.compile(r"^(?=.*[-0-9])[A-Za-z0-9][A-Za-z0-9\-/.]*$")
 # An upper-case code with a description glued on by OCR: split before the first "Xx".
@@ -83,7 +88,8 @@ def _normalise(name: str, raw: str) -> str | None:
         return _num(raw)
     if name == "invoice_date":
         return _date(raw)
-    if name in {"supplier_gstin", "buyer_gstin", "bank_ifsc", "po_number", "invoice_number"}:
+    if name in {"supplier_gstin", "buyer_gstin", "bank_ifsc", "po_number", "invoice_number", "currency",
+                "supplier_tax_id"}:
         return raw.upper()
     if name == "irn":
         return raw.lower()
@@ -108,8 +114,12 @@ def _parse_header(lines: list[TextLine]) -> dict[str, ExtractedField]:
     if first:
         header["supplier_name"] = _field(first, (0, len(first.text)), first.text.strip(), 0.92)
     # Currency is rarely printed on domestic invoices; INR is assumed and marked as a rule.
-    if "currency" not in header:
+    if "currency" not in header or header["currency"].value is None:
         header["currency"] = ExtractedField(value="INR", confidence=0.9, source="rule")
+    # A foreign supplier has no GSTIN: its tax ID identifies it instead.
+    tax_id = header.pop("supplier_tax_id", None)
+    if "supplier_gstin" not in header and tax_id is not None and tax_id.value:
+        header["supplier_gstin"] = tax_id
     for name in HEADER_FIELDS:
         header.setdefault(name, ExtractedField())
     return header

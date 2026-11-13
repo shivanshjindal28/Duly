@@ -87,6 +87,8 @@ class QueueRow(BaseModel):
     supplier_id: int | None
     supplier_name: str | None
     total: Decimal
+    currency: str = "INR"
+    total_inr: Decimal | None = None  # INR equivalent (foreign-currency invoices)
     status: str
     decision: str | None
     reasons: list[str]
@@ -123,6 +125,11 @@ def _actionable(reasons: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return sorted([r for r in reasons if r[1] in (Severity.BLOCK, Severity.FLAG)], key=lambda r: order[r[1]])
 
 
+
+def _inr(inv) -> Decimal:
+    """Invoice total in INR (the INR equivalent for foreign-currency invoices)."""
+    return inv.total_inr or inv.total
+
 @router.get("/summary", response_model=Summary)
 def summary(db: Session = Depends(get_db)) -> Summary:
     now, today = clock.now(), clock.today()
@@ -144,14 +151,14 @@ def summary(db: Session = Depends(get_db)) -> Summary:
 
     kpis = Kpis(
         in_queue=sum(i.status in IN_QUEUE for i in invoices),
-        value_on_hold=sum((i.total for i in open_exc), Decimal(0)),
+        value_on_hold=sum((_inr(i) for i in open_exc), Decimal(0)),
         touchless_rate=round(len(touchless) / len(approved), 3) if approved else None,
         approved_count=len(approved),
         avg_cycle_hours=round(sum(cycles) / len(cycles), 1) if cycles else None,
         msme_due_7d=sum(today <= i.msme_due_date <= today + timedelta(days=7) for i in unpaid_msme),
         msme_overdue=sum(i.msme_due_date < today for i in unpaid_msme),
         duplicates_prevented=len(dup),
-        duplicates_value=sum((i.total for i in dup), Decimal(0)),
+        duplicates_value=sum((_inr(i) for i in dup), Decimal(0)),
     )
 
     by_type: dict[str, TypeRow] = {}
@@ -159,13 +166,13 @@ def summary(db: Session = Depends(get_db)) -> Summary:
         for code, sev in {c: s for c, s in _actionable(reasons.get(inv.id, []))}.items():
             row = by_type.setdefault(code, TypeRow(code=code, title=info(code).title, severity=sev, count=0, value=0))
             row.count += 1
-            row.value += inv.total
+            row.value += _inr(inv)
             if sev == Severity.BLOCK:
                 row.severity = sev
     if any(i.status == InvoiceStatus.NEEDS_REVIEW for i in open_exc):
         n = [i for i in open_exc if i.status == InvoiceStatus.NEEDS_REVIEW]
         by_type["NEEDS_REVIEW"] = TypeRow(code="NEEDS_REVIEW", title="Low-confidence fields to review",
-                                          severity="flag", count=len(n), value=sum((i.total for i in n), Decimal(0)))
+                                          severity="flag", count=len(n), value=sum((_inr(i) for i in n), Decimal(0)))
 
     by_sup: dict[int, SupplierRow] = {}
     for inv in open_exc:
@@ -175,20 +182,20 @@ def summary(db: Session = Depends(get_db)) -> Summary:
         row = by_sup.setdefault(s.id, SupplierRow(supplier_id=s.id, supplier_name=s.name, msme=s.msme_category,
                                                   open_exceptions=0, value_at_risk=0, oldest_days=0))
         row.open_exceptions += 1
-        row.value_at_risk += inv.total
+        row.value_at_risk += _inr(inv)
         row.oldest_days = max(row.oldest_days, _age_days(inv, now))
 
     by_age = {b: AgeRow(bucket=b, count=0, value=0) for b, _, _ in AGE_BUCKETS}
     for inv in open_exc:
         r = by_age[_bucket(_age_days(inv, now))]
         r.count += 1
-        r.value += inv.total
+        r.value += _inr(inv)
 
     due = {today + timedelta(days=d): DueDay(day=today + timedelta(days=d), count=0, value=0) for d in range(-7, 31)}
     for inv in unpaid_msme:
         if inv.msme_due_date in due:
             due[inv.msme_due_date].count += 1
-            due[inv.msme_due_date].value += inv.total
+            due[inv.msme_due_date].value += _inr(inv)
 
     return Summary(as_of=now, kpis=kpis, by_type=sorted(by_type.values(), key=lambda r: (-r.count, r.code)),
                    by_supplier=sorted(by_sup.values(), key=lambda r: -r.value_at_risk),
@@ -232,7 +239,8 @@ def queue(
             continue
         rows.append(QueueRow(
             id=inv.id, invoice_number=inv.invoice_number, supplier_id=inv.supplier_id,
-            supplier_name=names.get(inv.supplier_id), total=inv.total, status=inv.status, decision=inv.decision,
+            supplier_name=names.get(inv.supplier_id), total=inv.total, currency=inv.currency or "INR",
+            total_inr=_inr(inv), status=inv.status, decision=inv.decision,
             reasons=all_codes, top_reason=all_codes[0] if all_codes else None, age_days=days,
             current_owner=inv.current_owner, msme_due_date=inv.msme_due_date, received_at=inv.received_at,
         ))

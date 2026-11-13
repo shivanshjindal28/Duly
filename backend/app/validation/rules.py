@@ -36,6 +36,17 @@ def _state(code: str | None) -> str:
 
 def check_gstins(doc: InvoiceDoc, buyer_gstin_expected: str) -> list[Reason]:
     out: list[Reason] = []
+    if doc.foreign:
+        # A non-resident supplier has no GSTIN. Its tax ID is matched against the PO supplier instead;
+        # the buyer GSTIN is checked only if the invoice prints one.
+        if not doc.supplier_gstin:
+            out.append(Reason("GSTIN_INVALID", Severity.FLAG,
+                              "The foreign supplier's tax ID could not be read from the invoice.", {}))
+        if doc.buyer_gstin and doc.buyer_gstin != buyer_gstin_expected:
+            out.append(Reason("BILL_TO_MISMATCH", Severity.BLOCK,
+                              f"Invoice is billed to GSTIN {doc.buyer_gstin}, not Plant X ({buyer_gstin_expected}).",
+                              {"invoice_buyer_gstin": doc.buyer_gstin, "plant_x_gstin": buyer_gstin_expected}))
+        return out
     if not doc.supplier_gstin or not is_valid_gstin(doc.supplier_gstin):
         out.append(Reason("GSTIN_INVALID", Severity.BLOCK,
                           f"Supplier GSTIN {doc.supplier_gstin or '(missing)'} fails the format or check-digit test.",
@@ -49,7 +60,7 @@ def check_gstins(doc: InvoiceDoc, buyer_gstin_expected: str) -> list[Reason]:
 
 def check_header(doc: InvoiceDoc, today: date) -> list[Reason]:
     out: list[Reason] = []
-    if not _INV_NO.match(doc.invoice_number or ""):
+    if not doc.foreign and not _INV_NO.match(doc.invoice_number or ""):  # the 16-character rule is GST law
         out.append(Reason("INVOICE_NO_INVALID", Severity.FLAG,
                           f"Invoice number '{doc.invoice_number}' must be 1 to 16 characters (letters, digits, / and -).",
                           {"invoice_number": doc.invoice_number}))
@@ -91,8 +102,17 @@ def check_arithmetic(doc: InvoiceDoc) -> list[Reason]:
 
 
 def check_tax(doc: InvoiceDoc) -> list[Reason]:
-    """Same state -> CGST+SGST; different state -> IGST. GST rate must be valid for the HSN."""
+    """Same state -> CGST+SGST; different state -> IGST. GST rate must be valid for the HSN.
+    Imports: the foreign supplier's invoice carries no Indian GST (IGST is paid at customs)."""
     out: list[Reason] = []
+    if doc.foreign:
+        gst = doc.cgst + doc.sgst + doc.igst + sum((ln.cgst + ln.sgst + ln.igst for ln in doc.lines), Decimal(0))
+        if gst > 0:
+            out.append(Reason("TAX_MISMATCH", Severity.FLAG,
+                              f"Import invoice from a foreign supplier charges Indian GST ({gst:.2f}). On imports IGST is "
+                              "paid at customs on the bill of entry, not to the supplier.",
+                              {"gst_on_invoice": f"{gst:.2f}"}))
+        return out
     supplier_state = (doc.supplier_gstin or "")[:2] or None
     pos = doc.place_of_supply
     if supplier_state and pos:

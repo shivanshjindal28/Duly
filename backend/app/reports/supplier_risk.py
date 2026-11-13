@@ -218,7 +218,8 @@ def load_facts(db: Session) -> dict[int, Facts]:
     for inv in db.scalars(select(Invoice).where(Invoice.supplier_id.is_not(None))):
         invoices[inv.id] = inv
         out[inv.supplier_id].invoices.append(InvoiceFact(
-            inv.id, as_utc(inv.received_at).astimezone(clock.IST).date(), inv.status, inv.total, codes[inv.id]))
+            inv.id, as_utc(inv.received_at).astimezone(clock.IST).date(), inv.status, inv.total_inr or inv.total,
+            codes[inv.id]))
     for p in db.scalars(select(Payment)):
         inv = invoices.get(p.invoice_id)
         if inv is None:

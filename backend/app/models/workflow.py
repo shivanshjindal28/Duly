@@ -8,7 +8,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
-from app.models.base import Money, created_at_col, utcnow
+from app.models.base import Rate, Money, created_at_col, utcnow
 from app.core.enums import BankChangeStatus, StepStatus
 
 
@@ -61,6 +61,10 @@ class Payment(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), index=True)
     payment_run_id: Mapped[str | None] = mapped_column(String(20))
+    # Amounts below are in `currency` (the invoice's); net_inr = net at the invoice's FX rate.
+    currency: Mapped[str] = mapped_column(String(3), default="INR")
+    fx_rate: Mapped[Decimal] = mapped_column(Rate, default=1)
+    net_inr: Mapped[Decimal | None] = mapped_column(Money)
     gross_amount: Mapped[Decimal] = mapped_column(Money)
     tds_amount: Mapped[Decimal] = mapped_column(Money, default=0)
     tds_section: Mapped[str] = mapped_column(String(15), default="none")

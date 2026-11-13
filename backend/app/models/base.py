@@ -10,6 +10,7 @@ from app.core import clock
 
 Money = Numeric(16, 2, asdecimal=True)
 Qty = Numeric(16, 3, asdecimal=True)
+Rate = Numeric(18, 6, asdecimal=True)  # exchange rates
 
 
 def utcnow() -> datetime:

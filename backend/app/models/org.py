@@ -36,6 +36,9 @@ class Supplier(Base):
     pan: Mapped[str] = mapped_column(String(10))
     state_code: Mapped[str] = mapped_column(String(2))
     address: Mapped[str] = mapped_column(String(400))
+    # Non-resident (import) suppliers: country != "IN", `gstin` holds their foreign tax ID, no PAN.
+    country: Mapped[str] = mapped_column(String(2), default="IN")
+    currency: Mapped[str] = mapped_column(String(3), default="INR")
     msme_category: Mapped[MsmeCategory] = mapped_column(String(10), default=MsmeCategory.NONE)
     udyam_no: Mapped[str | None] = mapped_column(String(25))
     enterprise_type: Mapped[EnterpriseType] = mapped_column(String(15))

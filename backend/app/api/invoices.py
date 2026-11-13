@@ -53,6 +53,8 @@ class InvoiceSummary(BaseModel):
     invoice_date: date | None
     po_number: str | None
     total: Decimal
+    currency: str = "INR"
+    total_inr: Decimal | None = None  # INR equivalent (foreign-currency invoices)
     status: str
     decision: str | None
     current_owner: str
@@ -246,7 +248,8 @@ class InvoiceDetail(InvoiceSummary):
     supplier_gstin: str | None
     buyer_gstin: str | None
     place_of_supply: str | None
-    currency: str
+    fx_rate: Decimal = Decimal(1)
+    supplier_country: str = "IN"
     taxable_total: Decimal
     cgst: Decimal
     sgst: Decimal
@@ -306,6 +309,7 @@ def _summary_kwargs(inv: Invoice, supplier_name: str | None, codes: set[str]) ->
     return dict(
         id=inv.id, supplier_id=inv.supplier_id, supplier_name=supplier_name, invoice_number=inv.invoice_number,
         invoice_date=inv.invoice_date, po_number=inv.po_number_text, total=inv.total, status=inv.status,
+        currency=inv.currency or "INR", total_inr=inv.total_inr or inv.total,
         decision=inv.decision, current_owner=inv.current_owner, received_at=inv.received_at,
         rail=rail_progress(inv, codes),
     )
@@ -347,7 +351,8 @@ def _detail(db: Session, inv: Invoice, user: User) -> InvoiceDetail:
     return InvoiceDetail(
         **_summary_kwargs(inv, supplier.name if supplier else None, codes),
         supplier_gstin=inv.supplier_gstin, buyer_gstin=inv.buyer_gstin, place_of_supply=inv.place_of_supply,
-        currency=inv.currency, taxable_total=inv.taxable_total, cgst=inv.cgst, sgst=inv.sgst, igst=inv.igst,
+        taxable_total=inv.taxable_total, cgst=inv.cgst, sgst=inv.sgst, igst=inv.igst,
+        fx_rate=inv.fx_rate or 1, supplier_country=(supplier.country if supplier else None) or "IN",
         bank_account_masked=("XXXXXX" + inv.bank_account_last4) if inv.bank_account_last4 else None,
         bank_ifsc=inv.bank_ifsc, irn=inv.irn, ai_mode=inv.ai_mode, origin=inv.origin or "upload",
         source_email=_source_email(db, inv),

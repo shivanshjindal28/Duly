@@ -8,7 +8,7 @@ from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
-from app.models.base import Money, Qty, created_at_col, utcnow
+from app.models.base import Rate, Money, Qty, created_at_col, utcnow
 from app.core.enums import Decision, InvoiceStatus, Severity
 
 
@@ -57,6 +57,10 @@ class Invoice(Base):
     sgst: Mapped[Decimal] = mapped_column(Money, default=0)
     igst: Mapped[Decimal] = mapped_column(Money, default=0)
     total: Mapped[Decimal] = mapped_column(Money, default=0)
+    # INR per one unit of `currency`, from the policy FX table at the latest match (1 for INR), and the
+    # INR equivalent of the total: what approval limits, MFA, dashboards and payments use.
+    fx_rate: Mapped[Decimal] = mapped_column(Rate, default=1)
+    total_inr: Mapped[Decimal] = mapped_column(Money, default=0)
     bank_account_enc: Mapped[str | None] = mapped_column(String(200))
     bank_account_last4: Mapped[str | None] = mapped_column(String(4))
     bank_ifsc: Mapped[str | None] = mapped_column(String(11))

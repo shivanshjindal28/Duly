@@ -78,6 +78,11 @@ def net_total(db: Session, inv: Invoice) -> Decimal:
     return net_amounts(db, [inv])[inv.id][1]
 
 
+def net_total_inr(db: Session, inv: Invoice) -> Decimal:
+    """Net payable in INR (at the invoice's FX rate): what approval limits and MFA compare against."""
+    return (net_total(db, inv) * (inv.fx_rate or Decimal(1))).quantize(Decimal("0.01"))
+
+
 def credit_reasons(db: Session, inv: Invoice) -> list[Reason]:
     """Engine input (information): which credit notes the match is net of."""
     notes = db.scalars(select(CreditNote).where(CreditNote.invoice_id == inv.id).order_by(CreditNote.id)).all()
@@ -115,6 +120,17 @@ class Suggestion:
     reason_code: str
 
 
+def in_line_unit(db: Session, ln: InvoiceLine, qty_po_unit: Decimal) -> Decimal:
+    """A quantity in the PO line's unit expressed in the invoice line's unit (e.g. 40 NOS -> 4 BOX)."""
+    from app.engine import units
+    from app.models import POLine
+    from app.workflow.matching import item_packs
+
+    pl = db.get(POLine, ln.po_line_id) if ln.po_line_id else None
+    f = units.factor(ln.uom, pl.uom, item_packs(db, pl.item_code)) if pl else None
+    return (qty_po_unit / f).quantize(Decimal("0.001")) if f else qty_po_unit
+
+
 def suggest(db: Session, inv: Invoice) -> list[Suggestion]:
     """What credit note would clear this invoice's quantity / value exceptions (from its latest match)."""
     mid = db.scalar(select(MatchResult.id).where(MatchResult.invoice_id == inv.id).order_by(MatchResult.id.desc()))
@@ -132,8 +148,10 @@ def suggest(db: Session, inv: Invoice) -> list[Suggestion]:
         if excess <= 0:
             continue
         if r.code == "QTY_EXCEEDS_GR":
-            value = _money(excess * ln.unit_price)  # excess is in the PO unit; demo POs and invoices share units
-            out.append(Suggestion(ln.line_no, ln.item_code or ln.description, ln.uom, "qty", excess, value,
+            # The excess is in the PO unit; the credit note is in the invoice line's unit (e.g. 40 NOS = 4 BOX).
+            qty = in_line_unit(db, ln, excess)
+            value = _money(qty * ln.unit_price)
+            out.append(Suggestion(ln.line_no, ln.item_code or ln.description, ln.uom, "qty", qty, value,
                                   _money(value * (1 + ln.gst_rate / 100)), r.code))
         else:
             value = _money(excess)

@@ -27,6 +27,11 @@ DEFAULT_POLICY: dict = {
     # rbi_bank_rate_pct is an editable assumption; verify the current RBI bank rate before use.
     "msme": {"max_term_days": 45, "no_agreement_days": 15, "rbi_bank_rate_pct": 5.75},
     "bank_change_cooling_hours": 72,
+    # Exchange rates: INR per one unit of currency, for import invoices and foreign-currency POs.
+    # ASSUMPTION for the demo (fictional round values): update from the RBI / FBIL reference rate or the
+    # company's treasury rate table (SAP OB08) before use. Invoices store the rate they were matched at.
+    "fx": {"as_of": "2026-11-01", "source": "Assumption: update from the RBI / FBIL reference rate",
+           "rates": {"USD": 84.00, "EUR": 90.00, "GBP": 107.00, "JPY": 0.56, "CNY": 11.60, "SGD": 63.00, "AED": 22.90}},
     # Data retention. ASSUMPTION, confirm with legal: GST law keeps accounts 72 months after the annual
     # return (CGST Act s.36) and the Companies Act 8 years (s.128(5)), so invoice documents are kept 8 years.
     "retention": {"documents_years": 8, "chat_days": 180, "email_body_days": 365},

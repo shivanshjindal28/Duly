@@ -13,25 +13,17 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from rapidfuzz import fuzz
 
+from app.engine import units
 from app.engine.policy import Tolerances
-from app.engine.types import DocLine, InvoiceDoc, Reason
+from app.engine.types import DocLine, InvoiceDoc, Reason, fmt_money
 from app.engine.types import fmt_num as _n
 from app.core.enums import Decision, Severity
 from app.validation.rules import validate
 
-ENGINE_VERSION = "engine-1.0"
+ENGINE_VERSION = "engine-1.1"
 FUZZY_MIN = 85  # rapidfuzz token_set_ratio needed to map a line by description
 ZERO = Decimal(0)
 HUNDRED = Decimal(100)
-
-# Unit conversions to the PO's unit: (invoice uom, po uom) -> factor (po_qty = inv_qty * factor).
-UOM_FACTORS: dict[tuple[str, str], Decimal] = {
-    ("KG", "MT"): Decimal("0.001"), ("MT", "KG"): Decimal("1000"),
-    ("G", "KG"): Decimal("0.001"), ("KG", "G"): Decimal("1000"),
-    ("L", "KL"): Decimal("0.001"), ("KL", "L"): Decimal("1000"),
-}
-UOM_ALIASES = {"NO": "NOS", "NOS.": "NOS", "PCS": "NOS", "EA": "NOS", "KGS": "KG", "LTR": "L", "TON": "MT"}
-
 
 @dataclass(frozen=True)
 class PoLineView:
@@ -47,6 +39,7 @@ class PoLineView:
     accepted_value: Decimal = ZERO  # SES value accepted (services)
     invoiced_qty: Decimal = ZERO  # already invoiced on other invoices, in PO unit
     invoiced_value: Decimal = ZERO  # already invoiced value (services)
+    packs: tuple[units.Pack, ...] = ()  # item pack sizes, e.g. (("BOX", 10, "NOS"),)
 
 
 @dataclass(frozen=True)
@@ -86,6 +79,9 @@ class MatrixRow:
     price_variance_pct: Decimal | None
     price_variance_amount: Decimal | None
     qty_variance: Decimal | None
+    invoice_uom: str = ""  # unit as billed
+    invoice_qty_billed: Decimal | None = None  # quantity as billed (before unit conversion)
+    currency: str = "INR"  # currency of the PO (prices above)
 
 
 @dataclass(frozen=True)
@@ -103,12 +99,7 @@ def _q2(v: Decimal) -> Decimal:
 
 
 def _norm_uom(u: str) -> str:
-    u = (u or "").strip().upper()
-    return UOM_ALIASES.get(u, u)
-
-
-def _inr(v: Decimal) -> str:
-    return f"₹{_q2(v):,.2f}"
+    return units.norm(u)
 
 
 def _norm_text(s: str) -> str:
@@ -144,7 +135,15 @@ def map_lines(doc: InvoiceDoc, po: PoView) -> dict[int, tuple[PoLineView, str]]:
     return out
 
 
-def _header_checks(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView) -> list[Reason]:
+def _fx(from_ccy: str, to_ccy: str, tol: Tolerances) -> Decimal | None:
+    """Units of `to_ccy` per one `from_ccy`, via INR; None if the policy has no rate."""
+    a, b = tol.rate(from_ccy), tol.rate(to_ccy)
+    if a is None or b is None or not b:
+        return None
+    return a / b
+
+
+def _header_checks(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tolerances) -> list[Reason]:
     out: list[Reason] = []
     if po is None:
         out.append(Reason("NO_PO", Severity.BLOCK,
@@ -157,12 +156,23 @@ def _header_checks(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView) -
                           {"po_number": po.po_number, "po_status": po.status}))
     if doc.supplier_gstin and doc.supplier_gstin != po.supplier_gstin:
         out.append(Reason("SUPPLIER_MISMATCH", Severity.BLOCK,
-                          f"Invoice GSTIN {doc.supplier_gstin} is not the PO supplier ({po.supplier_gstin}).",
+                          f"Invoice {'tax ID' if doc.foreign else 'GSTIN'} {doc.supplier_gstin} is not the PO supplier "
+                          f"({po.supplier_gstin}).",
                           {"invoice_gstin": doc.supplier_gstin, "po_supplier_gstin": po.supplier_gstin}))
     if doc.currency != po.currency:
-        out.append(Reason("CURRENCY_MISMATCH", Severity.BLOCK,
-                          f"Invoice currency {doc.currency} differs from PO currency {po.currency}.",
-                          {"invoice_currency": doc.currency, "po_currency": po.currency}))
+        fx = _fx(doc.currency, po.currency, tol)
+        if fx is None:
+            out.append(Reason("CURRENCY_MISMATCH", Severity.BLOCK,
+                              f"Invoice currency {doc.currency} differs from PO currency {po.currency}, and the policy "
+                              f"has no exchange rate for it, so the amounts cannot be compared.",
+                              {"invoice_currency": doc.currency, "po_currency": po.currency}))
+        else:
+            out.append(Reason("CURRENCY_CONVERTED", Severity.FLAG,
+                              f"Invoice in {doc.currency} against a PO in {po.currency}: prices converted at the policy "
+                              f"rate 1 {doc.currency} = {fx:.6g} {po.currency} (rates as of {tol.fx_as_of or 'policy'}). "
+                              "A person must confirm the supplier may bill in this currency.",
+                              {"invoice_currency": doc.currency, "po_currency": po.currency, "rate": f"{fx:.6f}",
+                               "rates_as_of": tol.fx_as_of}))
     if po.payment_terms_days != supplier.payment_terms_days:
         out.append(Reason("PAYMENT_TERMS_MISMATCH", Severity.FLAG,
                           f"PO terms are {po.payment_terms_days} days but the vendor master says "
@@ -186,7 +196,9 @@ def _bank_check(doc: InvoiceDoc, supplier: SupplierView) -> list[Reason]:
                     "master_account": mask(supplier.bank_account), "master_ifsc": supplier.bank_ifsc})]
 
 
-def _price_check(ln: DocLine, p: PoLineView, qty: Decimal, price: Decimal, tol: Tolerances) -> list[Reason]:
+def _price_check(ln: DocLine, p: PoLineView, qty: Decimal, price: Decimal, tol: Tolerances,
+                 ccy: str = "INR") -> list[Reason]:
+    _inr = lambda v: fmt_money(v, ccy)  # noqa: E731
     diff_unit = price - p.unit_price
     if diff_unit == 0:
         return []
@@ -241,7 +253,8 @@ def _goods_qty_check(ln: DocLine, p: PoLineView, qty: Decimal, uom: str, tol: To
                    ev, ln.line_no)]
 
 
-def _service_check(ln: DocLine, p: PoLineView, tol: Tolerances) -> list[Reason]:
+def _service_check(ln: DocLine, p: PoLineView, tol: Tolerances, ccy: str = "INR") -> list[Reason]:
+    _inr = lambda v: fmt_money(v, ccy)  # noqa: E731
     where = f"Line {ln.line_no} ({p.item_code})"
     if p.accepted_value <= 0:
         return [Reason("MISSING_SES", Severity.BLOCK,
@@ -265,7 +278,7 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
     """extra_reasons: findings computed outside the engine from other invoices (duplicates)."""
     reasons: list[Reason] = list(validate(doc, plant_gstin, today))
     reasons += extra_reasons
-    reasons += _header_checks(doc, po, supplier)
+    reasons += _header_checks(doc, po, supplier, tol)
     reasons += _bank_check(doc, supplier)
     matrix: list[MatrixRow] = []
     line_map: dict[int, int] = {}
@@ -278,6 +291,14 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                               {"lines_read": 0, "invoice_total": str(doc.total)}))
 
     if po is not None:
+        ccy = po.currency
+        fx = _fx(doc.currency, ccy, tol) if doc.currency != ccy else Decimal(1)
+        if fx is None:
+            fx = Decimal(1)  # CURRENCY_MISMATCH already blocks; compare as printed
+        # Rupee tolerances (PP absolute, BD) expressed in the PO's currency.
+        po_rate = tol.rate(ccy)
+        if ccy != "INR" and po_rate:
+            tol = replace(tol, pp_flag_abs=tol.pp_flag_abs / po_rate, bd_abs=tol.bd_abs / po_rate)
         mapping = map_lines(doc, po)
         for ln in doc.lines:
             hit = mapping.get(ln.line_no)
@@ -286,24 +307,30 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                                       f"Line {ln.line_no} ({ln.item_code or ln.description}) is not on PO {po.po_number}.",
                                       {"item_code": ln.item_code, "description": ln.description}, ln.line_no))
                 matrix.append(MatrixRow(ln.line_no, None, None, ln.description, None, None, None, None, ln.qty,
-                                        ln.unit_price, ln.uom, None, None, None))
+                                        ln.unit_price, ln.uom, None, None, None, ln.uom, ln.qty, doc.currency))
                 continue
             p, how = hit
             line_map[ln.line_no] = p.id
             inv_uom, po_uom = _norm_uom(ln.uom), _norm_uom(p.uom)
-            qty, price = ln.qty - ln.credited_qty, ln.unit_price  # net of credit notes
+            # Prices in the PO currency; quantities net of credit notes.
+            qty, price = ln.qty - ln.credited_qty, ln.unit_price * fx
             if inv_uom != po_uom:
-                factor = UOM_FACTORS.get((inv_uom, po_uom))
+                factor = units.factor(inv_uom, po_uom, p.packs)
                 if factor is None:
-                    reasons.append(Reason("LINE_NOT_ON_PO", Severity.BLOCK,
-                                          f"Line {ln.line_no}: unit {ln.uom} cannot be converted to the PO unit {p.uom}.",
-                                          {"invoice_uom": ln.uom, "po_uom": p.uom}, ln.line_no))
+                    reasons.append(Reason("UOM_MISMATCH", Severity.BLOCK,
+                                          f"Line {ln.line_no}: billed in {ln.uom}, which cannot be converted to the PO unit "
+                                          f"{p.uom} (no standard conversion and no pack size for {p.item_code}).",
+                                          {"invoice_uom": ln.uom, "po_uom": p.uom, "item_code": p.item_code}, ln.line_no))
+                    matrix.append(MatrixRow(ln.line_no, p.id, p.line_no, p.description, p.qty, p.unit_price, None, None,
+                                            ln.qty, _q2(price), ln.uom, None, None, None, ln.uom, ln.qty, ccy))
                     continue
-                qty, price = (ln.qty - ln.credited_qty) * factor, ln.unit_price / factor
+                qty, price = (ln.qty - ln.credited_qty) * factor, price / factor
                 reasons.append(Reason("UOM_CONVERTED", Severity.INFO,
-                                      f"Line {ln.line_no}: {_n(ln.qty)} {inv_uom} converted to {_n(qty)} {po_uom} "
-                                      f"(price {_inr(ln.unit_price)}/{inv_uom} = {_inr(price)}/{po_uom}).",
-                                      {"from": f"{ln.qty} {inv_uom}", "to": f"{qty} {po_uom}"}, ln.line_no))
+                                      f"Line {ln.line_no}: {_n(ln.qty)} {inv_uom} = {_n(qty)} {po_uom} "
+                                      f"({units.describe(inv_uom, po_uom, p.packs)}); price "
+                                      f"{fmt_money(ln.unit_price * fx, ccy)}/{inv_uom} = {fmt_money(price, ccy)}/{po_uom}.",
+                                      {"from": f"{ln.qty} {inv_uom}", "to": f"{qty} {po_uom}",
+                                       "rule": units.describe(inv_uom, po_uom, p.packs)}, ln.line_no))
             if how == "description":  # a suggestion only: a person must confirm it before it can be approved
                 reasons.append(Reason("LINE_MAPPED", Severity.FLAG,
                                       f"Line {ln.line_no} looks like PO line {p.line_no} ({p.item_code}) by description; "
@@ -316,14 +343,14 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
                                       f"Line {ln.line_no} matched to PO line {p.line_no} ({p.item_code}), confirmed by a clerk.",
                                       {"invoice_description": ln.description, "po_description": p.description,
                                        "po_line_id": p.id, "confirmed": True}, ln.line_no))
-            if ln.gst_rate != p.gst_rate:
+            if ln.gst_rate != p.gst_rate and not doc.foreign:
                 reasons.append(Reason("TAX_MISMATCH", Severity.FLAG,
                                       f"Line {ln.line_no}: GST {_n(ln.gst_rate)}% differs from the PO rate {_n(p.gst_rate)}%.",
                                       {"invoice_rate": str(ln.gst_rate), "po_rate": str(p.gst_rate)}, ln.line_no))
-            reasons += _price_check(ln, p, qty, price, tol)
+            reasons += _price_check(ln, p, qty, price, tol, ccy)
             if po.is_service:
-                net = replace(ln, taxable_value=ln.taxable_value - ln.credited_value) if ln.credited_value else ln
-                reasons += _service_check(net, p, tol)
+                net = replace(ln, taxable_value=(ln.taxable_value - ln.credited_value) * fx)
+                reasons += _service_check(net, p, tol, ccy)
                 received, prev = p.accepted_value, p.invoiced_value
                 qty_var = None
             else:
@@ -334,6 +361,7 @@ def decide(doc: InvoiceDoc, po: PoView | None, supplier: SupplierView, tol: Tole
             matrix.append(MatrixRow(
                 ln.line_no, p.id, p.line_no, p.description, p.qty, p.unit_price, received, prev, qty,
                 _q2(price), po_uom, _q2(pct) if pct is not None else None, _q2((price - p.unit_price) * qty), qty_var,
+                inv_uom, ln.qty, ccy,
             ))
 
     if any(r.severity == Severity.BLOCK for r in reasons):

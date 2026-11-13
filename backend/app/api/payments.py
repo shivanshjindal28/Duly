@@ -59,7 +59,8 @@ def history(db: Session = Depends(get_db)) -> list[dict]:
     return [{"id": p.id, "run_id": p.payment_run_id, "invoice_id": i.id, "invoice_number": i.invoice_number,
              "supplier_name": s.name, "paid_at": p.paid_at, "gross": p.gross_amount, "discount": p.discount_amount,
              "tds": p.tds_amount, "tds_section": p.tds_section, "tds_rate_pct": p.tds_rate_pct, "net": p.net_amount,
-             "utr": p.utr, "reason": p.reason} for p, i, s in rows]
+             "utr": p.utr, "reason": p.reason, "currency": p.currency or "INR", "net_inr": p.net_inr or p.net_amount}
+            for p, i, s in rows]
 
 
 @router.get("/msme")

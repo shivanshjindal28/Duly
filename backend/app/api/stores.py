@@ -17,6 +17,8 @@ from app.core.db import get_db
 from app.core.enums import Role
 from app.core.security import require_roles
 from app.models import GoodsReceipt, PurchaseOrder, ServiceEntrySheet, Supplier, User
+from app.engine import units
+from app.workflow.matching import item_packs
 from app.workflow.receipts import (ReceiptError, Rematch, accepted_value, post_goods_receipt, post_service_entry,
                                    received_qty)
 
@@ -33,6 +35,8 @@ class POLineOut(BaseModel):
     unit_price: Decimal
     received: Decimal  # goods: quantity; services: accepted value
     open: Decimal
+    units: list[str] = []  # units stores may receive in (converted to the PO unit)
+    packs: list[str] = []  # e.g. ["1 BOX = 10 NOS"]
 
 
 class ReceiptOut(BaseModel):
@@ -54,6 +58,7 @@ class OpenPOOut(BaseModel):
 class GRLineIn(BaseModel):
     po_line_id: int
     qty: Decimal = Field(ge=0, max_digits=16, decimal_places=3)
+    uom: str | None = Field(None, max_length=10)  # default: the PO unit
 
 
 class GRIn(BaseModel):
@@ -102,9 +107,12 @@ def open_pos(db: Session = Depends(get_db)) -> list[OpenPOOut]:
                 ordered, received = pl.qty * pl.unit_price, accepted_value(db, pl.id)
             else:
                 ordered, received = pl.qty, received_qty(db, pl.id)
+            packs = item_packs(db, pl.item_code)
             lines.append(POLineOut(id=pl.id, line_no=pl.line_no, item_code=pl.item_code, description=pl.description,
                                    uom=pl.uom, ordered=ordered, unit_price=pl.unit_price, received=received,
-                                   open=ordered - received))
+                                   open=ordered - received,
+                                   units=[] if po.is_service else units.convertible_units(pl.uom, packs),
+                                   packs=[f"1 {u} = {q.normalize():f} {b}" for u, q, b in packs]))
         receipts = [ReceiptOut(number=g.gr_number, kind="GR", posted_at=g.posted_at)
                     for g in db.scalars(select(GoodsReceipt).where(GoodsReceipt.po_id == po.id))]
         receipts += [ReceiptOut(number=s.ses_number, kind="SES", posted_at=s.posted_at)
@@ -118,7 +126,8 @@ def open_pos(db: Session = Depends(get_db)) -> list[OpenPOOut]:
 @router.post("/goods-receipts", response_model=PostingOut, status_code=status.HTTP_201_CREATED)
 def goods_receipt(body: GRIn, user: User = Depends(require_roles(Role.STORES)), db: Session = Depends(get_db)) -> PostingOut:
     try:
-        gr, results, settled = post_goods_receipt(db, user, body.po_number, [(ln.po_line_id, ln.qty) for ln in body.lines])
+        gr, results, settled = post_goods_receipt(db, user, body.po_number,
+                                                  [(ln.po_line_id, ln.qty, ln.uom) for ln in body.lines])
     except ReceiptError as e:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e

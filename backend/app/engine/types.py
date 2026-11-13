@@ -13,6 +13,16 @@ def fmt_num(v: Decimal) -> str:
     return format(v.normalize(), "f")
 
 
+CURRENCY_SYMBOLS = {"INR": "₹", "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "CNY": "CN¥", "SGD": "S$"}
+
+
+def fmt_money(v: Decimal, currency: str = "INR") -> str:
+    """Amount with its currency: ₹1,234.50, €19,250.00, AED 1,200.00."""
+    q = Decimal(v).quantize(Decimal("0.01"))
+    sym = CURRENCY_SYMBOLS.get((currency or "INR").upper())
+    return f"{sym}{q:,.2f}" if sym else f"{currency.upper()} {q:,.2f}"
+
+
 @dataclass(frozen=True)
 class DocLine:
     line_no: int
@@ -55,6 +65,9 @@ class InvoiceDoc:
     lines: tuple[DocLine, ...] = ()
     bank_account: str | None = None
     bank_ifsc: str | None = None
+    # Imported goods from a non-resident supplier: no Indian GST on the invoice (IGST is paid at
+    # customs on the bill of entry), no GSTIN; the supplier is identified by its foreign tax ID.
+    foreign: bool = False
 
 
 @dataclass(frozen=True)

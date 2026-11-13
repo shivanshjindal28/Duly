@@ -32,6 +32,8 @@ class QueueItem(BaseModel):
     supplier_name: str | None
     invoice_date: date | None
     total: Decimal
+    currency: str = "INR"
+    total_inr: Decimal | None = None  # INR equivalent (foreign-currency invoices)
     decision: str | None
     override: bool
     step_level: int
@@ -85,7 +87,8 @@ def queue(user: User = Depends(require_roles(Role.APPROVER)), db: Session = Depe
     return [
         QueueItem(
             invoice_id=inv.id, invoice_number=inv.invoice_number, supplier_name=names.get(inv.supplier_id),
-            invoice_date=inv.invoice_date, total=inv.total, decision=inv.decision,
+            invoice_date=inv.invoice_date, total=inv.total, currency=inv.currency or "INR",
+            total_inr=inv.total_inr or inv.total, decision=inv.decision,
             override=inv.override_justification is not None, step_level=step.level,
             step_title=wf.LEVEL_TITLE[step.level], due_at=step.due_at,
             overdue=bool(step.due_at and as_utc(step.due_at) < now), escalated=step.escalated_at is not None,
