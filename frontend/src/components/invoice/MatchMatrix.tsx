@@ -1,5 +1,5 @@
 import type { MatchOut, Severity } from "../../api/types";
-import { inr, pct, qty } from "../../lib/format";
+import { money, pct, qty } from "../../lib/format";
 import { SeverityIcon } from "../StatusChip";
 import { SapTerm } from "../SapTerm";
 
@@ -62,19 +62,24 @@ export function MatchMatrix({ match, isService }: { match: MatchOut | null; isSe
                 <td>{row.description}</td>
                 <td className="num num-col">{unmatched ? "-" : `${qty(row.po_qty)} ${row.uom}`}</td>
                 <td className={`num num-col${cell(q)}`}>
-                  {unmatched ? "-" : isService ? inr(row.received) : `${qty(row.received)} ${row.uom}`}
+                  {unmatched ? "-" : isService ? money(row.received, row.currency) : `${qty(row.received)} ${row.uom}`}
                 </td>
                 <td className="num num-col">
-                  {unmatched ? "-" : isService ? inr(row.previously_invoiced) : qty(row.previously_invoiced)}
+                  {unmatched ? "-" : isService ? money(row.previously_invoiced, row.currency) : qty(row.previously_invoiced)}
                 </td>
                 <td className={`num num-col${cell(q)}`}>
                   {qty(row.invoice_qty)} {row.uom}
+                  {row.invoice_uom && row.invoice_uom !== row.uom && row.invoice_qty_billed ? (
+                    <div className="muted small" title="Converted to the PO unit (standard conversion or the item's pack size)">
+                      billed {qty(row.invoice_qty_billed)} {row.invoice_uom}
+                    </div>
+                  ) : null}
                 </td>
-                <td className="num num-col">{inr(row.po_price)}</td>
-                <td className={`num num-col${cell(p)}`}>{inr(row.invoice_price)}</td>
+                <td className="num num-col">{money(row.po_price, row.currency)}</td>
+                <td className={`num num-col${cell(p)}`}>{money(row.invoice_price, row.currency)}</td>
                 <td className={`num num-col${cell(p)}`}>
                   {p && p !== "info" ? <SeverityIcon severity={p} size={12} /> : null}{" "}
-                  {row.price_variance_pct === null ? "-" : `${pct(row.price_variance_pct)} (${inr(row.price_variance_amount)})`}
+                  {row.price_variance_pct === null ? "-" : `${pct(row.price_variance_pct)} (${money(row.price_variance_amount, row.currency)})`}
                 </td>
                 <td className={`num num-col${cell(q)}`}>
                   {q && q !== "info" ? <SeverityIcon severity={q} size={12} /> : null}{" "}

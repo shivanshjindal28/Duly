@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, History, Pencil, X } from "lucide-react";
 import { api, ApiError } from "../../api/client";
 import type { ExtractedFieldOut, InvoiceDetail } from "../../api/types";
-import { fmtDate, fmtDateTime, inr } from "../../lib/format";
+import { fmtDate, fmtDateTime, money } from "../../lib/format";
 import { FIELD_LABEL, HEADER_ORDER, MONEY_FIELDS, MONO_FIELDS, parseFieldPath } from "./fields";
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   canReview: boolean;
   selected: string | null;
   onSelect: (field: string) => void;
+  currency?: string; // the invoice's currency: amounts are shown in it
+  foreign?: boolean; // import supplier: its tax ID stands in for a GSTIN
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -26,9 +28,9 @@ const SOURCE_LABEL: Record<string, string> = {
   none: "Not found",
 };
 
-function display(name: string, value: string | null): string {
+function display(name: string, value: string | null, currency = "INR"): string {
   if (value === null) return "Not found";
-  if (MONEY_FIELDS.has(name)) return inr(value);
+  if (MONEY_FIELDS.has(name)) return money(value, currency);
   if (name === "invoice_date") return fmtDate(value);
   return value;
 }
@@ -90,7 +92,7 @@ function Editor({ f, invoiceId, onDone }: { f: ExtractedFieldOut; invoiceId: num
   );
 }
 
-function FieldRow({ f, threshold, invoiceId, canReview, selected, onSelect }: { f: ExtractedFieldOut } & Omit<Props, "fields">) {
+function FieldRow({ f, threshold, invoiceId, canReview, selected, onSelect, currency = "INR", foreign = false }: { f: ExtractedFieldOut } & Omit<Props, "fields">) {
   const { name } = parseFieldPath(f.field);
   const [editing, setEditing] = useState(false);
   const confirm = useReview(invoiceId);
@@ -107,9 +109,11 @@ function FieldRow({ f, threshold, invoiceId, canReview, selected, onSelect }: { 
         disabled={!f.bbox}
         aria-pressed={selected === f.field}
       >
-        <span className="field-name">{FIELD_LABEL[name] ?? name}</span>
+        <span className="field-name">
+          {foreign && name === "supplier_gstin" ? "Supplier tax ID (VAT)" : foreign && name === "place_of_supply" ? "Place of supply (import)" : FIELD_LABEL[name] ?? name}
+        </span>
         <span className={`field-value${MONO_FIELDS.has(name) || MONEY_FIELDS.has(name) ? " mono" : ""}${missing ? " muted" : ""}`}>
-          {display(name, f.value)}
+          {display(name, f.value, currency)}
         </span>
         <span className="field-meta">
           {missing ? null : (
@@ -134,7 +138,7 @@ function FieldRow({ f, threshold, invoiceId, canReview, selected, onSelect }: { 
       {reviewed ? (
         <p className="field-history">
           <History size={11} aria-hidden="true" />
-          {f.previous_value === f.value ? "Confirmed" : `Was ${display(name, f.previous_value)}`}
+          {f.previous_value === f.value ? "Confirmed" : `Was ${display(name, f.previous_value, currency)}`}
           {f.previous_confidence !== null ? ` (read at ${Math.round((f.previous_confidence ?? 0) * 100)}%)` : ""} by{" "}
           {f.reviewed_by}, {fmtDateTime(f.reviewed_at)}: "{f.review_reason}"
         </p>
@@ -167,7 +171,7 @@ function FieldRow({ f, threshold, invoiceId, canReview, selected, onSelect }: { 
 }
 
 /** Extracted fields with per-field confidence; click to highlight. Clerks confirm or correct (logged). */
-export function FieldsPanel({ invoiceId, fields, threshold, canReview, selected, onSelect }: Props) {
+export function FieldsPanel({ invoiceId, fields, threshold, canReview, selected, onSelect, currency = "INR", foreign = false }: Props) {
   const byPath = new Map(fields.map((f) => [f.field, f]));
   const header = HEADER_ORDER.map((k) => byPath.get(k)).filter((f): f is ExtractedFieldOut => !!f);
   const lineGroups = new Map<number, ExtractedFieldOut[]>();
@@ -176,7 +180,7 @@ export function FieldsPanel({ invoiceId, fields, threshold, canReview, selected,
     if (line !== null) lineGroups.set(line, [...(lineGroups.get(line) ?? []), f]);
   }
   const lowCount = fields.filter((f) => f.needs_review).length;
-  const rowProps = { invoiceId, threshold, canReview, selected, onSelect };
+  const rowProps = { invoiceId, threshold, canReview, selected, onSelect, currency, foreign };
 
   return (
     <div className="fields">

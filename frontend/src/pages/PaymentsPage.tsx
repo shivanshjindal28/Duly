@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, BadgeIndianRupee, CalendarClock, CheckCircle2, Info, Lock, Percent, Send, Timer } from "lucide-react";
 import { api, ApiError } from "../api/client";
-import { fmtDate, fmtDateTime, inr } from "../lib/format";
+import { fmtDate, fmtDateTime, inr, inrApprox, money } from "../lib/format";
 import "./DashboardPage.css";
 import "./PaymentsPage.css";
 
@@ -31,6 +31,10 @@ interface Item {
   tds: string;
   net: string;
   interest_if_late: string;
+  currency: string;
+  fx_rate: string;
+  gross_inr: string;
+  net_inr: string;
 }
 
 interface Run {
@@ -89,6 +93,8 @@ interface Paid {
   tds_section: string;
   net: string;
   utr: string;
+  currency?: string;
+  net_inr?: string;
 }
 
 const RULE: Record<Rule, { cls: string; label: string }> = {
@@ -106,8 +112,9 @@ const MSME_STATUS: Record<MsmeRow["status"], { cls: string; label: string }> = {
   paid_late: { cls: "chip-flag", label: "Paid late" },
 };
 
+/** Run totals in INR: each invoice's amount at its own exchange rate (rupee invoices at 1). */
 function sum(items: Item[], k: "gross" | "discount" | "tds" | "net"): number {
-  return items.reduce((a, i) => a + Number(i[k]), 0);
+  return items.reduce((a, i) => a + Number(i[k]) * Number(i.fx_rate || 1), 0);
 }
 
 function Kpi({ icon: Icon, label, value, sub, tone }: { icon: typeof Timer; label: string; value: string; sub?: string; tone?: string }) {
@@ -242,13 +249,19 @@ export function PaymentsPage() {
                     <span className={`chip ${RULE[i.rule].cls}`}>{RULE[i.rule].label}</span>
                     <div className="small">{i.reason}</div>
                   </td>
-                  <td className="num-col num">{inr(i.gross)}</td>
-                  <td className="num-col num">{Number(i.discount) ? inr(i.discount) : "-"}</td>
+                  <td className="num-col num">
+                    {money(i.gross, i.currency)}
+                    {i.currency !== "INR" ? <div className="muted small">{inrApprox(i.gross_inr, i.currency)}</div> : null}
+                  </td>
+                  <td className="num-col num">{Number(i.discount) ? money(i.discount, i.currency) : "-"}</td>
                   <td className="num-col num" title={i.tds_section === "none" ? "No TDS" : `${i.tds_label} at ${i.tds_rate_pct}%`}>
-                    {Number(i.tds) ? inr(i.tds) : "-"}
+                    {Number(i.tds) ? money(i.tds, i.currency) : "-"}
                     {i.tds_section !== "none" ? <div className="muted small">{i.tds_label.split(" (")[0]}</div> : null}
                   </td>
-                  <td className="num-col num strong">{inr(Number(i.net))}</td>
+                  <td className="num-col num strong">
+                    {money(i.net, i.currency)}
+                    {i.currency !== "INR" ? <div className="muted small">{inrApprox(i.net_inr, i.currency)}</div> : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -262,6 +275,7 @@ export function PaymentsPage() {
               <span>Discounts {inr(sum(chosen, "discount"))}</span>
               <span>TDS withheld {inr(sum(chosen, "tds"))}</span>
               <span className="strong">Cash out {inr(sum(chosen, "net"))}</span>
+              {chosen.some((i) => i.currency !== "INR") ? <span className="muted small">totals in INR at the policy exchange rates</span> : null}
             </div>
             <p className="muted small">
               Cash kept by paying on terms, not early: {inr(r.summary.cash_kept)}
@@ -387,8 +401,8 @@ export function PaymentsPage() {
                     <div className="muted small">{p.supplier_name}</div>
                   </td>
                   <td>{fmtDateTime(p.paid_at)}</td>
-                  <td className="num-col num">{Number(p.tds) ? inr(p.tds) : "-"}</td>
-                  <td className="num-col num">{inr(p.net)}</td>
+                  <td className="num-col num">{Number(p.tds) ? money(p.tds, p.currency) : "-"}</td>
+                  <td className="num-col num">{money(p.net, p.currency)}</td>
                   <td className="mono">{p.utr}</td>
                 </tr>
               ))}

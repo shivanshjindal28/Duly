@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Check, CheckCircle2, Copy, Database, X } from "lucide-react";
 import { api } from "../../api/client";
-import { inr } from "../../lib/format";
+import { money } from "../../lib/format";
 import { SapTerm } from "../SapTerm";
 import "./SapPreviewDrawer.css";
 
@@ -92,11 +92,11 @@ export function SapPreviewDrawer({ invoiceId, onClose }: { invoiceId: number; on
                 <div><dt>Company code</dt><dd className="mono">{String(body.CompanyCode)}</dd></div>
                 <div><dt>Invoicing party</dt><dd className="mono">{String(body.InvoicingParty)}</dd></div>
                 <div><dt>Supplier invoice ID</dt><dd className="mono">{String(body.SupplierInvoiceIDByInvcgParty)}</dd></div>
-                <div><dt>Gross amount</dt><dd className="num">{inr(String(body.InvoiceGrossAmount))}</dd></div>
+                <div><dt>Gross amount</dt><dd className="num">{money(String(body.InvoiceGrossAmount), String(body.DocumentCurrency))}</dd></div>
                 <div><dt>Payment terms</dt><dd className="mono">{String(body.PaymentTerms)}</dd></div>
                 <div><dt>Payment block</dt><dd className="mono">{String(body.PaymentBlockingReason) || "none"}</dd></div>
                 <div><dt>PO items</dt><dd>{body.to_SuplrInvcItemPurOrdRef.results.length}</dd></div>
-                <div><dt>Tax lines</dt><dd>{body.to_SupplierInvoiceTax.results.map((t) => `${t.TaxCode} ${inr(t.TaxAmount)}`).join(", ") || "-"}</dd></div>
+                <div><dt>Tax lines</dt><dd>{body.to_SupplierInvoiceTax.results.map((t) => `${t.TaxCode} ${money(t.TaxAmount, String(body.DocumentCurrency))}`).join(", ") || "-"}</dd></div>
                 <div><dt>Withholding tax</dt><dd>{body.to_SupplierInvoiceWhldgTax.results.map((t) => `${t.WithholdingTaxType}/${t.WithholdingTaxCode}`).join(", ") || "none"}</dd></div>
               </dl>
               {p.warnings.length ? (

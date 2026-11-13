@@ -19,7 +19,9 @@ from app.core.db import get_db
 from app.core.enums import Role
 from app.core.security import require_roles
 from app.ingestion import extract_text
-from app.models import (ApprovalStep, AuditEvent, ExtractionResult, Invoice, Organisation, Policy, Supplier, User)
+from app.engine.units import DIMENSIONS
+from app.models import (ApprovalStep, AuditEvent, ExtractionResult, Invoice, ItemUnit, Organisation, Policy, Supplier,
+                        User)
 from app.validation.hsn import HSN_RATES
 
 router = APIRouter(tags=["about"],
@@ -137,4 +139,8 @@ def assumptions(db: Session = Depends(get_db)) -> dict:
         "policy": {"version": policy.version, "name": policy.name, "data": policy.data} if policy else None,
         "hsn": [{"code": c, "description": d, "rates": sorted(float(r) for r in rates)}
                 for c, (d, rates) in HSN_RATES.items()],
+        "item_units": [{"item_code": u.item_code, "unit": u.unit, "qty": float(u.qty), "base_unit": u.base_unit}
+                       for u in db.scalars(select(ItemUnit).order_by(ItemUnit.item_code))],
+        "standard_units": {dim: {"base": base, "units": {k: float(v) for k, v in table.items()}}
+                           for dim, (base, table) in DIMENSIONS.items()},
     }

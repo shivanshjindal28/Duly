@@ -6,7 +6,7 @@ import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { DecisionChip } from "../components/StatusChip";
 import type { Decision } from "../api/types";
-import { fmtDate, fmtDateTime, inr } from "../lib/format";
+import { fmtDate, fmtDateTime, inrApprox, money } from "../lib/format";
 import "./ApprovalsPage.css";
 
 interface QueueItem {
@@ -15,6 +15,8 @@ interface QueueItem {
   supplier_name: string | null;
   invoice_date: string | null;
   total: string;
+  currency?: string;
+  total_inr?: string | null;
   decision: Decision | null;
   override: boolean;
   step_level: number;
@@ -165,7 +167,7 @@ export function ApprovalsPage() {
                       <div className="muted cell-sub">{fmtDate(i.invoice_date)}</div>
                     </td>
                     <td>{i.supplier_name}</td>
-                    <td className="num num-col">{inr(i.total)}</td>
+                    <td className="num num-col">{money(i.total, i.currency)}{i.currency && i.currency !== "INR" ? <div className="muted small">{inrApprox(i.total_inr, i.currency)}</div> : null}</td>
                     <td>
                       <DecisionChip decision={i.decision} />
                       {i.override ? <span className="chip chip-flag cell-chip">Override</span> : null}

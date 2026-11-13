@@ -15,6 +15,8 @@ interface POLine {
   unit_price: string;
   received: string;
   open: string;
+  units?: string[]; // units stores may receive in (converted to the PO unit)
+  packs?: string[]; // e.g. "1 BOX = 10 NOS"
 }
 interface OpenPO {
   po_number: string;
@@ -36,6 +38,7 @@ interface Posting {
 function POCard({ po }: { po: OpenPO }) {
   const qc = useQueryClient();
   const [inputs, setInputs] = useState<Record<number, string>>({});
+  const [units, setUnits] = useState<Record<number, string>>({});
   const [result, setResult] = useState<Posting | null>(null);
   const post = useMutation({
     mutationFn: async () => {
@@ -48,7 +51,7 @@ function POCard({ po }: { po: OpenPO }) {
       }
       const lines = Object.entries(inputs)
         .filter(([, v]) => v && Number(v) > 0)
-        .map(([id, v]) => ({ po_line_id: Number(id), qty: v }));
+        .map(([id, v]) => ({ po_line_id: Number(id), qty: v, uom: units[Number(id)] || undefined }));
       return api<Posting>("/stores/goods-receipts", {
         method: "POST",
         body: JSON.stringify({ po_number: po.po_number, lines }),
@@ -57,6 +60,7 @@ function POCard({ po }: { po: OpenPO }) {
     onSuccess: (r) => {
       setResult(r);
       setInputs({});
+      setUnits({});
       qc.invalidateQueries({ queryKey: ["open-pos"] });
     },
   });
@@ -117,20 +121,37 @@ function POCard({ po }: { po: OpenPO }) {
               <td className="num">{l.line_no}</td>
               <td>
                 <span className="mono">{l.item_code}</span> <span className="muted">{l.description}</span>
+                {l.packs && l.packs.length ? <div className="muted small">Pack sizes: {l.packs.join(", ")}</div> : null}
               </td>
               <td className="num num-col">{po.is_service ? inr(l.ordered) : `${qty(l.ordered)} ${l.uom}`}</td>
               <td className="num num-col">{po.is_service ? inr(l.received) : `${qty(l.received)} ${l.uom}`}</td>
               <td className="num num-col">{po.is_service ? inr(l.open) : `${qty(l.open)} ${l.uom}`}</td>
               <td className="num-col">
                 {Number(l.open) > 0 ? (
-                  <input
-                    className="input po-qty num"
-                    inputMode="decimal"
-                    aria-label={`${po.is_service ? "Value to accept" : "Quantity received"} for ${l.item_code}`}
-                    placeholder={po.is_service ? inr(l.open, false) : qty(l.open)}
-                    value={inputs[l.id] ?? ""}
-                    onChange={(e) => setInputs({ ...inputs, [l.id]: e.target.value.replace(/[^\d.]/g, "") })}
-                  />
+                  <span className="recv-qty">
+                    <input
+                      className="input po-qty num"
+                      inputMode="decimal"
+                      aria-label={`${po.is_service ? "Value to accept" : "Quantity received"} for ${l.item_code}`}
+                      placeholder={po.is_service ? inr(l.open, false) : (units[l.id] ?? l.uom) === l.uom ? qty(l.open) : ""}
+                      value={inputs[l.id] ?? ""}
+                      onChange={(e) => setInputs({ ...inputs, [l.id]: e.target.value.replace(/[^\d.]/g, "") })}
+                    />
+                    {!po.is_service && l.units && l.units.length > 1 ? (
+                      <select
+                        className="input recv-unit"
+                        aria-label={`Unit for ${l.item_code}`}
+                        value={units[l.id] ?? l.uom}
+                        onChange={(e) => setUnits({ ...units, [l.id]: e.target.value })}
+                      >
+                        {l.units.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </span>
                 ) : (
                   <span className="muted">Complete</span>
                 )}

@@ -75,6 +75,18 @@ domains are `.example`. Every master record is flagged `is_synthetic`.
 
 TDS is computed on the taxable value (excluding GST). PAN 4th character P or H is treated as individual / HUF.
 
+## Currencies and units
+- **Exchange rates** (policy `fx`, INR per one unit; fictional round values as of 2026-11-01): USD 84, EUR 90, GBP 107,
+  JPY 0.56, CNY 11.60, SGD 63, AED 22.90. Assumption: update from the RBI / FBIL reference rate or the treasury rate
+  table (SAP OB08). Editable on the Policy page; each invoice keeps the rate it was matched at.
+- **Import supplier** (fictional): Nordwerk Polymer Additives GmbH, Germany, VAT ID DE-FICT-447101, bills in EUR, 60
+  days, no MSME, no TDS (non-resident withholding is left to the tax team), IBAN / SWIFT fictional. Import invoices carry
+  no Indian GST; IGST is paid at customs (bill of entry, not modelled).
+- **Units**: standard conversions (mass, volume, length, count) built in; pack sizes are item master data
+  (`item_units`): BRG-6205 BOX = 10 NOS, BRG-6310 BOX = 5 NOS, SEAL-M40 SET = 4 NOS, ADD-AO-1010 BAG = 25 KG,
+  NUC-AGT-77 BAG = 20 KG, CAT-ZN-01 DRUM = 200 KG, PKG-FFS-25 BUNDLE = 100 NOS, PKG-FFS-50 BUNDLE = 50 NOS,
+  PKG-FIBC-1T BALE = 20 NOS.
+
 ## HSN / SAC rates used by the tax check (illustrative)
 3901 and 3902 polymers 18%; 3812 additives 18%; 3815 catalysts 18%; 3923 plastic sacks 18%; 6305 FIBC 5% or
 12%; 4415 wooden pallets 5% or 12%; 8413 pumps and parts 18%; 8482 bearings 18%; 8484 seals and gaskets 18%;

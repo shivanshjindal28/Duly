@@ -10,7 +10,7 @@ import "./BankChangesPage.css";
 import { DulyRail } from "../components/DulyRail";
 import { StatusChip } from "../components/StatusChip";
 import { setLanguage } from "../i18n";
-import { fmtDate, inr } from "../lib/format";
+import { fmtDate, inr, money } from "../lib/format";
 import "./SupplierPortalPage.css";
 
 interface Todo {
@@ -25,6 +25,7 @@ interface PortalInvoice {
   invoice_date: string | null;
   po_number: string | null;
   total: string;
+  currency?: string;
   status: InvoiceStatus;
   stage: string;
   rail: number;
@@ -45,7 +46,7 @@ interface Portal {
   bank_ifsc: string;
   today: string;
   invoices: PortalInvoice[];
-  payments: { invoice_number: string; paid_at: string; gross: string; tds: string; net: string; utr: string }[];
+  payments: { invoice_number: string; paid_at: string; gross: string; tds: string; net: string; utr: string; currency?: string }[];
 }
 
 function InvoiceCard({ inv, msme }: { inv: PortalInvoice; msme: boolean }) {
@@ -79,7 +80,7 @@ function InvoiceCard({ inv, msme }: { inv: PortalInvoice; msme: boolean }) {
           </p>
         </div>
         <div className="pinv-amount">
-          <span className="num">{inr(inv.total)}</span>
+          <span className="num">{money(inv.total, inv.currency)}</span>
           <StatusChip status={inv.status} label={t(`status.${inv.status}`)} />
         </div>
       </header>
@@ -261,9 +262,9 @@ export function SupplierPortalPage() {
                 <tr key={x.utr}>
                   <td className="mono">{x.invoice_number}</td>
                   <td>{fmtDate(x.paid_at)}</td>
-                  <td className="num num-col">{inr(x.gross)}</td>
-                  <td className="num num-col">{inr(x.tds)}</td>
-                  <td className="num num-col">{inr(x.net)}</td>
+                  <td className="num num-col">{money(x.gross, x.currency)}</td>
+                  <td className="num num-col">{money(x.tds, x.currency)}</td>
+                  <td className="num num-col">{money(x.net, x.currency)}</td>
                   <td className="mono">{x.utr}</td>
                 </tr>
               ))}

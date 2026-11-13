@@ -28,9 +28,12 @@ interface AssumptionsOut {
       payments: { cost_of_funds_pct: number; run_interval_days: number; msme_buffer_days: number };
       corporate_tax_rate_pct: number;
       tds: Record<string, TdsRule>;
+      fx?: { as_of: string; source: string; rates: Record<string, number> };
     };
   } | null;
   hsn: { code: string; description: string; rates: number[] }[];
+  item_units?: { item_code: string; unit: string; qty: number; base_unit: string }[];
+  standard_units?: Record<string, { base: string; units: Record<string, number> }>;
 }
 
 const STATE: Record<string, string> = { "24": "Gujarat", "27": "Maharashtra", "29": "Karnataka" };
@@ -186,6 +189,22 @@ export function AssumptionsPage() {
             [r.single_threshold_inr ? `single bill > ${lakh(r.single_threshold_inr)}` : "", r.annual_threshold_inr ? `year > ${lakh(r.annual_threshold_inr)}` : ""].filter(Boolean).join(", "),
           ] as [string, string, string])} />
         </section>
+        {p.fx ? (
+          <section className="panel" aria-labelledby="fx-title">
+            <h2 id="fx-title" className="label about-table-title">Exchange rates (INR per unit, as of {p.fx.as_of})</h2>
+            <Rows rows={Object.entries(p.fx.rates).map(([c, r]) => [c, `₹${r}`, "import invoices and foreign-currency POs"] as [string, string, string])} />
+            <p className="muted small about-note">{p.fx.source}. Invoices store the rate they were matched at; approval limits use the INR value.</p>
+          </section>
+        ) : null}
+        {q.data.item_units && q.data.item_units.length ? (
+          <section className="panel" aria-labelledby="pack-title">
+            <h2 id="pack-title" className="label about-table-title">Item pack sizes (item master)</h2>
+            <Rows rows={q.data.item_units.map((u) => [u.item_code, `1 ${u.unit} = ${u.qty} ${u.base_unit}`, "billing and receiving in packs"] as [string, string, string])} />
+            <p className="muted small about-note">
+              Standard conversions are built in: {Object.values(q.data.standard_units ?? {}).map((d) => Object.keys(d.units).join(" / ")).join("; ")}.
+            </p>
+          </section>
+        ) : null}
       </div>
 
       <section className="panel table-panel" aria-labelledby="hsn-title">

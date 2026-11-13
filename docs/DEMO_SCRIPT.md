@@ -71,6 +71,8 @@ After rehearsing, run **Reset demo data** again so the stage starts clean.
 | 9:00 | A | Close | Every invoice, duly done. Questions. |
 
 **If behind schedule, cut in this order:** the tamper demo (7:30), S08 (4:40), Trust page, S06's Bank changes page.
+**If asked about currencies or units:** upload `S13_import_eur_nucleating_agent.pdf` as **Lena Brandt** (Nordwerk, Germany): EUR 19,250, no GST, ≈ ₹17.3 lakh → L1 + L2 with MFA; then `S14_bearings_billed_in_boxes.pdf` as **Dinesh Patel**: 12 BOX matched as 120 NOS. Stores can receive in boxes (Receiving → PO 4500001019 → unit BOX). Exchange rates and pack sizes are on the Policy and Scenario & assumptions pages.
+
 **If ahead or asked:** S12 (Asha opens NPW-313, enters HSN 3923 on the highlighted field, logged with a reason →
 APPROVE), S02 (exact ₹39,680 price variance), S03 (cumulative received vs invoiced), S09a/b (tax head, GSTIN check
 digit), Hindi portal (Hetal Shah → हिन्दी), AI mode switch.

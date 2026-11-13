@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import type { InvoiceSummary } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { DecisionChip, StatusChip } from "../components/StatusChip";
-import { fmtDate, fmtDateTime, inr } from "../lib/format";
+import { fmtDate, fmtDateTime, inrApprox, money } from "../lib/format";
 
 /** Invoice list. Suppliers see only their own invoices (enforced by the API). */
 export function InvoicesPage() {
@@ -64,7 +64,7 @@ export function InvoicesPage() {
                   {me?.role !== "supplier" ? <td>{inv.supplier_name}</td> : null}
                   <td className="mono">{inv.po_number ?? "-"}</td>
                   <td>{fmtDate(inv.invoice_date)}</td>
-                  <td className="num num-col">{inr(inv.total)}</td>
+                  <td className="num num-col">{money(inv.total, inv.currency)}{inv.currency !== "INR" ? <div className="muted small">{inrApprox(inv.total_inr, inv.currency)}</div> : null}</td>
                   <td>
                     <DecisionChip decision={inv.decision} />
                   </td>

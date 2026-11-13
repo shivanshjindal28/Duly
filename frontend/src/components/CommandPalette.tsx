@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Building, CornerDownLeft, FileText, Search, Zap, type LucideIcon } from "lucide-react";
 import { api } from "../api/client";
 import type { Role } from "../auth/AuthContext";
-import { inr } from "../lib/format";
+import { money } from "../lib/format";
 import "./CommandPalette.css";
 
 export interface PaletteNavItem {
@@ -23,7 +23,7 @@ interface Command {
   run: () => void;
 }
 
-interface InvoiceRow { id: number; invoice_number: string; supplier_name: string | null; total: string; status: string }
+interface InvoiceRow { id: number; invoice_number: string; supplier_name: string | null; total: string; currency?: string; status: string }
 interface SupplierRow { id: number; name: string; code: string; category: string }
 
 const STAFF: Role[] = ["clerk", "approver", "auditor", "admin"];
@@ -110,7 +110,7 @@ export function CommandPalette({ role, nav }: { role: Role; nav: PaletteNavItem[
     for (const i of invoices.data ?? []) {
       out.push({
         id: `inv:${i.id}`, group: "Invoices", label: i.invoice_number, icon: FileText,
-        hint: `${i.supplier_name ?? ""} · ${inr(i.total)} · ${i.status.replace("_", " ")}`,
+        hint: `${i.supplier_name ?? ""} · ${money(i.total, i.currency)} · ${i.status.replace("_", " ")}`,
         keywords: i.supplier_name ?? "", run: go(`/invoices/${i.id}`),
       });
     }

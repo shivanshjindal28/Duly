@@ -6,7 +6,7 @@ import { api, ApiError } from "../api/client";
 import type { Decision, InvoiceStatus, SupplierOut } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { DecisionChip, StatusChip } from "../components/StatusChip";
-import { fmtDate, inr } from "../lib/format";
+import { fmtDate, inrApprox, money } from "../lib/format";
 import "./QueuePage.css";
 
 interface Row {
@@ -15,6 +15,8 @@ interface Row {
   supplier_id: number | null;
   supplier_name: string | null;
   total: string;
+  currency?: string;
+  total_inr?: string | null;
   status: InvoiceStatus;
   decision: Decision | null;
   reasons: string[];
@@ -343,7 +345,7 @@ export function QueuePage() {
                     </Link>
                   </td>
                   <td>{r.supplier_name}</td>
-                  <td className="num num-col">{inr(r.total)}</td>
+                  <td className="num num-col">{money(r.total, r.currency)}{r.currency && r.currency !== "INR" ? <div className="muted small">{inrApprox(r.total_inr, r.currency)}</div> : null}</td>
                   <td>
                     <DecisionChip decision={r.decision} />
                   </td>

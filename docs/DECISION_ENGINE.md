@@ -20,7 +20,8 @@ Invoice (after extraction and human corrections), PO with lines, goods receipts 
 | PO_CLOSED | block | PO status is not open | none | Block A · ME23N |
 | SUPPLIER_MISMATCH | block | Invoice GSTIN differs from the PO supplier's GSTIN | none | Block A · XK03 |
 | BILL_TO_MISMATCH | block | Buyer GSTIN is not Plant X | none | Block A · MIRO |
-| CURRENCY_MISMATCH | block | Invoice currency differs from PO | none | Block A · ME23N |
+| CURRENCY_MISMATCH | block | Invoice currency differs from the PO and the policy has no exchange rate for it | none | Block A · ME23N |
+| CURRENCY_CONVERTED | flag | Invoice currency differs from the PO; prices converted at the policy FX rates (INR per unit, `fx.rates`) to compare; a person confirms the supplier may bill in that currency | FX table | Block R · MIRO / OB08 |
 | GSTIN_INVALID | block | Supplier GSTIN fails format or mod-36 check digit | none | Block A · XK03 |
 | BANK_MISMATCH | block | Bank account or IFSC on invoice differs from vendor master (possible BEC fraud). Accounts are masked in messages. | none | Block A · XK03 |
 | NO_LINES | block | No line items could be read; nothing to match, so never approve | none | Block R · MIRO items |
@@ -31,7 +32,8 @@ Invoice (after extraction and human corrections), PO with lines, goods receipts 
 | SMALL_DIFFERENCE | info | Total price difference on a line ≤ BD amount, auto-accepted | BD: ₹10 | MIRO small differences (key BD) |
 | QTY_EXCEEDS_GR | info / flag / block | Invoiced qty > received minus already invoiced (cumulative, supports partial deliveries). Excess within DQ: info. Up to 5% of received: flag. Above: block. | DQ: 0% (0.5% for MT bulk); block above 5% | Block R · MIGO/MIRO (key DQ) |
 | SES_VALUE_EXCEEDED | flag / block | Service value billed > accepted SES value minus already invoiced | flag up to 5%, block above | Block R · ML81N |
-| UOM_CONVERTED | info | kg↔MT, g↔kg, L↔KL converted to the PO unit before comparing | none | MIRO order unit |
+| UOM_CONVERTED | info | Billed unit converted to the PO unit before comparing: standard units (mass g/kg/quintal/MT, volume ml/L/KL, length mm/cm/m/km, count NOS/pair/dozen/gross, with common spellings) or the item's pack size from the item master (e.g. 1 BOX = 10 NOS) | units table, `item_units` | MIRO order unit / MM03 |
+| UOM_MISMATCH | block | Billed unit cannot be converted to the PO unit (different dimension, or a pack unit with no pack size for the item) | none | Block R · MM03 / ME23N |
 | LINE_MAPPED | info | Line matched to the PO by description, not item code | fuzzy ≥ 85 | ME23N |
 | TAX_MISMATCH | flag | Same state charged IGST, or different state charged CGST/SGST; GST rate not valid for HSN; line tax ≠ rate × value; GST rate differs from PO | ₹1 rounding | Block R · MIRO tax |
 | MATH_ERROR | flag | qty × price ≠ line value; lines ≠ taxable total; taxable + tax ≠ total | ₹1 rounding | Block R · MIRO balance |
@@ -98,3 +100,20 @@ All tolerances are policy data (`backend/app/core/policy_defaults.py`, stored ve
 - **Scenario 8:** the signed QR says ₹5,01,500, the edited PDF prints ₹5,19,500: **BLOCK QR_MISMATCH** (and MATH_ERROR, since the printed total no longer adds up).
 
 All 12 scenarios with their expected reason codes: `demo/manifest.json`; checked end to end by `python scripts/demo_check.py`.
+
+
+## Currencies and units (engine 1.1)
+
+- **Currencies.** Every invoice stores the FX rate it was matched at (`invoices.fx_rate`, INR per unit, from the
+  active policy's `fx` table) and its INR equivalent (`total_inr`). Prices are compared in the **PO's currency**;
+  the rupee tolerances (PP absolute ₹500, BD ₹10) are converted into that currency first. Approval limits, MFA,
+  the touchless limit, dashboards, payment-run totals, controls C-04, Impact and supplier risk use the INR value.
+- **Imports.** A non-resident supplier (`suppliers.country != "IN"`) has no GSTIN; its fictional foreign tax ID is
+  stored in the `gstin` column and matched against the PO supplier. GST-only rules (GSTIN check digit, the 16-character
+  invoice number, CGST/SGST vs IGST, HSN rates) are skipped; an import invoice that charges Indian GST is flagged
+  `TAX_MISMATCH` (IGST on imports is paid at customs on the bill of entry). E-invoice: not applicable. TDS: not computed
+  (non-resident withholding is a tax-team decision). SAP preview: document currency, import tax code M0, and a note
+  that SAP translates with its own OB08 rates.
+- **Units.** `engine/units.py` converts within a dimension and through item pack sizes (`item_units` table). Goods
+  receipts can be posted in any convertible unit and are stored in the PO unit (with what was entered). Credit-note
+  suggestions and the supplier's credit amount convert the excess back into the invoice line's unit.

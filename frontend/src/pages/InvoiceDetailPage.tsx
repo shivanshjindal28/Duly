@@ -17,7 +17,7 @@ import { FieldsPanel } from "../components/invoice/FieldsPanel";
 import { MatchMatrix } from "../components/invoice/MatchMatrix";
 import { SapPreviewDrawer } from "../components/invoice/SapPreviewDrawer";
 import { StatusChip } from "../components/StatusChip";
-import { fmtDate, inr } from "../lib/format";
+import { fmtDate, inrApprox, money } from "../lib/format";
 import "./InvoiceDetailPage.css";
 
 const AI_MODE: Record<string, string> = { live: "AI: live", cached: "AI: cached", offline: "AI: offline (OCR)" };
@@ -71,7 +71,12 @@ export function InvoiceDetailPage() {
         <dl className="detail-facts">
           <div>
             <dt>Total</dt>
-            <dd className="num detail-total">{inr(inv.total)}</dd>
+            <dd className="num detail-total">{money(inv.total, inv.currency)}</dd>
+            {inv.currency !== "INR" ? (
+              <dd className="muted small" title="INR equivalent at the policy exchange rate; approval limits and MFA use it">
+                {inrApprox(inv.total_inr, inv.currency)} at {Number(inv.fx_rate).toFixed(2)}/{inv.currency}
+              </dd>
+            ) : null}
           </div>
           <div>
             <dt>Invoice date</dt>
@@ -200,6 +205,8 @@ export function InvoiceDetailPage() {
             invoiceId={inv.id}
             canReview={inv.can_review}
             fields={inv.fields}
+            currency={inv.currency}
+            foreign={inv.supplier_country !== "IN"}
             threshold={inv.confidence_threshold}
             selected={selected}
             onSelect={setSelected}

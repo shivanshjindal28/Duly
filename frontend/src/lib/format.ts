@@ -21,6 +21,34 @@ export function inrShort(value: string | number | null | undefined): string {
   return "₹" + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
 }
 
+const moneyFmt = new Map<string, Intl.NumberFormat>();
+
+/** Amount in its own currency: ₹12,34,567.00, €19,250.00, $1,250.00. INR keeps Indian grouping. */
+export function money(value: string | number | null | undefined, currency: string | null | undefined = "INR"): string {
+  const c = (currency || "INR").toUpperCase();
+  if (c === "INR") return inr(value);
+  if (value === null || value === undefined || value === "") return "-";
+  const n = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(n)) return String(value);
+  let f = moneyFmt.get(c);
+  if (!f) {
+    try {
+      f = new Intl.NumberFormat("en-IN", { style: "currency", currency: c, minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch {
+      f = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    moneyFmt.set(c, f);
+  }
+  const out = f.format(n);
+  return /\d/.test(out[0]) ? `${c} ${out}` : out;
+}
+
+/** "≈ ₹17.3 L" for a foreign-currency amount (empty for INR). */
+export function inrApprox(totalInr: string | number | null | undefined, currency: string | null | undefined): string {
+  if (!currency || currency.toUpperCase() === "INR" || totalInr === null || totalInr === undefined) return "";
+  return `≈ ${inrShort(totalInr)}`;
+}
+
 export function qty(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "-";
   const n = Number(value);

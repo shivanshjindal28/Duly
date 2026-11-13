@@ -20,6 +20,8 @@ export interface InvoiceSummary {
   invoice_date: string | null;
   po_number: string | null;
   total: string;
+  currency: string;
+  total_inr: string | null;
   status: InvoiceStatus;
   decision: Decision | null;
   current_owner: string;
@@ -82,6 +84,9 @@ export interface MatrixRow {
   price_variance_pct: string | null;
   price_variance_amount: string | null;
   qty_variance: string | null;
+  invoice_uom?: string;
+  invoice_qty_billed?: string | null;
+  currency?: string;
 }
 
 export interface MatchOut {
@@ -98,7 +103,8 @@ export interface InvoiceDetail extends InvoiceSummary {
   supplier_gstin: string | null;
   buyer_gstin: string | null;
   place_of_supply: string | null;
-  currency: string;
+  fx_rate: string;
+  supplier_country: string;
   taxable_total: string;
   cgst: string;
   sgst: string;

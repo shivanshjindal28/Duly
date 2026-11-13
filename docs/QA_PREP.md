@@ -135,3 +135,12 @@ retention policy itself is built), secrets in a vault, a penetration test and a 
 With Claude Code as a pair programmer, in small tested steps (docs/AI_DECLARATION.md). Each module has a docstring
 and a doc: decision engine (docs/DECISION_ENGINE.md), architecture, controls, impact. `python scripts/demo_check.py`
 proves all 12 scenarios end to end.
+
+**26. What about foreign suppliers, other currencies and different units?**
+An import supplier billing in EUR is matched in EUR against an EUR PO and converted to INR at the policy exchange rate
+for everything that is set in rupees: approval limits and MFA (S13: EUR 19,250 is about ₹17.3 lakh, so L1 + L2 with MFA),
+dashboards and payment-run totals. An invoice in a different currency from its PO is converted and flagged for a person
+to confirm; without a rate it is blocked. GST rules are skipped for imports (IGST is paid at customs). Units convert by
+dimension (kg / quintal / tonne, litre / kilolitre, metre, dozen) and by the item's pack size from the item master: S14
+bills 12 BOX against a PO in pieces and is matched as 120 NOS. Stores can receive in boxes too. Rates are an editable,
+dated policy table (offline by design); a real deployment would load the RBI / FBIL reference rate or the SAP OB08 table.
