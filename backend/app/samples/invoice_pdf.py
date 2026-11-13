@@ -83,6 +83,11 @@ class InvoiceSpec:
     signed_qr: str | None = None  # IRP-signed e-invoice QR payload (JWT), printed bottom-left
     metadata_subject: str | None = None  # scenario: instructions hidden in the PDF metadata
     extra_notes: list[str] = field(default_factory=list)
+    # Import invoice from a non-resident supplier: printed currency, VAT ID instead of GSTIN, no GST,
+    # IBAN / SWIFT instead of account / IFSC.
+    currency: str = "INR"
+    country: str | None = None  # e.g. "Germany"; set = foreign supplier
+    incoterms: str | None = None
 
     @property
     def pos(self) -> str:
@@ -160,15 +165,19 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
     y -= 5 * mm
     c.drawString(left, y, spec.supplier.address)
     y -= 4.2 * mm
-    state = STATE_CODES.get(spec.supplier.gstin[:2], "")
-    c.drawString(left, y, f"GSTIN: {spec.supplier.gstin}")
-    c.drawString(left + 62 * mm, y, f"State: {state} ({spec.supplier.gstin[:2]})")
-    if spec.supplier.pan:
-        c.drawString(left + 112 * mm, y, f"PAN: {spec.supplier.pan}")
+    if spec.country:
+        c.drawString(left, y, f"VAT ID: {spec.supplier.gstin}")
+        c.drawString(left + 62 * mm, y, f"Country: {spec.country}")
+    else:
+        state = STATE_CODES.get(spec.supplier.gstin[:2], "")
+        c.drawString(left, y, f"GSTIN: {spec.supplier.gstin}")
+        c.drawString(left + 62 * mm, y, f"State: {state} ({spec.supplier.gstin[:2]})")
+        if spec.supplier.pan:
+            c.drawString(left + 112 * mm, y, f"PAN: {spec.supplier.pan}")
 
     y -= 9 * mm
     c.setFont("Helvetica-Bold", 12)
-    c.drawCentredString(width / 2, y, "TAX INVOICE")
+    c.drawCentredString(width / 2, y, "COMMERCIAL INVOICE" if spec.country else "TAX INVOICE")
     c.setLineWidth(0.6)
     c.line(left, y - 2.5 * mm, right, y - 2.5 * mm)
 
@@ -188,8 +197,10 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
         f"Invoice No: {spec.invoice_number}",
         f"Invoice Date: {spec.invoice_date:%d-%m-%Y}",
         f"PO Number: {spec.po_number or ''}",
-        f"Place of Supply: {pos_name} ({spec.pos})",
+        f"Place of Supply: {pos_name} ({spec.pos})" if not spec.country else f"Currency: {spec.currency}",
     ]
+    if spec.country and spec.incoterms:
+        meta.append(f"Incoterms: {spec.incoterms}")
     for i, text in enumerate(meta):
         c.drawString(meta_x, y - i * 4.6 * mm, text)
     c.setFont("Helvetica-Bold", 9)
@@ -239,12 +250,17 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
         y -= 5 * mm
     c.setFont("Helvetica-Bold", 10)
     c.drawString(left + 120 * mm, y, "Total Invoice Value")
-    c.drawRightString(right, y, inr(comp.total))
+    c.drawRightString(right, y, (f"{spec.currency} " if spec.currency != "INR" else "") + inr(comp.total))
 
     # Bank and IRN
     y -= 12 * mm
     c.setFont("Helvetica", 8.5)
-    if spec.bank_account:
+    if spec.bank_account and spec.country:
+        c.drawString(left, y, f"Bank: {spec.bank_name or ''}")
+        c.drawString(left, y - 4.4 * mm, f"IBAN: {spec.bank_account}")
+        c.drawString(left + 82 * mm, y - 4.4 * mm, f"SWIFT/BIC: {spec.bank_ifsc or ''}")
+        y -= 9 * mm
+    elif spec.bank_account:
         c.drawString(left, y, f"Bank: {spec.bank_name or ''}")
         c.drawString(left, y - 4.4 * mm, f"A/c No: {spec.bank_account}")
         c.drawString(left + 62 * mm, y - 4.4 * mm, f"IFSC: {spec.bank_ifsc or ''}")
@@ -255,7 +271,8 @@ def render_invoice_pdf(spec: InvoiceSpec) -> bytes:
         y -= 4.4 * mm
     else:
         c.setFont("Helvetica-Oblique", 7.5)
-        c.drawString(left, y, "e-invoice: not applicable (turnover below threshold)")
+        c.drawString(left, y, "e-invoice: not applicable (non-resident supplier; import)" if spec.country
+                     else "e-invoice: not applicable (turnover below threshold)")
         y -= 4.4 * mm
     c.setFont("Helvetica", 7.5)
     for note in spec.extra_notes:

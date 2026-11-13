@@ -8,7 +8,7 @@ from app.validation.gstin import is_valid_gstin
 
 def test_seed_counts_and_roles(db):
     assert db.scalar(select(func.count()).select_from(Organisation)) == 1
-    assert db.scalar(select(func.count()).select_from(Supplier)) == 6
+    assert db.scalar(select(func.count()).select_from(Supplier)) == 7  # 6 Indian + 1 import supplier
     roles = set(db.scalars(select(User.role)).all())
     assert roles == {r.value for r in Role}
 
@@ -16,6 +16,9 @@ def test_seed_counts_and_roles(db):
 def test_seed_data_is_synthetic_with_valid_gstins(db):
     for s in db.scalars(select(Supplier)):
         assert s.is_synthetic
+        if s.country != "IN":  # import supplier: fictional foreign tax ID, no GSTIN or PAN
+            assert "FICT" in s.gstin and s.pan == ""
+            continue
         assert is_valid_gstin(s.gstin)
         assert s.gstin[2:12] == s.pan
 

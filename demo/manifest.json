@@ -306,6 +306,62 @@
       "story": "Low OCR confidence: Duly does not guess. Uncertain fields are highlighted for the clerk; every correction is logged with before/after, reviewer and reason.",
       "next_step": "Log in as Asha (clerk), review the highlighted fields; after review the invoice is matched.",
       "bytes": 43187
+    },
+    {
+      "id": "S13",
+      "title": "Import invoice in EUR from a German supplier",
+      "file": "invoices/S13_import_eur_nucleating_agent.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "billing@nordwerk-additives.example",
+      "supplier": "Nordwerk Polymer Additives GmbH",
+      "invoice_number": "NPA-26-1107",
+      "invoice_date": "2026-11-09",
+      "po_number": "4500001018",
+      "expected": {
+        "decision": "APPROVE",
+        "status": "pending_approval",
+        "reason_codes": [
+          "EINVOICE_NOT_APPLICABLE"
+        ],
+        "total": "19250.00",
+        "currency": "EUR",
+        "total_inr": "1732500.00",
+        "approval_levels": [
+          1,
+          2
+        ],
+        "mfa_required": true
+      },
+      "story": "Nordwerk (Germany) bills EUR 19,250 against an EUR purchase order: no GSTIN and no Indian GST (IGST is paid at customs). Duly matches in EUR and converts to INR at the policy rate: about Rs 17.3 lakh, so it needs L1 and L2 with MFA, exactly like a rupee invoice of that size.",
+      "next_step": "Open it: totals in EUR with the INR equivalent; approval route L1 + L2 (MFA) from the INR value.",
+      "bytes": 5380
+    },
+    {
+      "id": "S14",
+      "title": "Bearings billed in boxes against a PO in pieces",
+      "file": "invoices/S14_bearings_billed_in_boxes.pdf",
+      "kind": "pdf",
+      "mime": "application/pdf",
+      "upload_as": "invoices@kesar-spares.example",
+      "supplier": "Kesar Engineering Spares",
+      "invoice_number": "INV/0074",
+      "invoice_date": "2026-11-11",
+      "po_number": "4500001019",
+      "expected": {
+        "decision": "APPROVE",
+        "status": "pending_approval",
+        "reason_codes": [
+          "UOM_CONVERTED"
+        ],
+        "approval_levels": [
+          1
+        ],
+        "converted_qty": "120"
+      },
+      "story": "Kesar bills 12 BOX at Rs 4,500 per box; the PO is 200 NOS at Rs 450. The item master says 1 BOX = 10 NOS, so Duly converts: 120 NOS at Rs 450, within the 150 received. APPROVE with the conversion shown on the match.",
+      "next_step": "Open it: the match shows 12 BOX = 120 NOS; stores can also receive in boxes.",
+      "bytes": 5352
     }
   ]
 }

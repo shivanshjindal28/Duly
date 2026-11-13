@@ -184,6 +184,13 @@ class DemoCheck:
             assert D(got_v) == D(exp["variance_amount"]), f"variance {got_v}"
         if "duplicate_of" in exp:
             assert reasons["DUPLICATE"]["evidence"]["duplicate_of"] == exp["duplicate_of"]
+        if "currency" in exp:
+            assert inv["currency"] == exp["currency"], f"currency {inv['currency']}"
+        if "total_inr" in exp:
+            assert D(inv["total_inr"]) == D(exp["total_inr"]), f"INR equivalent {inv['total_inr']}"
+        if "converted_qty" in exp:
+            row = inv["match"]["matrix"][0]
+            assert D(str(row["invoice_qty"])) == D(exp["converted_qty"]) and row["invoice_uom"] != row["uom"], row
         if "printed_total" in exp:
             assert D(inv["total"]) == D(exp["printed_total"])
             signed = reasons["QR_MISMATCH"]["evidence"]["signed"]["TotInvVal"]

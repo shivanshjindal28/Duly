@@ -100,6 +100,39 @@ STAFF: list[tuple[str, str, str, Role, int | None]] = [
 ]
 
 
+@dataclass(frozen=True)
+class ForeignSupplierSeed:
+    code: str
+    name: str
+    category: str
+    country: str  # ISO code
+    country_name: str
+    currency: str
+    tax_id: str  # fictional foreign VAT ID (stored in the gstin column)
+    terms: int
+    bank_name: str
+    iban: str  # fictional
+    bic: str  # fictional
+    city: str
+    user_name: str
+    user_email: str
+
+
+FOREIGN_SUPPLIERS: list[ForeignSupplierSeed] = [
+    ForeignSupplierSeed("V200101", "Nordwerk Polymer Additives GmbH", "Imported polymer additives", "DE", "Germany",
+                        "EUR", "DE-FICT-447101", 60, "Nordbank AG (fictional)", "DE00FICT0000447101000",
+                        "FICTDEFFXXX", "Musterstadt, Germany", "Lena Brandt", "billing@nordwerk-additives.example"),
+]
+
+# Item master pack sizes: 1 `unit` of the item = `qty` `base_unit`. Lets suppliers bill (and stores receive)
+# in boxes, bags, drums or bundles while the PO is in pieces or kilograms.
+ITEM_UNITS: list[tuple[str, str, str, str]] = [
+    ("BRG-6205", "BOX", "10", "NOS"), ("BRG-6310", "BOX", "5", "NOS"), ("SEAL-M40", "SET", "4", "NOS"),
+    ("ADD-AO-1010", "BAG", "25", "KG"), ("NUC-AGT-77", "BAG", "20", "KG"), ("CAT-ZN-01", "DRUM", "200", "KG"),
+    ("PKG-FFS-25", "BUNDLE", "100", "NOS"), ("PKG-FFS-50", "BUNDLE", "50", "NOS"), ("PKG-FIBC-1T", "BALE", "20", "NOS"),
+]
+
+
 def seed(db: Session, history: bool = False) -> dict[str, int]:
     """Insert seed data into an empty schema. Returns counts per entity.
 
@@ -137,6 +170,25 @@ def seed(db: Session, history: bool = False) -> dict[str, int]:
         db.add(User(email=s.user_email, full_name=s.user_name, title=f"Accounts, {s.name}",
                     role=Role.SUPPLIER, supplier_id=supplier.id, password_hash=password_hash))
 
+    for f in FOREIGN_SUPPLIERS:
+        supplier = Supplier(
+            code=f.code, name=f.name, category=f.category, gstin=f.tax_id, pan="", state_code="",
+            address=f"{f.city} (fictional)", country=f.country, currency=f.currency,
+            msme_category=MsmeCategory.NONE, udyam_no=None, enterprise_type=EnterpriseType.MANUFACTURER,
+            e_invoice_applicable=False, payment_terms_days=f.terms, written_agreement=True,
+            bank_account_enc=encrypt_str(f.iban), bank_account_last4=f.iban[-4:], bank_ifsc=f.bic,
+            bank_name=f.bank_name, contact_email=f.user_email, tds_section="none",
+        )
+        db.add(supplier)
+        db.flush()
+        db.add(User(email=f.user_email, full_name=f.user_name, title=f"Accounts, {f.name}",
+                    role=Role.SUPPLIER, supplier_id=supplier.id, password_hash=password_hash))
+
+    from app.models import ItemUnit
+
+    for item, unit, qty, base in ITEM_UNITS:
+        db.add(ItemUnit(item_code=item, unit=unit, qty=Decimal(qty), base_unit=base))
+
     for email, name, title, role, level in STAFF:
         user = User(email=email, full_name=name, title=title, role=role, approver_level=level,
                     password_hash=password_hash)
@@ -163,8 +215,8 @@ def seed(db: Session, history: bool = False) -> dict[str, int]:
     db.commit()
     return {
         "organisations": 1,
-        "suppliers": len(SUPPLIERS),
-        "users": len(SUPPLIERS) + len(STAFF),
+        "suppliers": len(SUPPLIERS) + len(FOREIGN_SUPPLIERS),
+        "users": len(SUPPLIERS) + len(FOREIGN_SUPPLIERS) + len(STAFF),
         "policies": 1,
         **counts,
     }
@@ -184,6 +236,7 @@ class POSeed:
     created_by: str | None = None
     po_days_ago: int = 30
     ers: bool = False
+    currency: str = "INR"
 
 
 PURCHASE_ORDERS: list[POSeed] = [
@@ -233,6 +286,12 @@ PURCHASE_ORDERS: list[POSeed] = [
     POSeed("4500000990", "V100105", "Closed PO (PO_CLOSED demo)",
            [("FRT-TNK-01", "Bulk tanker freight Dahej to Taloja", "996511", "4", "TRIP", "38000.00", "12")],
            [None], is_service=True, status="closed", po_days_ago=120),
+    POSeed("4500001018", "V200101", "S13 import: nucleating agent from Germany, PO and invoice in EUR",
+           [("NUC-AGT-77", "Nucleating agent NA-77 (clarifier)", "3812", "500", "KG", "38.50", "0")], [("500", 5)],
+           po_days_ago=40, currency="EUR"),
+    POSeed("4500001019", "V100103", "S14 units: bearings ordered in pieces, billed in boxes of 10",
+           [("BRG-6205", "Ball bearing 6205 2RS", "8482", "200", "NOS", "450.00", "18")], [("150", 4)],
+           po_days_ago=20),
 ]
 
 
@@ -255,7 +314,7 @@ def seed_procurement(db: Session) -> dict[str, int]:
         s = suppliers[spec.supplier_code]
         po = PurchaseOrder(po_number=spec.po_number, supplier_id=s.id, po_date=today - timedelta(days=spec.po_days_ago),
                            status=spec.status, payment_terms_days=s.payment_terms_days, is_service=spec.is_service,
-                           ers=spec.ers,
+                           ers=spec.ers, currency=spec.currency,
                            created_by_user_id=users[spec.created_by].id if spec.created_by else None)
         db.add(po)
         db.flush()

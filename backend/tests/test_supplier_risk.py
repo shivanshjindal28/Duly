@@ -95,7 +95,7 @@ def test_sustainability_status_follows_the_business_date():
 def test_risk_api_lists_every_supplier_for_staff(client):
     client.post("/api/auth/demo-login", json={"email": "asha.kulkarni@plantx.example"})
     body = client.get("/api/suppliers/risk").json()
-    assert len(body["cards"]) == 6
+    assert len(body["cards"]) == 7
     assert body["methodology"]["note"].startswith("Information for procurement")
     order = {"high": 0, "watch": 1, "low": 2}
     assert [order[c["level"]] for c in body["cards"]] == sorted(order[c["level"]] for c in body["cards"])

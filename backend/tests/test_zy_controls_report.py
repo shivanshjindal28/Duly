@@ -32,7 +32,7 @@ def test_controls_report_tests_every_control_on_live_data(client):
     assert by["C-06"]["result"] == "effective"  # bank changes went through maker-checker (test_bank_changes)
     assert by["C-07"]["result"] == "effective"
     assert by["C-09"]["metrics"]["ai_approvals"] == 0
-    assert by["C-10"]["result"] == "effective" and len(by["C-10"]["metrics"]["users"]) == 14
+    assert by["C-10"]["result"] == "effective" and len(by["C-10"]["metrics"]["users"]) == 15
     assert rep["opinion"].startswith("10 controls tested")
     assert any(o["justification"] for o in rep["overrides"])
 

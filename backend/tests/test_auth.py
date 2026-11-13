@@ -110,7 +110,7 @@ def test_login_rate_limited(client, monkeypatch):
 
 def test_demo_personas_and_demo_login(client):
     personas = client.get("/api/auth/demo-personas").json()
-    assert len(personas) == 14
+    assert len(personas) == 15
     assert {p["role"] for p in personas} == {"supplier", "clerk", "approver", "stores", "auditor", "admin"}
     r = client.post("/api/auth/demo-login", json={"email": SUPPLIER})
     assert r.status_code == 200

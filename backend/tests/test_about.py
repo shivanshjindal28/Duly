@@ -26,7 +26,7 @@ def test_trust_evidence_shows_ai_never_decides(client):
     client.post("/api/auth/demo-login", json={"email": "meera.iyer@plantx.example"})
     t = client.get("/api/trust").json()
     assert t["engine"]["ai_decided"] == 0
-    assert t["data"]["synthetic"] is True and t["data"]["bank_accounts_encrypted"] == 6
+    assert t["data"]["synthetic"] is True and t["data"]["bank_accounts_encrypted"] == 7
     assert t["audit"]["ok"] is True and t["access"]["users_by_role"]["approver"] == 3
 
 
@@ -34,7 +34,7 @@ def test_assumptions_come_from_policy_and_master_data(client):
     client.post("/api/auth/demo-login", json={"email": "asha.kulkarni@plantx.example"})
     a = client.get("/api/assumptions").json()
     assert a["policy"]["data"]["doa"]["touchless_max_inr"] == 50_000
-    assert len(a["suppliers"]) == 6 and any(s["e_invoice"] for s in a["suppliers"])
+    assert len(a["suppliers"]) == 7 and any(s["e_invoice"] for s in a["suppliers"])
     assert any(h["code"] == "8482" for h in a["hsn"])
 
 

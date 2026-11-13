@@ -99,8 +99,9 @@ def resolve(db: Session, portal: PortalOut, ref: str | None) -> tuple[PortalInvo
     open_top = [i for i in top if i.status not in ("paid", "rejected")]
     if len(open_top) == 1 or len(top) == 1:
         return (open_top or top)[0], []
-    # Several: ask about the open ones (a supplier asking "when" means an unpaid invoice), newest five.
-    return None, sorted(open_top or top, key=lambda i: -i.id)[:5]
+    # Several: ask about the open ones (a supplier asking "when" means an unpaid invoice): those already
+    # approved and scheduled for payment first, then the newest; five at most.
+    return None, sorted(open_top or top, key=lambda i: (i.expected_payment is None, -i.id))[:5]
 
 
 def _status_payload(lang: str, inv: PortalInvoice, portal: PortalOut) -> dict:
