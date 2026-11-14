@@ -53,8 +53,8 @@ def po(lines, gstin=KESAR_GSTIN, number="4500001003", service=False, status="ope
     return PoView(number, gstin, status, currency, terms, service, tuple(lines))
 
 
-def run(doc, po_view, supplier=SUPPLIER_KESAR):
-    out = decide(doc, po_view, supplier, TOL, PLANT_X_GSTIN, TODAY)
+def run(doc, po_view, supplier=SUPPLIER_KESAR, tol=TOL):
+    out = decide(doc, po_view, supplier, tol, PLANT_X_GSTIN, TODAY)
     return out, {(r.code, r.severity.value) for r in out.reasons}
 
 
@@ -313,9 +313,10 @@ def test_price_variance_in_foreign_currency_uses_converted_rupee_tolerance():
 
 
 def test_cross_currency_invoice_is_converted_and_flagged():
-    # PO in EUR, invoice in USD at 84/90 = 0.9333 EUR per USD: 41.25 USD = 38.50 EUR.
+    # PO in EUR, invoice in USD at fixed test rates 84/90 = 0.9333 EUR per USD: 41.25 USD = 38.50 EUR.
+    tol = replace(TOL, fx=(("USD", D("84")), ("EUR", D("90"))))
     out, codes = run(foreign_invoice([line(1, "NUC-AGT-77", 500, "KG", "41.25", rate=0)], currency="USD"),
-                     eur_po(), SUPPLIER_RHEIN)
+                     eur_po(), SUPPLIER_RHEIN, tol)
     assert ("CURRENCY_CONVERTED", "flag") in codes and out.decision == Decision.FLAG
     assert out.matrix[0].invoice_price == D("38.50")
     assert not any(c == "PRICE_VARIANCE" and s != "info" for c, s in codes)

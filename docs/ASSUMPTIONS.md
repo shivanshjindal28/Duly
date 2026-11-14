@@ -76,8 +76,8 @@ domains are `.example`. Every master record is flagged `is_synthetic`.
 TDS is computed on the taxable value (excluding GST). PAN 4th character P or H is treated as individual / HUF.
 
 ## Currencies and units
-- **Exchange rates** (policy `fx`, INR per one unit; fictional round values as of 2026-11-01): USD 84, EUR 90, GBP 107,
-  JPY 0.56, CNY 11.60, SGD 63, AED 22.90. Assumption: update from the RBI / FBIL reference rate or the treasury rate
+- **Exchange rates** (policy `fx`, INR per one unit; reference values as of 2026-11-13): USD 94.18, EUR 104.21, GBP 124.63,
+  JPY 0.59, CNY 14.12, SGD 73.20, AED 25.61. Assumption: update from the RBI / FBIL reference rate or the treasury rate
   table (SAP OB08). Editable on the Policy page; each invoice keeps the rate it was matched at.
 - **Import supplier** (fictional): Nordwerk Polymer Additives GmbH, Germany, VAT ID DE-FICT-447101, bills in EUR, 60
   days, no MSME, no TDS (non-resident withholding is left to the tax team), IBAN / SWIFT fictional. Import invoices carry

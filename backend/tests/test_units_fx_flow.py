@@ -73,7 +73,7 @@ def _approve(client, email, inv_id):
 def test_s13_eur_import_inr_limits_payment_and_sap(client, db):
     inv = upload(client, "S13")
     assert inv["currency"] == "EUR" and D(inv["total"]) == D("19250.00")
-    assert D(inv["total_inr"]) == D("1732500.00")  # EUR 90 per the policy table
+    assert D(inv["total_inr"]) == D("2006042.50")  # EUR 104.21 per the policy table
     assert [s["level"] for s in inv["workflow"]["steps"]] == [1, 2] and inv["workflow"]["mfa_required"]
     codes = {r["code"] for r in inv["match"]["reasons"]}
     assert not codes & {"GSTIN_INVALID", "TAX_MISMATCH", "BILL_TO_MISMATCH", "INVOICE_NO_INVALID"}
@@ -89,7 +89,7 @@ def test_s13_eur_import_inr_limits_payment_and_sap(client, db):
     login(client, L1)
     run = client.get("/api/payments/run").json()
     item = next(i for i in run["items"] if i["invoice_id"] == inv["id"])
-    assert item["currency"] == "EUR" and D(item["gross"]) == D("19250.00") and D(item["gross_inr"]) == D("1732500.00")
+    assert item["currency"] == "EUR" and D(item["gross"]) == D("19250.00") and D(item["gross_inr"]) == D("2006042.50")
     assert item["tds_section"] == "none" and not item["msme"]
 
     # The rate is policy data: a new rate changes the INR value on the next match, not the EUR amounts.

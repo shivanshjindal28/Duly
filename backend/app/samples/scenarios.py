@@ -229,13 +229,13 @@ def build(db: Session, today: date) -> list[Scenario]:
         Scenario("S13", "Import invoice in EUR from a German supplier",
                  "Nordwerk (Germany) bills EUR 19,250 against an EUR purchase order: no GSTIN and no Indian GST "
                  "(IGST is paid at customs). Duly matches in EUR and converts to INR at the policy rate: about "
-                 "Rs 17.3 lakh, so it needs L1 and L2 with MFA, exactly like a rupee invoice of that size.",
+                 "Rs 20.1 lakh, so it needs L1 and L2 with MFA, exactly like a rupee invoice of that size.",
                  "S13_import_eur_nucleating_agent.pdf", "pdf", "V200101",
                  spec_for(buyer, sup["V200101"], "NPA-26-1107", d(3), "4500001018", [po_line("4500001018")],
                           currency="EUR", country="Germany", incoterms="CIF Nhava Sheva"),
                  "APPROVE", ["EINVOICE_NOT_APPLICABLE"], "pending_approval",
                  "Open it: totals in EUR with the INR equivalent; approval route L1 + L2 (MFA) from the INR value.",
-                 {"total": "19250.00", "currency": "EUR", "total_inr": "1732500.00", "approval_levels": [1, 2],
+                 {"total": "19250.00", "currency": "EUR", "total_inr": "2006042.50", "approval_levels": [1, 2],
                   "mfa_required": True}),
         Scenario("S14", "Bearings billed in boxes against a PO in pieces",
                  "Kesar bills 12 BOX at Rs 4,500 per box; the PO is 200 NOS at Rs 450. The item master says 1 BOX = "

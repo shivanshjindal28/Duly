@@ -326,14 +326,14 @@
         ],
         "total": "19250.00",
         "currency": "EUR",
-        "total_inr": "1732500.00",
+        "total_inr": "2006042.50",
         "approval_levels": [
           1,
           2
         ],
         "mfa_required": true
       },
-      "story": "Nordwerk (Germany) bills EUR 19,250 against an EUR purchase order: no GSTIN and no Indian GST (IGST is paid at customs). Duly matches in EUR and converts to INR at the policy rate: about Rs 17.3 lakh, so it needs L1 and L2 with MFA, exactly like a rupee invoice of that size.",
+      "story": "Nordwerk (Germany) bills EUR 19,250 against an EUR purchase order: no GSTIN and no Indian GST (IGST is paid at customs). Duly matches in EUR and converts to INR at the policy rate: about Rs 20.1 lakh, so it needs L1 and L2 with MFA, exactly like a rupee invoice of that size.",
       "next_step": "Open it: totals in EUR with the INR equivalent; approval route L1 + L2 (MFA) from the INR value.",
       "bytes": 5380
     },
