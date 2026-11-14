@@ -239,7 +239,7 @@ export function SupplierPortalPage() {
 
       <BankDetailsCard account={p.bank_account_masked} ifsc={p.bank_ifsc} />
 
-      <section className="panel table-panel" aria-labelledby="pay-title">
+      <section className="panel table-panel" aria-labelledby="pay-title" tabIndex={0}>
         <h2 id="pay-title" className="label panel-title">
           {t("portal.payments")}
         </h2>

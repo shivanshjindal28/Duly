@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Banknote,
@@ -15,6 +16,7 @@ import {
   ListChecks,
   Mail,
   LogOut,
+  Menu,
   MessageCircle,
   Network,
   Search,
@@ -25,6 +27,7 @@ import {
   TrendingUp,
   Upload,
   Wallet,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { api, type Health } from "../api/client";
@@ -93,6 +96,19 @@ export function AppShell() {
   const navigate = useNavigate();
   const health = useQuery({ queryKey: ["health"], queryFn: () => api<Health>("/health"), refetchInterval: 30_000 });
   const { i18n } = useTranslation();
+  const location = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
+  // Phone / narrow screens: the sidebar is a drawer; close it after navigating or on Escape.
+  useEffect(() => {
+    setNavOpen(false);
+    document.getElementById("main")?.scrollTo(0, 0); // a new page starts at the top
+  }, [location.pathname]);
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setNavOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navOpen]);
   if (!me) return null;
   // Suppliers get the shell in their chosen language; staff screens are English.
   const supplier = me.role === "supplier";
@@ -108,17 +124,21 @@ export function AppShell() {
   })).filter((s) => s.items.length > 0);
 
   return (
-    <div className="shell" lang={supplier && i18n.language === "hi" ? "hi" : "en"}>
+    <div className={`shell${navOpen ? " nav-open" : ""}`} lang={supplier && i18n.language === "hi" ? "hi" : "en"}>
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <aside className="sidebar" aria-label="Main navigation">
+      {navOpen ? <div className="nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" /> : null}
+      <aside id="main-nav" className="sidebar" aria-label="Main navigation">
         <div className="sidebar-brand">
           <img src="/duly.svg" alt="" width={28} height={28} />
           <div>
             <div className="sidebar-wordmark">Duly</div>
             <div className="sidebar-tag">Every invoice, duly done.</div>
           </div>
+          <button type="button" className="btn btn-ghost nav-close" onClick={() => setNavOpen(false)} aria-label="Close menu">
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
         <nav>
           {sections.map((s) => (
@@ -148,9 +168,19 @@ export function AppShell() {
       </aside>
 
       <header className="topbar">
-        <div className="topbar-entity" title="Legal entity">
+        <button
+          type="button"
+          className="btn btn-ghost nav-toggle"
+          onClick={() => setNavOpen(true)}
+          aria-label="Open menu"
+          aria-controls="main-nav"
+          aria-expanded={navOpen}
+        >
+          <Menu size={20} aria-hidden="true" />
+        </button>
+        <div className="topbar-entity" title={entity}>
           <Building2 size={16} aria-hidden="true" />
-          <span>{entity}</span>
+          <span className="topbar-entity-name">{entity}</span>
         </div>
         <div className="topbar-right">
           <button
@@ -164,12 +194,12 @@ export function AppShell() {
             <kbd>Ctrl K</kbd>
           </button>
           {health.data ? (
-            <span className="chip chip-neutral" title={`Policy v${health.data.policy_version ?? "-"}`}>
+            <span className="chip chip-neutral topbar-ai" title={`Policy v${health.data.policy_version ?? "-"}`}>
               <Cpu size={13} aria-hidden="true" />
               {AI_MODE_TEXT[health.data.ai_mode]}
             </span>
           ) : null}
-          <span className="chip chip-info">
+          <span className="chip chip-info topbar-role">
             <ShieldCheck size={13} aria-hidden="true" />
             {roleBadge(me)}
           </span>
@@ -183,7 +213,7 @@ export function AppShell() {
             }}
           >
             <LogOut size={16} aria-hidden="true" />
-            <span>{t("shell.sign_out")}</span>
+            <span className="topbar-logout-text">{t("shell.sign_out")}</span>
           </button>
         </div>
       </header>

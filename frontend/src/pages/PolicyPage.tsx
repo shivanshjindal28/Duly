@@ -190,7 +190,7 @@ export function PolicyPage() {
 
       <RetentionPanel />
 
-      <section className="panel table-panel" aria-labelledby="pol-hist">
+      <section className="panel table-panel" aria-labelledby="pol-hist" tabIndex={0}>
         <h2 id="pol-hist" className="panel-title">
           <History size={15} aria-hidden="true" /> Version history
         </h2>

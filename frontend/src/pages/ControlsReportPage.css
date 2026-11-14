@@ -24,6 +24,11 @@
 .ctl-ev { color: var(--color-text-secondary); margin: 2px 0 0; padding-left: 18px; font-size: 12px; }
 .ctl-users { margin-top: 6px; font-size: 12px; }
 @media (max-width: 800px) {
-  .ctl summary { grid-template-columns: 44px 1fr; }
-  .ctl-body { padding-left: 16px; }
+  .ctl summary { grid-template-columns: 44px auto minmax(0, 1fr); gap: 6px 10px; padding: 12px; }
+  .ctl-title { grid-column: 2 / -1; }
+  .ctl summary > .chip { grid-column: 2; }
+  .ctl-pop { grid-column: 3; }
+  .ctl-body { padding: 0 12px 12px; }
+  .ctl-opinion { padding: 12px 14px; }
+  .ctl-period { padding: 12px; }
 }

@@ -41,3 +41,11 @@
 @media (max-width: 1000px) {
   .control-grid, .about-two { grid-template-columns: 1fr; }
 }
+@media (max-width: 640px) {
+  .about-doc { padding: 14px; }
+  .about-status, .control-card, .model-card { padding: 12px; }
+  .sys-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .model-card-grid { grid-template-columns: 1fr; }
+  .about-doc img, .about-doc svg { max-width: 100%; height: auto; }
+  .about-doc pre { overflow-x: auto; }
+}

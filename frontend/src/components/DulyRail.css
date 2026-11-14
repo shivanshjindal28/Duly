@@ -1,3 +1,4 @@
+.duly-rail-wrap { container-type: inline-size; min-width: 0; }
 .duly-rail {
   display: flex;
   list-style: none;
@@ -60,4 +61,15 @@
   --rail-bg: var(--color-navy);
   --rail-text: #FFFFFF;
   --rail-subtle: var(--color-navy-text);
+}
+
+/* Narrow containers (phones, side panes): drop the "Duly" prefix so the five stops never collide. */
+@container (max-width: 520px) {
+  .duly-rail-prefix { display: none; }
+  .duly-rail-name strong { text-transform: capitalize; }
+  .duly-rail-text { font-size: 11.5px; }
+}
+@container (max-width: 300px) {
+  .duly-rail-doc { display: none; }
+  .duly-rail-text { font-size: 10.5px; }
 }

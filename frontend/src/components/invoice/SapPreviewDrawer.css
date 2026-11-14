@@ -28,3 +28,4 @@
 .sap-json:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .decision-block-sap { font-size: 12.5px; color: var(--color-block-text); }
 @media (max-width: 900px) { .sap-body { grid-template-columns: 1fr; } .sap-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .sap-drawer { max-height: 90dvh; padding: 12px 14px 16px; } .sap-json { max-height: 45dvh; } }

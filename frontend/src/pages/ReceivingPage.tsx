@@ -96,7 +96,7 @@ function POCard({ po }: { po: OpenPO }) {
           to approval and payment. Post only what was actually delivered.
         </p>
       ) : null}
-      <table className="table po-lines">
+      <table className="table po-lines table-stack">
         <thead>
           <tr>
             <th scope="col">Line</th>
@@ -118,15 +118,15 @@ function POCard({ po }: { po: OpenPO }) {
         <tbody>
           {po.lines.map((l) => (
             <tr key={l.id}>
-              <td className="num">{l.line_no}</td>
-              <td>
+              <td className="num" data-label="Line">{l.line_no}</td>
+              <td data-label="Item">
                 <span className="mono">{l.item_code}</span> <span className="muted">{l.description}</span>
                 {l.packs && l.packs.length ? <div className="muted small">Pack sizes: {l.packs.join(", ")}</div> : null}
               </td>
-              <td className="num num-col">{po.is_service ? inr(l.ordered) : `${qty(l.ordered)} ${l.uom}`}</td>
-              <td className="num num-col">{po.is_service ? inr(l.received) : `${qty(l.received)} ${l.uom}`}</td>
-              <td className="num num-col">{po.is_service ? inr(l.open) : `${qty(l.open)} ${l.uom}`}</td>
-              <td className="num-col">
+              <td className="num num-col" data-label={po.is_service ? "PO value" : "Ordered"}>{po.is_service ? inr(l.ordered) : `${qty(l.ordered)} ${l.uom}`}</td>
+              <td className="num num-col" data-label={po.is_service ? "Accepted" : "Received"}>{po.is_service ? inr(l.received) : `${qty(l.received)} ${l.uom}`}</td>
+              <td className="num num-col" data-label="Open">{po.is_service ? inr(l.open) : `${qty(l.open)} ${l.uom}`}</td>
+              <td className="num-col" data-label={po.is_service ? "Accept now (₹)" : "Receive now"}>
                 {Number(l.open) > 0 ? (
                   <span className="recv-qty">
                     <input

@@ -39,3 +39,11 @@
   .pinv-head { flex-direction: column; }
   .pinv-amount { align-items: flex-start; }
 }
+@media (max-width: 640px) {
+  .portal { font-size: 14px; }
+  .portal-kpis .kpi-value { font-size: 17px; overflow-wrap: normal; word-break: keep-all; }
+  .pinv { padding: 14px; gap: 12px; }
+  .pinv-facts { gap: 12px 20px; }
+  .portal-actions .btn { flex: 1 1 auto; }
+  .pinv-list { padding-bottom: 64px; } /* room above the chat button */
+}

@@ -26,3 +26,7 @@
 @media (max-width: 900px) {
   .overview-grid { grid-template-columns: 1fr; }
 }
+@media (max-width: 640px) {
+  .overview { gap: 14px; }
+  .overview-rail, .overview-card { padding: 14px; }
+}

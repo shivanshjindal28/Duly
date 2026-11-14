@@ -54,3 +54,34 @@
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* Phones: keep table columns readable and let the panel scroll sideways instead of squeezing every cell. */
+@media (max-width: 640px) {
+  .page { gap: 14px; }
+  .page-head h1 { font-size: 19px; }
+  .table-panel { -webkit-overflow-scrolling: touch; }
+  .table-panel .table { min-width: 680px; }
+  .table td .row-link, .table td.mono { white-space: nowrap; }
+  .table { font-size: 12.5px; }
+  .table th, .table td { padding: 8px 9px; }
+  .pane-head { flex-wrap: wrap; }
+  .empty { padding: 28px 12px; }
+}
+
+/* .table-stack: on phones each row becomes a card of "label: value" pairs (cells carry data-label). */
+@media (max-width: 640px) {
+  .table.table-stack { min-width: 0; }
+  .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+  .table-stack tr { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 4px 0; margin-bottom: 8px; }
+  .table-stack tbody tr:hover { background: transparent; }
+  .table-stack td, .table-stack tbody tr:last-child td {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 6px 10px; border-bottom: none; text-align: right;
+  }
+  .table-stack td::before {
+    content: attr(data-label); flex: none; text-align: left;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary);
+  }
+  .table-stack td > * { min-width: 0; }
+}

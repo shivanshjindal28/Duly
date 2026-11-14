@@ -24,6 +24,7 @@ const DOCS: Record<RailStop, string> = {
 
 export function DulyRail({ completed, tone = "light", showDocs = false }: Props) {
   return (
+    <div className="duly-rail-wrap">
     <ol className={`duly-rail duly-rail-${tone}`} aria-label={`Invoice lifecycle: ${completed} of 5 stages done`}>
       {RAIL_STOPS.map((stop, i) => {
         const state = i < completed ? "done" : i === completed ? "current" : "todo";
@@ -34,7 +35,8 @@ export function DulyRail({ completed, tone = "light", showDocs = false }: Props)
             </span>
             <span className="duly-rail-text">
               <span className="duly-rail-name">
-                Duly <strong>{stop}</strong>
+                <span className="duly-rail-prefix">Duly </span>
+                <strong>{stop}</strong>
               </span>
               {showDocs ? <span className="duly-rail-doc">{DOCS[stop]}</span> : null}
               <span className="sr-only">{state === "done" ? " (done)" : state === "current" ? " (current)" : ""}</span>
@@ -43,5 +45,6 @@ export function DulyRail({ completed, tone = "light", showDocs = false }: Props)
         );
       })}
     </ol>
+    </div>
   );
 }

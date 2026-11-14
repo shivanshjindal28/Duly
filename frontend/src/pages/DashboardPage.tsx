@@ -5,6 +5,7 @@ import { AlertTriangle, CalendarClock, Clock, Copy, Inbox, Wallet, Zap } from "l
 import { api } from "../api/client";
 import { tokens } from "../theme/tokens";
 import { fmtDate, fmtDateTime, inr, inrShort } from "../lib/format";
+import { useNarrow } from "../lib/useNarrow";
 import "./DashboardPage.css";
 
 interface Summary {
@@ -55,6 +56,7 @@ function cycle(hours: number | null): string {
 /** Exceptions dashboard: every number is computed live from the database; every chart drills down. */
 export function DashboardPage() {
   const navigate = useNavigate();
+  const narrow = useNarrow();
   const q = useQuery({ queryKey: ["dashboard"], queryFn: () => api<Summary>("/dashboard/summary") });
   const go = (params: Record<string, string | number>) =>
     navigate(`/queue?${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()}`);
@@ -112,9 +114,9 @@ export function DashboardPage() {
           ) : (
             <>
               <ResponsiveContainer width="100%" height={Math.max(160, d.by_type.length * 38)}>
-                <BarChart data={d.by_type} layout="vertical" margin={{ left: 8, right: 40 }}>
+                <BarChart data={d.by_type} layout="vertical" margin={{ left: narrow ? 0 : 8, right: narrow ? 28 : 40 }}>
                   <XAxis type="number" dataKey="count" allowDecimals={false} domain={[0, (max: number) => Math.max(1, max)]} hide />
-                  <YAxis type="category" dataKey="title" width={190} tick={{ fontSize: 12, fill: C.text }} />
+                  <YAxis type="category" dataKey="title" width={narrow ? 128 : 190} tick={{ fontSize: narrow ? 11 : 12, fill: C.text }} />
                   <Tooltip formatter={(v) => [String(v), "invoices"]} />
                   <Bar dataKey="count" radius={[0, 3, 3, 0]} cursor="pointer" onClick={(e) => go({ status: "open", reason: (e as unknown as { code: string }).code })}>
                     {d.by_type.map((t) => (

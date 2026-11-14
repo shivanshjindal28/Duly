@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-13 by Shivansh (Claude Code). This laptop is now the only build machine. Live at https://www.duly.website (final round: 4-minute demo on the hosted site).
+Last updated: 2026-11-14 by Shivansh (Claude Code). This laptop is now the only build machine. Live at https://www.duly.website (final round: 4-minute demo on the hosted site).
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -110,6 +110,10 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - Windows setup note: Node 22.11 is below Vite 8's engine range (22.12+), and npm then skips `@rolldown/binding-win32-x64-msvc`, so Vite fails with "Cannot find module './rolldown-binding.win32-x64-msvc.node'". Fixed locally with `npm install --no-save @rolldown/binding-win32-x64-msvc@1.2.19`; README troubleshooting updated. Better: upgrade Node to 22.12+.
 - `run.py` fixed: on Windows the backend runs in its own hidden console (output relayed) so uvicorn hot-reload no longer shuts down the whole dev stack.
 - Verified in the browser: password login (wrong + right), persona login for supplier/clerk/stores, role badge and entity change per persona, sign-out returns to login, clerk 200 vs stores 403 on `/api/invoices`.
+
+- **Step 34: exchange rates and phone layout** (2026-11-14).
+  - FX defaults set to the 2026-11-13 reference values (EUR 104.21, USD 94.18, GBP 124.63, JPY 0.59, CNY 14.12, SGD 73.20, AED 25.61) so a demo reset or redeploy keeps them. S13 is now ≈ ₹20.1 lakh (₹20,06,042.50), still L1 + L2 with MFA. Invoices keep the rate they were matched at, so changing the Policy page rates does not re-price earlier invoices.
+  - Mobile: under 900 px the sidebar is a slide-in drawer (hamburger in the topbar, closes on navigation, backdrop or Escape); compact topbar on phones (icon-only search and sign out, AI badge hidden). Pages scroll to the top on navigation. The lifecycle rail drops the "Duly" prefix in narrow containers (container query). Tables keep readable columns and scroll sideways inside their panel; Receiving lines become stacked cards (`.table-stack`, cells carry `data-label`). Dashboard KPIs 2 per row and a narrower chart axis (`useNarrow` hook), queue filters 2 per row, controls summary, audit trail, impact, about pages, portal, SAP drawer and command palette tuned; chat opens full screen; form fields use 16 px text on phones so iOS does not zoom. New `e2e/mobile.spec.ts` (375 x 812): drawer test, and every main screen checked for sideways overflow plus axe WCAG 2.1 AA.
 
 ## In progress
 - Nothing half-done.
@@ -235,7 +239,7 @@ Gotchas for the next person: use Python 3.12 (3.13+ lacks wheels); `.env.example
 - Gotcha (fixed): never call `queryClient.clear()` on identity change; it detaches the `me` observer. Use `switchIdentity` in `AuthContext.tsx`.
 
 ## Demo status (which demo scenarios work end to end)
-`python scripts/demo_check.py`: 28/28 green (re-run 2026-11-13 after step 33: 30/30 incl. S13 / S14; Playwright 9/9) (reset via the admin button, all 12 scenarios + follow-ups incl. the S03 credit note, ERS freight settlement, email-in, chatbot offline, AI kill switch, chain + tamper). Playwright: 9/9 in Edge (axe WCAG 2.1 AA scan with zero violations + demo path). All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset`. Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
+`python scripts/demo_check.py`: 28/28 green (re-run 2026-11-13 after step 33: 30/30 incl. S13 / S14; Playwright 9/9) (reset via the admin button, all 12 scenarios + follow-ups incl. the S03 credit note, ERS freight settlement, email-in, chatbot offline, AI kill switch, chain + tamper). Playwright: 11/11 in Edge (`PW_CHANNEL=msedge npx playwright test`; axe WCAG 2.1 AA with zero violations on desktop and at 375 px, phone overflow check, demo path). All 12 scenarios (13 files) in `demo/invoices/` give their expected result on a fresh `seed.py --reset`. Upload them in manifest order: S3 and S5 share the bearings item, S4 needs the stores GR step, S10/S11 need L1 approval before the payment run.
 - S2 price variance: works (FLAG, exact ₹39,680).
 - S3 qty exceeds GR: works (BLOCK, cumulative view). Resolution: Kesar's portal shows "Enter credit note" -> form prefilled with 20 NOS (Rs 10,620 incl. GST) -> APPROVE, routed to L1 on the net Rs 76,700 (invoice Rs 87,320). Verified in the browser and in DemoCheck step S03+.
 - S4 missing GR: works end to end (BLOCK, stores posts GR live, auto re-match releases it).

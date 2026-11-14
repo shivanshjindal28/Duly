@@ -63,3 +63,10 @@
   .login-brand { padding: 28px 24px; }
   .persona-group ul { grid-template-columns: 1fr; }
 }
+@media (max-width: 640px) {
+  .login-brand { padding: 20px 16px; gap: 18px; }
+  .login-tagline { font-size: 26px; }
+  .login-lede { font-size: 14px; margin-bottom: 8px; }
+  .login-main { padding: 24px 16px 32px; }
+  .login-form { margin: 14px 0 22px; }
+}

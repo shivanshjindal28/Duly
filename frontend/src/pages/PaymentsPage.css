@@ -18,4 +18,5 @@
 .alert-success { background: var(--color-approve-bg); color: var(--color-approve-text); border: 1px solid #BFE5CF; }
 .form1 { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 @media (max-width: 900px) { .kpis-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .kpis-4 { grid-template-columns: 1fr; } }
+@media (max-width: 380px) { .kpis-4 { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .guardian { padding: 12px; } .run-table .why { min-width: 220px; } }
