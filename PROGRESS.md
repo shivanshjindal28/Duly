@@ -230,6 +230,7 @@ Gotchas for the next person: use Python 3.12 (3.13+ lacks wheels); `.env.example
 - Email-in is a simulation: no IMAP/SMTP, so no SPF/DKIM/DMARC results; the sender check is domain-based against the vendor master only (a real deployment would add those). The supplier is always identified from the GSTIN on the invoice, never from the sender, so a spoofed email can at most be flagged, never mis-assign an invoice. Attachments are processed as the clerk who fetched the mail (recorded as processed_by, audited).
 
 ## Known bugs
+- Hosted backend (Render free) sleeps after ~15 min idle and is briefly down (502 via Vercel) during each deploy. The login page now keeps retrying and shows a "Connecting" note until the demo personas load (step 34). Open the site a minute before a demo.
 - OCR can misread with high confidence (seen while tuning S12: GSTIN "24HXDPN..." read as "24HXOPN..." at >= 0.9 on a slightly different blur). Such a misread would not go to review; the engine would block GSTIN_INVALID / SUPPLIER_MISMATCH instead (safe, but not explained as an OCR issue). Consider a GSTIN check-digit failure on OCR text -> review item.
 - Approver MFA secrets are random per seed: after every reset, approvers must scan the Overview QR again (in DEMO_SCRIPT.md).
 - History: a few old duplicates are still BLOCKED after a reset (the seeded history never rejects them), so the 45+ day age bucket is not empty. A clerk can now reject them (step 30); the history seed does not do it.

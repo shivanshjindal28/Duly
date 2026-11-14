@@ -70,3 +70,5 @@
   .login-main { padding: 24px 16px 32px; }
   .login-form { margin: 14px 0 22px; }
 }
+.login-waking { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; border-top: 1px solid var(--color-border); padding-top: 16px; }
+.login-waking svg { flex: none; margin-top: 2px; }

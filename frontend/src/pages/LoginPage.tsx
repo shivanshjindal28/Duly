@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowRight, LogIn } from "lucide-react";
+import { AlertTriangle, ArrowRight, Loader2, LogIn } from "lucide-react";
 import { api, ApiError, type Health } from "../api/client";
 import { ROLE_LABEL, useAuth, type Role } from "../auth/AuthContext";
 import { DulyRail } from "../components/DulyRail";
@@ -29,12 +29,17 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const health = useQuery({ queryKey: ["health"], queryFn: () => api<Health>("/health") });
+  // The hosted backend sleeps when idle and restarts on deploy: keep retrying until it answers,
+  // so the demo personas always appear once it is up (instead of silently never showing).
+  const wake = { retry: true, retryDelay: (n: number) => Math.min(2000 * (n + 1), 6000) } as const;
+  const health = useQuery({ queryKey: ["health"], queryFn: () => api<Health>("/health"), ...wake });
   const personas = useQuery({
     queryKey: ["demo-personas"],
     queryFn: () => api<Persona[]>("/auth/demo-personas"),
     enabled: health.data?.demo_mode === true,
+    ...wake,
   });
+  const waking = !health.data || (health.data.demo_mode && !personas.data);
 
   if (me) return <Navigate to={from} replace />;
 
@@ -120,6 +125,13 @@ export function LoginPage() {
             </button>
           </form>
 
+          {waking ? (
+            <p className="login-waking muted" role="status">
+              <Loader2 size={16} className="spin" aria-hidden="true" />
+              Connecting to the Duly server. The free demo server sleeps when idle and takes up to a minute to wake;
+              the demo accounts appear here as soon as it answers.
+            </p>
+          ) : null}
           {health.data?.demo_mode && grouped.length > 0 ? (
             <section className="login-personas" aria-labelledby="personas-title">
               <div className="login-personas-head">
