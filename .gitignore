@@ -39,3 +39,6 @@ desktop.ini
 .idea/
 .vscode/
 *.log
+
+# product video output (tools/video/record.mjs)
+media/

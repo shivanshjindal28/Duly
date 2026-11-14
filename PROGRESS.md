@@ -117,6 +117,8 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 
 - **Step 35: README** (2026-11-14). GitHub README rebuilt: live-status and commit badges, stack and quality badges, hero and gallery screenshots (`.github/assets/screenshots/`, kept outside Render's build filter so README edits never redeploy the backend), five Mermaid diagrams (flow, decision engine, architecture, upload sequence, deployment), coverage of the 5 expectations + B1-B3 + D1-D8, reason-code examples, scenarios S01-S14, quick start per OS, accounts, tests, deployment, structure. Every claim checked against the code; diagrams parse with Mermaid 11.
 
+- **Step 36: product video** (2026-11-14). `node tools/video/record.mjs` records an 8-minute captioned end-to-end walkthrough (fresh pre-staged database via `tools/video/server.py`, AI offline, Edge): Chrome DevTools screencast frames encoded to 1080p H.264 with ffmpeg from `imageio-ffmpeg` (dev-only: `pip install imageio-ffmpeg`, not in requirements), plus an .srt. Output in `media/` (git-ignored). Kept out of `scripts/` so it never triggers a Render deploy.
+
 ## In progress
 - Nothing half-done.
 
