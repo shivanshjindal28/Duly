@@ -136,7 +136,10 @@ def login(request: Request, response: Response, body: LoginIn, db: Session = Dep
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
     # get_current_user and this handler share the request's DB session (FastAPI caches get_db).
-    user.token_version += 1  # revokes every outstanding session token for this user
+    if not get_settings().demo_mode:
+        # Revoke every outstanding session for this user. Not on the demo: personas are shared by every
+        # visitor, so one person signing out would sign everyone else out too.
+        user.token_version += 1
     audit.queue(db, "auth.logout", "user", user.id)
     db.commit()
     out = Response(status_code=status.HTTP_204_NO_CONTENT)

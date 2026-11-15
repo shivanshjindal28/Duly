@@ -7,13 +7,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core import clock
+from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.guard import global_budget, heavy_slot
+from app.core.ratelimit import limiter
 from app.core.enums import Role
 from app.core.security import require_roles
 from app.ingestion.email_in import AP_MAILBOX, Attachment, EmailError, check_sender, compose, process
@@ -66,16 +69,20 @@ def inbox(db: Session = Depends(get_db)) -> InboxOut:
 
 
 @router.post("/fetch", response_model=FetchOut)
-def fetch(user: User = Depends(require_roles(Role.CLERK)), db: Session = Depends(get_db)) -> FetchOut:
+@limiter.limit("20/hour")
+def fetch(request: Request, user: User = Depends(require_roles(Role.CLERK)), db: Session = Depends(get_db)) -> FetchOut:
     """Pull new mail from the simulated mailbox (already-received Message-IDs are skipped)."""
-    got = [em for raw in sample_emails(db, clock.today()) if (em := process(db, user, raw)) is not None]
+    with heavy_slot():
+        got = [em for raw in sample_emails(db, clock.today()) if (em := process(db, user, raw)) is not None]
     msg = (f"{len(got)} new email{'s' if len(got) != 1 else ''} received and processed." if got
            else "No new email in the mailbox.")
     return FetchOut(fetched=len(got), message=msg)
 
 
 @router.post("/compose", response_model=EmailOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(lambda: get_settings().upload_rate_limit)
 def compose_email(
+    request: Request,
     from_addr: str = Form(..., max_length=200),
     subject: str = Form("", max_length=300),
     body: str = Form("", max_length=4000),
@@ -84,6 +91,9 @@ def compose_email(
     db: Session = Depends(get_db),
 ) -> EmailOut:
     """Simulate an email to the AP mailbox with your own attachments."""
+    if len(files) > 5:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Attach at most 5 files.")
+    global_budget("upload", get_settings().global_uploads_per_hour)
     atts = []
     for f in files:
         data = f.file.read(MAX_BYTES + 1)

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.enums import Role
 from app.core.security import require_roles
+from app.core.ratelimit import limiter
 from app.workflow.approvals import escalate_overdue
 
 
@@ -111,7 +112,8 @@ class ResetOut(BaseModel):
 
 
 @router.post("/reset-demo", response_model=ResetOut)
-def reset_demo(db: Session = Depends(get_db)) -> ResetOut:
+@limiter.limit("10/hour")
+def reset_demo(request: Request, db: Session = Depends(get_db)) -> ResetOut:
     """Drop everything and reseed with the 90-day history (about 25 s). Signed-in users stay signed
     in (same ids). The AI mode switch is kept; the demo clock returns to real time."""
     import time
@@ -141,7 +143,8 @@ def reset_demo(db: Session = Depends(get_db)) -> ResetOut:
 
 
 @router.post("/tamper-demo")
-def tamper_demo(db: Session = Depends(get_db)) -> dict:
+@limiter.limit("20/hour")
+def tamper_demo(request: Request, db: Session = Depends(get_db)) -> dict:
     """Edit one audit row directly in the database (as an insider could), for the verify demo."""
     from app.core import tamper
 

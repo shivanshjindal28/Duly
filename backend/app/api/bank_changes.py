@@ -28,7 +28,7 @@ class RequestIn(BaseModel):
 
 
 class ProposeIn(BaseModel):
-    checklist: dict[str, bool]
+    checklist: dict[str, bool] = Field(max_length=20)
     contact: str = Field(max_length=100)
     notes: str = Field("", max_length=300)
 

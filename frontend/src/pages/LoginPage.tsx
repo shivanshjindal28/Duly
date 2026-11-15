@@ -18,6 +18,13 @@ interface Persona {
 
 const ROLE_ORDER: Role[] = ["supplier", "clerk", "approver", "stores", "auditor", "admin"];
 
+/** ", which goes back to its starting state every hour" (empty when the demo never resets). */
+function resetEvery(minutes?: number): string {
+  if (!minutes) return "";
+  const every = minutes % 60 === 0 ? (minutes === 60 ? "hour" : `${minutes / 60} hours`) : `${minutes} minutes`;
+  return `, which goes back to its starting state every ${every}`;
+}
+
 export function LoginPage() {
   const { me, login, demoLogin } = useAuth();
   const navigate = useNavigate();
@@ -138,6 +145,11 @@ export function LoginPage() {
                 <h3 id="personas-title" className="label">Demo personas</h3>
                 <span className="chip chip-flag">Demo mode</span>
               </div>
+              <p className="muted small">
+                Public demo: every visitor shares the same fictional data
+                {resetEvery(health.data.demo_reset_minutes)}
+                . Please don't upload real or personal documents.
+              </p>
               {grouped.map((g) => (
                 <div key={g.role} className="persona-group">
                   <p className="persona-role">{ROLE_LABEL[g.role]}</p>

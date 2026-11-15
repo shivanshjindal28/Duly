@@ -72,7 +72,27 @@ a period. This file says how each control works, where it lives in the code, and
   alert; changes go through a call-back checklist, maker-checker and a 72-hour cooling period.
 - Security headers on API responses (CSP `default-src 'none'`, X-Frame-Options DENY, nosniff, no-referrer,
   no-store). Secrets only in environment variables (`.env` is git-ignored; empty secrets are generated into the
-  git-ignored `backend/data/keys/`). All dependencies pinned to exact versions; `npm audit` clean.
+  git-ignored `backend/data/keys/`). All dependencies pinned to exact versions; `npm audit` and `pip-audit`
+  clean (2026-11-15).
+- Web app headers (`frontend/vercel.json`): strict Content-Security-Policy (`'self'` only, no inline or eval
+  scripts, `frame-ancestors 'none'`), X-Frame-Options DENY, nosniff, strict referrer, Permissions-Policy
+  (no camera, microphone, location or payment APIs), Cross-Origin-Opener-Policy, HSTS (Vercel).
+- Abuse protection for the public demo (`app/core/guard.py`, settings in `render.yaml`):
+  - request bodies above 12 MB are refused **before** they are read (the file checks only run after parsing);
+  - the client IP for rate limits and the audit trail is taken from our own proxy hop
+    (`TRUSTED_PROXY_HOPS`), not from the caller-controlled left-most `X-Forwarded-For` entry;
+  - per-IP limits on uploads and composed emails (30 an hour, 6 a minute), mailbox fetch, policy changes,
+    data retention, demo reset, tamper demo and the PDF report, on top of the login and chat limits;
+  - site-wide limits that IP spoofing cannot bypass: one OCR job at a time on the 512 MB host (others get 503
+    "busy" instead of crashing it) and an hourly upload ceiling; at most 5 attachments per email;
+  - every visitor shares one database, so it goes back to the staged snapshot every hour, which clears
+    vandalism, odd uploads and a left-over tamper demo. The login page says so and asks for no real documents;
+  - signing out of a shared demo persona no longer revokes every other visitor's session (production keeps the
+    revoke-all behaviour); interactive API docs are switched off on the public site.
+  - Tests: `test_guard.py`, `test_auth.py`.
+- Free-text inputs all have length limits (comments 500, chat 1,000, reasons 300 characters; lists and maps capped).
+- CSV export neutralises spreadsheet formulas (`=`, `+`, `-`, `@` prefixes) so a supplier-controlled invoice
+  number cannot run as a formula in Excel.
 
 ## 7. Transparency
 - The AI mode badge is always in the top bar. Each extracted field stores the extractor, model and prompt version;

@@ -40,3 +40,14 @@ services:
       # The build step above runs without it, so the pre-staged scans are read at full accuracy.
       - key: MALLOC_ARENA_MAX
         value: "2"
+      # --- public demo hardening (backend/app/core/guard.py) ---
+      - key: API_DOCS                 # no interactive /api/docs on the public site
+        value: "false"
+      - key: DEMO_AUTO_RESET_MINUTES  # everyone shares one database: back to the staged state hourly
+        value: "60"
+      - key: HEAVY_JOBS_MAX           # one OCR at a time (~300 MB each on a 512 MB instance)
+        value: "1"
+      - key: GLOBAL_UPLOADS_PER_HOUR  # site-wide ceiling that IP spoofing cannot get around
+        value: "200"
+      - key: DEBUG_PROXY_CHAIN        # temporary: read the X-Forwarded-For chain once to set TRUSTED_PROXY_HOPS
+        value: "true"

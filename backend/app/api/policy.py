@@ -3,13 +3,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import jobs
 from app.core.db import get_db
+from app.core.ratelimit import limiter
 from app.core.enums import Role
 from app.core.security import get_current_user, require_roles
 from app.models import User
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/policy", tags=["policy"],
 
 
 class ChangeIn(BaseModel):
-    changes: dict[str, float]
+    changes: dict[str, float] = Field(max_length=60)
     reason: str = Field(max_length=300)
 
 
@@ -58,7 +59,8 @@ def get_policy(db: Session = Depends(get_db), user: User = Depends(get_current_u
 
 
 @router.post("")
-def change_policy(body: ChangeIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+@limiter.limit("30/hour")
+def change_policy(request: Request, body: ChangeIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
     try:
         pa.change(db, user, body.changes, body.reason)
     except pa.PolicyError as e:
@@ -102,7 +104,8 @@ def retention(db: Session = Depends(get_db), user: User = Depends(get_current_us
 
 
 @router.post("/retention/run")
-def run_retention(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+@limiter.limit("10/hour")
+def run_retention(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
     if user.role != Role.ADMIN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an administrator can run data retention.")
     result = jobs.enqueue("data_retention", ret.run, db, f"run by {user.full_name}").result

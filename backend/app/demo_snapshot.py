@@ -9,13 +9,17 @@ SQLite only; on another database the reset reseeds as before.
 """
 from __future__ import annotations
 
+import logging
 import shutil
 import sqlite3
+import threading
+import time
 from pathlib import Path
 
 from app.core.config import DATA_DIR, get_settings
 from app.core.db import engine
 
+log = logging.getLogger("duly.demo")
 SNAP_DIR = DATA_DIR / "snapshot"
 SNAP_DB = SNAP_DIR / "duly.db"
 _FILES = ("uploads", "pages")
@@ -64,3 +68,42 @@ def restore() -> None:
         shutil.rmtree(DATA_DIR / sub, ignore_errors=True)
         if (SNAP_DIR / sub).exists():
             shutil.copytree(SNAP_DIR / sub, DATA_DIR / sub)
+
+
+_reset_lock = threading.Lock()
+
+
+def reset_live() -> None:
+    """Restore the snapshot and reload what the running app caches from the database (demo clock, AI mode).
+    Used by the scheduled reset; the admin button does the same inside its request."""
+    from app.core import audit, clock, runtime
+    from app.core.db import SessionLocal
+
+    with _reset_lock:
+        restore()
+        db = SessionLocal()
+        try:
+            clock.load_offset(db)
+            runtime.load_ai_mode(db)
+            audit.queue(db, "demo.auto_reset", "database", None, after={"restored_snapshot": 1})
+            db.commit()
+        finally:
+            db.close()
+
+
+def start_auto_reset(minutes: int) -> None:
+    """Public demo: everyone shares one database, so put it back to the staged state every `minutes`
+    (clears vandalism, odd uploads and a left-over tamper demo). Daemon thread; no-op without a snapshot."""
+    if minutes <= 0 or not available():
+        return
+
+    def loop() -> None:
+        while True:
+            time.sleep(minutes * 60)
+            try:
+                reset_live()
+                log.info("demo auto-reset: snapshot restored")
+            except Exception:  # noqa: BLE001 - never kill the thread; try again next time
+                log.exception("demo auto-reset failed")
+
+    threading.Thread(target=loop, name="demo-auto-reset", daemon=True).start()

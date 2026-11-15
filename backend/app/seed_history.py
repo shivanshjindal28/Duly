@@ -324,8 +324,14 @@ class History:
             mine = [p for p in invoices if p.delivery.supplier == prof.code]
             n = prof.first_number
             if prof.code == "V100103":
+                # The plan is laid out relative to today, so on some dates more than 41 Kesar invoices fall
+                # before the scenario-5 original. Drop the oldest extras (their deliveries simply stay
+                # uninvoiced) so the numbering still lands on INV/0042 whatever the date.
+                before = [p for p in mine if p.at < s5_at]
+                for extra in before[: max(0, len(before) - 41)]:
+                    invoices.remove(extra)
+                    mine.remove(extra)
                 n = 42 - sum(1 for p in mine if p.at < s5_at)
-                assert n >= 1, "too many Kesar history invoices before INV/0042: lower its PO count"
             for p in mine:
                 if prof.code == "V100103" and n == 42:
                     n += 1  # reserved for the scenario 5 original

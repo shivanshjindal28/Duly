@@ -11,13 +11,16 @@ from dataclasses import asdict
 from datetime import date, datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.guard import global_budget, heavy_slot
+from app.core.ratelimit import limiter
 from app.core.security import SupplierScope, get_scope, require_roles
 from app.ingestion.hardening import MAX_BYTES, UploadRejected
 from app.ingestion.pages import page_png
@@ -405,15 +408,19 @@ def list_invoices(scope: SupplierScope = Depends(get_scope), db: Session = Depen
 
 
 @router.post("/upload", response_model=InvoiceDetail, status_code=status.HTTP_201_CREATED)
+@limiter.limit(lambda: get_settings().upload_rate_limit)
 def upload_invoice(
+    request: Request,
     file: UploadFile = File(...),
     supplier_id: int | None = Form(None),
     user: User = Depends(require_roles(Role.SUPPLIER, Role.CLERK)),
     db: Session = Depends(get_db),
 ) -> InvoiceDetail:
     data = file.file.read(MAX_BYTES + 1)
+    global_budget("upload", get_settings().global_uploads_per_hour)
     try:
-        inv = jobs.enqueue("process_upload", process_upload, db, user, file.filename or "upload", data, supplier_id).result
+        with heavy_slot():
+            inv = jobs.enqueue("process_upload", process_upload, db, user, file.filename or "upload", data, supplier_id).result
     except (UploadRejected, UploadError) as e:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e)) from e

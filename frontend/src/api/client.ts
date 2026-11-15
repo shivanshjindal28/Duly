@@ -59,4 +59,6 @@ export interface Health {
   demo_mode: boolean;
   ai_mode: "live" | "cached" | "offline";
   policy_version: number | null;
+  /** Public demo: the shared data is reset to the staged state this often (0 = never). */
+  demo_reset_minutes?: number;
 }

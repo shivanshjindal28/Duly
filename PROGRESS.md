@@ -1,5 +1,5 @@
 # PROGRESS
-Last updated: 2026-11-14 by Shivansh (Claude Code). This laptop is now the only build machine. Live at https://www.duly.website (final round: 4-minute demo on the hosted site).
+Last updated: 2026-11-15 by Shivansh (Claude Code). Hackathon result: 3rd place. This laptop is now the only build machine. Live at https://www.duly.website (final round: 4-minute demo on the hosted site).
 
 ## How to run
 Requirements: Python 3.12, Node.js 20.19+ (Vite 8). Windows or macOS.
@@ -118,6 +118,8 @@ python scripts/generate_invoices.py   # only to regenerate demo/invoices + demo/
 - **Step 35: README** (2026-11-14). GitHub README rebuilt: live-status and commit badges, stack and quality badges, hero and gallery screenshots (`.github/assets/screenshots/`, kept outside Render's build filter so README edits never redeploy the backend), five Mermaid diagrams (flow, decision engine, architecture, upload sequence, deployment), coverage of the 5 expectations + B1-B3 + D1-D8, reason-code examples, scenarios S01-S14, quick start per OS, accounts, tests, deployment, structure. Every claim checked against the code; diagrams parse with Mermaid 11.
 
 - **Step 36: product video** (2026-11-14). `node tools/video/record.mjs` records an 8-minute captioned end-to-end walkthrough (fresh pre-staged database via `tools/video/server.py`, AI offline, Edge): Chrome DevTools screencast frames encoded to 1080p H.264 with ffmpeg from `imageio-ffmpeg` (dev-only: `pip install imageio-ffmpeg`, not in requirements), plus an .srt. Output in `media/` (git-ignored). Kept out of `scripts/` so it never triggers a Render deploy.
+
+- **Step 37: security hardening for the public site** (2026-11-15, before the LinkedIn post). Route probe: anonymous callers reach only login, personas and health; suppliers only their own scope. Found and fixed: (1) the client IP was the caller-controlled left-most X-Forwarded-For, so per-IP limits and audit IPs could be forged (proved live) -> `ClientIPMiddleware` + `TRUSTED_PROXY_HOPS`; (2) the 10 MB upload check ran after the whole body was buffered -> `BodySizeLimitMiddleware` (12 MB, before reading); (3) no upload rate limit and unbounded concurrent OCR on a 512 MB host -> per-IP limits, one-at-a-time OCR slot (503 when busy), site-wide hourly ceiling, max 5 email attachments; (4) signing out of a shared persona revoked every visitor's session -> not in demo mode; (5) no CSP / frame protection on the web app -> strict headers in `vercel.json` (checked: no violations on any screen, Mermaid included); (6) CSV formula injection in the queue export; (7) public `/api/docs` -> off on the hosted demo; (8) unbounded dict inputs capped. Shared data now auto-resets hourly (`DEMO_AUTO_RESET_MINUTES`); the login page says so. Also fixed a date time-bomb in the history seed (on some dates more than 41 Kesar invoices fell before INV/0042 and the reset failed; the oldest extras are now dropped). `npm audit` and `pip-audit`: 0 known vulnerabilities. Details: docs/CONTROLS.md section 6.
 
 ## In progress
 - Nothing half-done.

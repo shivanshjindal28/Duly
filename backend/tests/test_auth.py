@@ -76,12 +76,24 @@ def test_state_change_without_csrf_header_is_refused(client):
     assert client.post("/api/auth/logout", headers=csrf(client)).status_code == 204
 
 
-def test_logout_revokes_old_token(client):
+def test_logout_revokes_old_token(client, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "demo_mode", False)  # production behaviour
     login(client, CLERK)
     old = client.cookies.get("duly_session")
     assert client.post("/api/auth/logout", headers=csrf(client)).status_code == 204
     client.cookies.set("duly_session", old)
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_demo_logout_does_not_sign_out_other_visitors(client):
+    """Demo personas are shared by every visitor: one person signing out must not end the others' sessions."""
+    login(client, CLERK)
+    other = client.cookies.get("duly_session")
+    assert client.post("/api/auth/logout", headers=csrf(client)).status_code == 204
+    client.cookies.set("duly_session", other)
+    assert client.get("/api/auth/me").status_code == 200
 
 
 def test_lockout_after_five_failures(client, db):

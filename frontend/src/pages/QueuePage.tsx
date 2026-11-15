@@ -45,7 +45,13 @@ function loadViews(): Record<string, string> {
 
 function toCsv(rows: Row[]): string {
   const head = ["invoice", "supplier", "total", "status", "decision", "reasons", "age_days", "with", "msme_due"];
-  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  // Supplier-controlled text (invoice numbers, names) must not run as a spreadsheet formula when the
+  // CSV is opened in Excel: prefix a quote to anything starting with = + - @ or a control character.
+  const esc = (v: unknown) => {
+    let s = String(v ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   return [head.join(","), ...rows.map((r) => [r.invoice_number, r.supplier_name, r.total, r.status, r.decision, r.reasons.join(" "), r.age_days, r.current_owner, r.msme_due_date].map(esc).join(","))].join("\n");
 }
 

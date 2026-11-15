@@ -14,6 +14,7 @@ from app.api import (about, admin, approvals, audit, auth, bank_changes, chat, d
 from app.core.config import get_settings
 from app.core import clock, runtime
 from app.core.db import SessionLocal, create_all
+from app.core.guard import BodySizeLimitMiddleware, ClientIPMiddleware
 from app.core.ratelimit import limiter
 
 _DOCS_PATHS = ("/api/docs", "/api/openapi.json")
@@ -25,11 +26,14 @@ def create_app() -> FastAPI:
         title="Duly API",
         version=__version__,
         description="Smart procure-to-pay assistant for Plant X (fictional).",
-        docs_url="/api/docs",
+        docs_url="/api/docs" if settings.api_docs else None,
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url="/api/openapi.json" if settings.api_docs else None,
         lifespan=lifespan,
     )
+    # Outermost first: refuse oversized bodies before anything reads them, then fix the client IP.
+    app.add_middleware(ClientIPMiddleware)
+    app.add_middleware(BodySizeLimitMiddleware)
 
     app.add_middleware(
         CORSMiddleware,
@@ -84,6 +88,10 @@ async def lifespan(_app: FastAPI):
         runtime.load_ai_mode(db)  # so does the admin's AI mode switch
     finally:
         db.close()
+    if get_settings().demo_mode:
+        from app import demo_snapshot
+
+        demo_snapshot.start_auto_reset(get_settings().demo_auto_reset_minutes)
     yield
 
 

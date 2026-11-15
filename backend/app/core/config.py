@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     # 1280, so 1280 lets photo uploads fit the Render free plan (512 MB). Recognition still reads the
     # full-size image.
     ocr_det_max_side: int = 0
+    # --- abuse protection (app/core/guard.py); the hosted demo sets these in render.yaml ---
+    trusted_proxy_hops: int = 0  # X-Forwarded-For entries added by our own proxies; 0 = use the direct peer
+    max_request_bytes: int = 12 * 1024 * 1024  # refused before the body is read
+    heavy_jobs_max: int = 2  # document extractions at once (OCR memory)
+    upload_rate_limit: str = "30/hour;6/minute"  # per client IP: invoice uploads and composed emails
+    global_uploads_per_hour: int = 0  # site-wide ceiling on uploads (0 = none)
+    api_docs: bool = True  # interactive OpenAPI docs at /api/docs (off on the public demo)
+    demo_auto_reset_minutes: int = 0  # public demo: restore the staged snapshot every N minutes (0 = off)
+    debug_proxy_chain: bool = False  # temporary: /api/health/chain echoes X-Forwarded-For (setup only)
 
     @property
     def resolved_database_url(self) -> str:
