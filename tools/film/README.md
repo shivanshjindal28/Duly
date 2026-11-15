@@ -16,3 +16,7 @@ python tools/film/encode.py                   # -> media/duly-launch-film.mp4
   are taken from the narrator's word timestamps, so changing the script re-times the visuals automatically.
 - Edit the words in `script.json` (voice, pace, pitch, pauses), then re-run the steps above.
 - Output in `media/` is git-ignored.
+
+## Social images
+
+`node tools/film/posters.mjs` renders the LinkedIn images (three 4:5 product images and the 16:9 video thumbnail) from `posters.html` into `media/linkedin/` at 2x.
