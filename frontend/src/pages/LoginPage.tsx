@@ -89,7 +89,7 @@ export function LoginPage() {
           </p>
           <DulyRail completed={3} tone="dark" showDocs />
         </div>
-        <p className="login-foot">Built for LYB Mumbai Hackathon 2026 · Plant X is a fictional company · All data is synthetic</p>
+        <p className="login-foot">Plant X is a fictional company · All data is synthetic</p>
       </section>
 
       <main className="login-main">

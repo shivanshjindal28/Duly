@@ -33,11 +33,10 @@ and **approves, flags or blocks** each one with a clear reason. **Rules decide. 
 <br/>
 
 [**Live demo**](https://www.duly.website) ·
-[**4-minute run sheet**](docs/DEMO_SCRIPT.md) ·
+[**Quick start**](#-quick-start) ·
 [**Architecture**](docs/ARCHITECTURE.md) ·
 [**Decision engine**](docs/DECISION_ENGINE.md) ·
-[**Controls**](docs/CONTROLS.md) ·
-[**Judge Q&A**](docs/QA_PREP.md)
+[**Security**](docs/CONTROLS.md)
 
 <br/>
 
@@ -50,8 +49,8 @@ and **approves, flags or blocks** each one with a clear reason. **Rules decide. 
 <br/>
 
 > [!IMPORTANT]
-> **Plant X Polymers Pvt Ltd is a fictional company. Every supplier, GSTIN, PAN, bank account and person in this repository is synthetic.**
-> Built for **LYB Mumbai Hackathon 2026, Round 2, Problem Statement 4**.
+> The demo runs on **Plant X Polymers Pvt Ltd, a fictional polymer plant**. Every supplier, GSTIN, PAN, bank account and
+> person in this repository is synthetic.
 
 > [!TIP]
 > **Try it in 30 seconds:** open **[www.duly.website](https://www.duly.website)** and click any demo persona on the login page: no password needed.
@@ -62,13 +61,13 @@ and **approves, flags or blocks** each one with a clear reason. **Rules decide. 
 
 - [Why Duly](#-why-duly)
 - [How it works](#-how-it-works)
-- [Problem statement coverage](#-problem-statement-coverage)
+- [Features](#-features)
 - [What makes Duly different](#-what-makes-duly-different)
 - [Screenshots](#-screenshots)
 - [The decision engine](#-the-decision-engine)
 - [Architecture](#-architecture)
 - [Responsible AI, security and data](#-responsible-ai-security-and-data)
-- [Demo scenarios](#-demo-scenarios)
+- [Scenarios to try](#-scenarios-to-try)
 - [Quick start](#-quick-start)
 - [Demo accounts](#-demo-accounts)
 - [Testing and quality](#-testing-and-quality)
@@ -129,21 +128,19 @@ issues a credit note, or the bank change is verified. Nobody has to remember to 
 
 ---
 
-## ✅ Problem statement coverage
+## ✅ Features
 
-All core expectations **and** the bonus items are built, tested end to end and live.
-
-| # | Expectation | Where to see it |
-|:-:|---|---|
-| 1 | Separate logins for suppliers, AP clerks and approvers | 6 roles (supplier, clerk, approver L1–L3, stores, auditor, admin), enforced on the server · login page |
-| 2 | Upload PDF or image; extract vendor, PO, items, quantities, prices, tax | **Upload invoice** → invoice detail with every field boxed on the document and a confidence bar |
-| 3 | Match invoice · PO · goods receipt; approve, flag or block with a reason | **Decision** panel + **Three-way match** table on every invoice |
-| 4 | Approval workflow with role thresholds and an audit trail | **Approvals** (DoA bands, MFA above ₹10 lakh, segregation of duties, delegation) · **Audit chain** |
-| 5 | Exceptions dashboard by type, supplier and age; supplier status view | **Dashboard** · **Work queue** · **Supplier portal** (English / हिन्दी) |
-| B1 | Duplicate-invoice detection | 5 signals (normalised number, file hash, perceptual hash, IRN, amount + date + lines) · side-by-side **Compare** |
-| B2 | "Where is my payment?" chatbot | Supplier portal assistant (en / hi), scoped to the supplier's own data, refusals logged |
-| B3 | Controls report for auditors | **Controls report**: 10 controls tested on live data, downloadable PDF |
-| ➕ | Measurable impact, architecture diagram, AI risk controls | **Impact** · **Architecture** · **Trust & controls** pages, all computed live |
+| Feature | What you get |
+|---|---|
+| **Roles** | Six roles (supplier, AP clerk, approvers L1–L3, stores, auditor, admin), each enforced on the server |
+| **Reading invoices** | PDFs, scans and phone photos; every field boxed on the document with a confidence score, low confidence goes to a person |
+| **Matching and decisions** | Invoice · PO · goods receipt or service entry, approve / flag / block with the reason and its SAP equivalent |
+| **Approvals** | Delegation-of-authority bands, MFA above ₹10 lakh, segregation of duties, delegation, a tamper-evident audit chain |
+| **Exceptions** | Dashboard by type, supplier and age; a keyboard-first work queue with saved views and CSV export |
+| **Duplicates** | Five signals (normalised number, file hash, perceptual hash, IRN, amount + date + lines) with a side-by-side compare |
+| **Supplier portal** | Status of every invoice, what to fix, the expected payment date, and a "where is my payment?" assistant in English and हिन्दी |
+| **Audit** | A controls report that tests 10 controls against the live data, downloadable as a PDF |
+| **Insight** | Impact, architecture and trust pages, all computed live |
 
 ---
 
@@ -153,31 +150,31 @@ All core expectations **and** the bonus items are built, tested end to end and l
 <tr>
 <td width="50%" valign="top">
 
-**D1 · Trust the signed QR, not the pixels**<br/>
+**Trust the signed QR, not the pixels**<br/>
 Verifies the GST e-invoice QR signature (RS256) and compares the signed values with the printed ones. An edited total is caught even when the PDF looks perfect.
 
-**D2 · AI prompt-injection shield**<br/>
+**AI prompt-injection shield**<br/>
 Finds hidden white text, tiny fonts and off-page text aimed at the AI, quarantines it and flags the invoice.
 
-**D3 · Bank-detail fraud block**<br/>
+**Bank-detail fraud block**<br/>
 An invoice printing bank details that differ from the vendor master is blocked. Changes need a call-back, a 72-hour cooling period and a second approver.
 
-**D4 · MSME 45-day guardian**<br/>
+**MSME 45-day guardian**<br/>
 Tracks the statutory due date (MSMED Act s.15) for every Udyam-registered supplier, with countdowns, interest exposure and the tax deduction at risk.
 
 </td>
 <td width="50%" valign="top">
 
-**D5 · Smart payment run**<br/>
+**Smart payment run**<br/>
 Orders payments by statutory due date, takes early-payment discounts only when they beat the cost of funds, computes TDS and shows the cash impact.
 
-**D6 · SAP-ready by design**<br/>
+**SAP-ready by design**<br/>
 Reason codes map to SAP payment blocks and transactions (MIRO, MIGO, ME23N). A **SAP posting preview** shows the exact S/4HANA OData payload.
 
-**D7 · Explain everything**<br/>
+**Explain everything**<br/>
 Every reason has its rule text, evidence and SAP equivalent; *Explain* writes the decision in plain words from the reason codes only.
 
-**D8 · Supplier risk card**<br/>
+**Supplier risk card**<br/>
 Live per-supplier view: dispute rate, duplicate attempts, bank changes, on-time payment, e-invoice compliance.
 
 </td>
@@ -387,15 +384,14 @@ More: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (also rendered in the app
 <tr><td>🧪 <b>Fictional data</b></td><td>No real companies, GSTINs, PANs, bank accounts or people anywhere in the repository.</td></tr>
 </table>
 
-Details: **[docs/CONTROLS.md](docs/CONTROLS.md)** · **[docs/AI_DECLARATION.md](docs/AI_DECLARATION.md)**.
+Details: **[docs/CONTROLS.md](docs/CONTROLS.md)**.
 
 ---
 
-## 🎬 Demo scenarios
+## 🎬 Scenarios to try
 
 Ready-made invoice files live in [`demo/invoices/`](demo/invoices); [`demo/manifest.json`](demo/manifest.json) lists
-who uploads each one, the expected result and the next step to show. They are all checked automatically by
-`scripts/demo_check.py`.
+who uploads each one and the expected result. They are all checked automatically by `scripts/demo_check.py`.
 
 | ID | Scenario | Result | What Duly shows |
 |:-:|---|:-:|---|
@@ -416,7 +412,7 @@ who uploads each one, the expected result and the next step to show. They are al
 | S14 | Bearings billed in boxes against a PO in pieces | ✅ APPROVE | 12 BOX converted to 120 NOS |
 
 <details>
-<summary><b>Run the 4-minute demo</b></summary>
+<summary><b>A five-minute tour</b></summary>
 
 <br/>
 
@@ -425,8 +421,6 @@ who uploads each one, the expected result and the next step to show. They are al
 3. Upload S05, S06, S07, S08 → duplicate, bank fraud, prompt injection, edited total: each with its reason and SAP block.
 4. **Rohan → Kavita** approve S01 with MFA. **Payments** → the run pays the MSME invoice first.
 5. **Meera** (auditor) → *Audit chain* → **Verify**, then the tamper demo.
-
-Full timed run sheet with talking points: **[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**.
 
 </details>
 
@@ -593,7 +587,7 @@ Duly/
 │   ├── src/i18n/          # English and Hindi
 │   └── e2e/               # Playwright: demo path, accessibility, phone layout
 ├── demo/                  # ready-made scenario files + manifest
-├── docs/                  # architecture, decision engine, controls, impact, run sheet, Q&A
+├── docs/                  # architecture, decision engine, controls, impact, assumptions
 ├── scripts/               # seed, demo_check, demo_prestage, generate_invoices, tamper_demo
 ├── render.yaml            # backend deployment
 └── run.py                 # starts backend + frontend
@@ -626,10 +620,6 @@ Duly/
 | [CONTROLS.md](docs/CONTROLS.md) | Responsible AI, security and data controls, and what is not built |
 | [IMPACT.md](docs/IMPACT.md) | Impact model: measured metrics, formulas, assumptions |
 | [ASSUMPTIONS.md](docs/ASSUMPTIONS.md) | Scenario, suppliers, policy values, tax tables, FX and pack sizes |
-| [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Timed run sheet for the hosted demo |
-| [QA_PREP.md](docs/QA_PREP.md) | Likely judge questions with answers |
-| [AI_DECLARATION.md](docs/AI_DECLARATION.md) | How generative AI was used to build Duly and inside it |
-| [PROGRESS.md](PROGRESS.md) | Live build status, decisions and known issues |
 
 ---
 
@@ -656,7 +646,7 @@ Duly/
 
 <div align="center">
 
-**Built for LYB Mumbai Hackathon 2026 · Round 2 · Problem Statement 4**
+**Duly** · Every invoice, duly done.
 
 <sub>Plant X is a fictional company. All data is synthetic. Rules decide; AI only reads and explains.</sub>
 

@@ -6,7 +6,7 @@ Usage (from the repo root, with or without `python run.py` running):
     python scripts/demo_prestage.py --ids S10,S11             # just these, no reset
 
 Default set: S02 S03 S09A S09B S10 S11 S12. The live demo then uploads S01, S04, S05, S06, S07, S08
-(see docs/DEMO_SCRIPT.md). Each upload is checked against demo/manifest.json, like demo_check.py.
+Each upload is checked against demo/manifest.json, like demo_check.py.
 Uses the configured AI mode (Demo controls / AI_MODE); offline is recommended on stage.
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ def main() -> int:
         from app import demo_snapshot
 
         print(f"Snapshot saved: {demo_snapshot.save()}")
-    print("Ready. Live: S01, S04, S05, S06, S07, S08 (docs/DEMO_SCRIPT.md)." if check.ok else "Something failed: see above.")
+    print("Ready. Upload the rest live: S01, S04, S05, S06, S07, S08." if check.ok else "Something failed: see above.")
     return 0 if check.ok else 1
 
 

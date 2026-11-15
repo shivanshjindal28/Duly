@@ -1,7 +1,7 @@
 /**
  * Duly design tokens. Single source of truth: applied to :root as CSS variables at startup.
  *
- * Base palette from the hackathon deck (docs/brief). WCAG AA checks (contrast on white / canvas):
+ * Brand palette. WCAG AA checks (contrast on white / canvas):
  *   text #0B1F44 16.2 / 15.1 · textSecondary #5B6B82 5.4 / 5.05 · primary #1D5FB5 6.3
  *   magenta #D6006E 5.1 · cyanText #0A7189 5.5 / 5.1
  * Bright cyan (2.97), green (3.15) and amber (2.03) fail AA as text on white, so they are used

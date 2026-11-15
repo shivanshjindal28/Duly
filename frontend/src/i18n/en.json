@@ -173,7 +173,7 @@
     "sign_out": "Sign out",
     "search": "Search and jump to",
     "workspace": "Workspace",
-    "footer": "Built for LYB Mumbai Hackathon 2026 · Plant X is a fictional company. Synthetic data only.",
+    "footer": "Plant X is a fictional company. Synthetic data only.",
     "ai_use": "Invoices are read by OCR (AI optional, off in this demo); rules decide."
   },
   "status": {

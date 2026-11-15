@@ -45,7 +45,7 @@ interface NavItem {
   roles: Role[] | "all";
 }
 
-/** Role-aware menu. Items are added here as each screen is built (see PROGRESS.md). */
+/** Role-aware menu. */
 const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Workspace",

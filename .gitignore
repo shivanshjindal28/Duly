@@ -42,3 +42,12 @@ desktop.ini
 
 # product video output (tools/video/record.mjs)
 media/
+
+# Private working notes (kept locally, not published)
+CLAUDE.md
+PROGRESS.md
+docs/MASTER_PROMPT.md
+docs/QA_PREP.md
+docs/DEMO_SCRIPT.md
+docs/AI_DECLARATION.md
+docs/brief/

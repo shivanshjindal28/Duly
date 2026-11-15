@@ -109,14 +109,14 @@ a period. This file says how each control works, where it lives in the code, and
   questions with five read-only, supplier-scoped tools.
 - **Does not:** approve, flag, block, route or pay; see vendor master data, bank records or other suppliers' data;
   use tools during extraction.
-- **Known failure modes:** misreads on blurred or tilted photos (also confident ones; see Known bugs in
-  PROGRESS.md), instructions hidden in documents, API outages. Mitigations: confidence threshold, arithmetic and
+- **Known failure modes:** misreads on blurred or tilted photos (occasionally confident ones), instructions hidden in documents, API outages. Mitigations: confidence threshold, arithmetic and
   GSTIN check-digit rules, the injection shield, automatic offline fallback.
 - **Humans in control:** review of low-confidence fields, approvals under delegation of authority with MFA, the
   kill switch.
 
 ## 9. Generative AI use
-See docs/AI_DECLARATION.md.
+Inside the product, AI is optional and off on the public demo: OCR and rules do the reading, and the rules engine
+makes every decision. When enabled, the model only extracts fields and answers supplier questions (sections 1 and 8).
 
 ## Not built (production path)
 - A scheduled (nightly) retention run and legal hold; today retention is applied by an admin on demand.
