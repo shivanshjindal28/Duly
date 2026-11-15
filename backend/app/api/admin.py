@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.enums import Role
 from app.core.security import require_roles
+from app.core.guard import global_budget
 from app.core.ratelimit import limiter
 from app.workflow.approvals import escalate_overdue
 
@@ -114,6 +115,7 @@ class ResetOut(BaseModel):
 @router.post("/reset-demo", response_model=ResetOut)
 @limiter.limit("10/hour")
 def reset_demo(request: Request, db: Session = Depends(get_db)) -> ResetOut:
+    global_budget("reset-demo", 12)  # site-wide: one visitor cannot keep wiping everyone else's demo
     """Drop everything and reseed with the 90-day history (about 25 s). Signed-in users stay signed
     in (same ids). The AI mode switch is kept; the demo clock returns to real time."""
     import time
@@ -145,6 +147,7 @@ def reset_demo(request: Request, db: Session = Depends(get_db)) -> ResetOut:
 @router.post("/tamper-demo")
 @limiter.limit("20/hour")
 def tamper_demo(request: Request, db: Session = Depends(get_db)) -> dict:
+    global_budget("tamper-demo", 30)
     """Edit one audit row directly in the database (as an insider could), for the verify demo."""
     from app.core import tamper
 

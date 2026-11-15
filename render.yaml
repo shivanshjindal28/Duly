@@ -49,5 +49,7 @@ services:
         value: "1"
       - key: GLOBAL_UPLOADS_PER_HOUR  # site-wide ceiling that IP spoofing cannot get around
         value: "200"
-      - key: DEBUG_PROXY_CHAIN        # temporary: read the X-Forwarded-For chain once to set TRUSTED_PROXY_HOPS
-        value: "true"
+      - key: DEBUG_PROXY_CHAIN        # setup aid, off: was used once to measure the proxy chain
+        value: "false"
+      - key: TRUSTED_PROXY_HOPS       # client IP = 4th X-Forwarded-For entry from the right (Vercel, Cloudflare, Render)
+        value: "4"

@@ -44,3 +44,12 @@ def db():
 def client():
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _reset_site_wide_budgets():
+    """Site-wide demo limits (app/core/guard.py) count across the whole process; each test starts fresh."""
+    from app.core.guard import reset_budgets
+
+    reset_budgets()
+    yield

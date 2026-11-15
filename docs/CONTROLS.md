@@ -80,11 +80,15 @@ a period. This file says how each control works, where it lives in the code, and
 - Abuse protection for the public demo (`app/core/guard.py`, settings in `render.yaml`):
   - request bodies above 12 MB are refused **before** they are read (the file checks only run after parsing);
   - the client IP for rate limits and the audit trail is taken from our own proxy hop
-    (`TRUSTED_PROXY_HOPS`), not from the caller-controlled left-most `X-Forwarded-For` entry;
+    (`TRUSTED_PROXY_HOPS = 4`, measured live), not from the caller-controlled left-most `X-Forwarded-For` entry.
+    Caveat: Vercel's rewrite proxy passes a caller-supplied `X-Forwarded-For` through in place of the real
+    address, so per-IP limits are best effort for traffic through the website. The real protection is the
+    site-wide limits below, which no header can bypass;
   - per-IP limits on uploads and composed emails (30 an hour, 6 a minute), mailbox fetch, policy changes,
     data retention, demo reset, tamper demo and the PDF report, on top of the login and chat limits;
   - site-wide limits that IP spoofing cannot bypass: one OCR job at a time on the 512 MB host (others get 503
-    "busy" instead of crashing it) and an hourly upload ceiling; at most 5 attachments per email;
+    "busy" instead of crashing it), an hourly upload ceiling (200), demo resets (12 an hour), tamper demos (30)
+    and policy changes (60); at most 5 attachments per email;
   - every visitor shares one database, so it goes back to the staged snapshot every hour, which clears
     vandalism, odd uploads and a left-over tamper demo. The login page says so and asks for no real documents;
   - signing out of a shared demo persona no longer revokes every other visitor's session (production keeps the

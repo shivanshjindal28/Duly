@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core import jobs
 from app.core.db import get_db
+from app.core.guard import global_budget
 from app.core.ratelimit import limiter
 from app.core.enums import Role
 from app.core.security import get_current_user, require_roles
@@ -61,6 +62,7 @@ def get_policy(db: Session = Depends(get_db), user: User = Depends(get_current_u
 @router.post("")
 @limiter.limit("30/hour")
 def change_policy(request: Request, body: ChangeIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    global_budget("policy-change", 60)
     try:
         pa.change(db, user, body.changes, body.reason)
     except pa.PolicyError as e:

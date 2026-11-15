@@ -2,8 +2,12 @@
 
 - `ClientIPMiddleware`: the client address used for rate limits and the audit trail. Behind proxies the
   left-most X-Forwarded-For entry is whatever the caller typed, so it cannot be trusted. With
-  TRUSTED_PROXY_HOPS = n we take the n-th address from the right: the one our own proxy chain (Vercel,
-  Render) recorded. 0 = the direct peer (local development).
+  TRUSTED_PROXY_HOPS = n we take the n-th address from the right: the one our own proxy chain recorded.
+  0 = the direct peer (local development). Measured on the hosted demo (2026-11-15): through Vercel the chain
+  is [client, vercel, cloudflare, render] -> 4; a direct call to Render has one entry fewer and its real
+  address is the first. Caveat: Vercel's rewrite proxy passes a caller-supplied X-Forwarded-For through in
+  place of the real address, so per-IP limits there are best effort. That is why the expensive or
+  disruptive actions also have site-wide limits below, which no header can get around.
 - `BodySizeLimitMiddleware`: refuses a request body above MAX_REQUEST_BYTES *before* it is read, so a
   multi-gigabyte upload cannot fill the disk or memory (the file checks only run after parsing).
 - `heavy_slot()`: at most HEAVY_JOBS_MAX document extractions run at once (OCR needs ~300 MB; the free
@@ -122,3 +126,9 @@ def global_budget(name: str, per_hour: int) -> None:
             raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                                 "This public demo has reached its hourly limit for this action. Please try again later.")
         q.append(now)
+
+
+def reset_budgets() -> None:
+    """Forget the site-wide counters (tests and the in-process demo check, which act as many visitors)."""
+    with _budget_lock:
+        _budgets.clear()

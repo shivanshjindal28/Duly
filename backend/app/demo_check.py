@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import REPO_ROOT
 from app.core.crypto import decrypt_str
+from app.core.guard import reset_budgets
 from app.core.ratelimit import limiter
 from app.models import ApprovalStep, AuditEvent, Invoice, Payment, PurchaseOrder, ReasonCode, User
 
@@ -49,6 +50,7 @@ class DemoCheck:
     # ------------------------------------------------------------------ helpers
     def login(self, email: str) -> dict:
         limiter.reset()  # one in-process client logs in many times
+        reset_budgets()
         r = self.client.post("/api/auth/demo-login", json={"email": email})
         assert r.status_code == 200, f"demo login {email}: {r.status_code}"
         return {"X-CSRF-Token": self.client.cookies.get("duly_csrf")}
