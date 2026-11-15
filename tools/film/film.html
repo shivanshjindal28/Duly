@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Duly launch film</title>
+<style>
+@font-face { font-family: Plex; font-weight: 300; src: url(/frontend/node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-300-normal.woff2); }
+@font-face { font-family: Plex; font-weight: 400; src: url(/frontend/node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2); }
+@font-face { font-family: Plex; font-weight: 500; src: url(/frontend/node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-500-normal.woff2); }
+@font-face { font-family: Plex; font-weight: 600; src: url(/frontend/node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff2); }
+@font-face { font-family: Plex; font-weight: 700; src: url(/frontend/node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2); }
+@font-face { font-family: PlexMono; font-weight: 400; src: url(/frontend/node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2); }
+
+:root { --cyan: #13A3C6; --cyan2: #6FD6F0; --navy: #0B1F44; --ink: #03050A; --green: #26B36B; --amber: #F5A623; --magenta: #E0287A; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); }
+body { font-family: Plex, system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+#stage { position: absolute; inset: 0; overflow: hidden; background: var(--ink); }
+.layer { position: absolute; inset: 0; opacity: 0; will-change: transform, opacity; }
+.center { display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+.glow { position: absolute; border-radius: 50%; filter: blur(120px); pointer-events: none; }
+
+/* typography */
+.h1 { font-weight: 300; font-size: 104px; letter-spacing: -0.035em; line-height: 1.06; }
+.h1 b { font-weight: 600; }
+.h2 { font-weight: 300; font-size: 76px; letter-spacing: -0.03em; line-height: 1.1; }
+.h2 b { font-weight: 600; }
+.kicker { font-weight: 600; font-size: 22px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--cyan2); }
+.w { display: inline-block; white-space: pre; will-change: transform, opacity, filter; }
+.grad { background: linear-gradient(100deg, #fff 10%, var(--cyan2) 60%, var(--cyan) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* opening: drifting invoices */
+#field { perspective: 1400px; }
+.paper { position: absolute; left: 50%; top: 50%; width: 520px; margin: -367px 0 0 -260px; border-radius: 6px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6); filter: grayscale(1) brightness(.9); transform-origin: center; }
+
+/* logo */
+#logo svg { width: 220px; height: 220px; }
+.wordmark { font-weight: 600; font-size: 150px; letter-spacing: -0.045em; margin-top: 18px; }
+
+/* devices */
+.laptop { position: absolute; left: 50%; top: 50%; width: 1500px; transform-origin: 50% 100%; }
+.laptop .screen { position: relative; border-radius: 26px 26px 6px 6px; background: #0b0c10; padding: 22px 22px 26px;
+  box-shadow: 0 0 0 2px #2a2d36, 0 80px 160px rgba(0,0,0,.75); }
+.laptop .screen::before { content: ""; position: absolute; top: 8px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #1d2029; }
+.laptop .viewport { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 16 / 10; background: #F4F6FA; }
+.laptop .viewport img { position: absolute; left: 0; top: 0; width: 100%; transform-origin: 0 0; }
+.laptop .base { height: 26px; margin: 0 -90px; border-radius: 2px 2px 22px 22px; background: linear-gradient(#cfd3dc, #8d93a0 60%, #5c616c); }
+.laptop .base::after { content: ""; display: block; width: 220px; height: 9px; margin: 0 auto; border-radius: 0 0 10px 10px; background: rgba(0,0,0,.25); }
+
+.phone { position: absolute; width: 420px; height: 880px; border-radius: 66px; background: #0b0c10; padding: 15px;
+  box-shadow: 0 0 0 2px #2c2f38, 0 0 0 8px #15171d, 0 70px 140px rgba(0,0,0,.75); }
+.phone .vp { position: relative; width: 100%; height: 100%; border-radius: 52px; overflow: hidden; background: #F4F6FA; }
+.phone .vp img { position: absolute; left: 0; top: 0; width: 100%; }
+.phone .island { position: absolute; top: 14px; left: 50%; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #000; z-index: 3; }
+
+/* floating UI cards */
+.card { position: absolute; border-radius: 22px; overflow: hidden; background: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 50px 120px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.08); }
+.card img { display: block; width: 100%; }
+.tag { position: absolute; z-index: 5; padding: 12px 22px; border-radius: 40px; font-weight: 600; font-size: 26px; letter-spacing: -0.01em;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(10px); white-space: nowrap; }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 12px; vertical-align: 2px; }
+
+/* three-way match diagram */
+.node { position: absolute; width: 250px; height: 250px; margin: -125px 0 0 -125px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: radial-gradient(circle at 30% 25%, #1a3466, #0b1a38 70%); border: 1px solid rgba(111,214,240,.35);
+  box-shadow: 0 0 60px rgba(19,163,198,.18); }
+.node b { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; }
+.node span { font-family: PlexMono; font-size: 18px; color: var(--cyan2); letter-spacing: .08em; }
+#matchlines line { stroke: var(--cyan2); stroke-width: 3; stroke-linecap: round; }
+
+/* rules backdrop */
+.code { position: absolute; font-family: PlexMono; font-size: 26px; color: rgba(111,214,240,.07); white-space: nowrap; letter-spacing: .06em; }
+
+/* audit chain */
+.block { position: absolute; top: 50%; width: 250px; height: 150px; margin-top: -75px; border-radius: 18px; padding: 20px 22px;
+  background: linear-gradient(160deg, #13284f, #0a1630); border: 1px solid rgba(111,214,240,.25); font-family: PlexMono; }
+.block .n { font-size: 18px; color: rgba(255,255,255,.5); }
+.block .a { font-family: Plex; font-size: 25px; font-weight: 600; margin: 6px 0; }
+.block .h { font-size: 18px; color: var(--cyan2); }
+.block .ok { position: absolute; right: 18px; top: 18px; width: 34px; height: 34px; border-radius: 50%; background: var(--green);
+  display: flex; align-items: center; justify-content: center; font-family: Plex; font-weight: 700; font-size: 20px; }
+.link { position: absolute; top: 50%; height: 4px; margin-top: -2px; background: linear-gradient(90deg, var(--cyan), var(--cyan2)); border-radius: 2px; }
+
+/* finishing */
+#grain { position: absolute; inset: -50%; opacity: .05; pointer-events: none; mix-blend-mode: overlay; }
+#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+#fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- A/B: opening field of invoices + problem beats -->
+  <div class="layer" id="field"></div>
+  <div class="layer" id="shade" style="background:radial-gradient(ellipse 60% 45% at 50% 50%, rgba(3,5,10,.92), rgba(3,5,10,.55) 55%, rgba(3,5,10,0) 80%)"></div>
+  <div class="layer center" id="openText"><div class="h1" id="open1"></div><div class="h1" id="open2" style="margin-top:6px"></div></div>
+  <div class="layer center" id="problems"></div>
+
+  <!-- C: logo reveal -->
+  <div class="layer center" id="logo">
+    <div class="glow" style="width:900px;height:500px;background:rgba(19,163,198,.22);left:510px;top:300px" id="logoGlow"></div>
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect id="lgRect" width="32" height="32" rx="6" fill="#0B1F44" />
+      <path id="lgD" d="M9 8h7a8 8 0 0 1 0 16H9z" fill="none" stroke="#13A3C6" stroke-width="3" stroke-linejoin="round" />
+      <path id="lgTick" d="M13 16l2.5 2.5L20 13" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <div class="wordmark" id="wordmark"></div>
+    <div class="h2" id="tagline" style="margin-top:10px;font-size:58px"></div>
+  </div>
+
+  <!-- D: reads + three-way match -->
+  <div class="layer" id="reads">
+    <div class="glow" style="width:1400px;height:700px;background:rgba(19,163,198,.13);left:260px;top:240px"></div>
+    <div class="laptop" id="laptop"><div class="screen"><div class="viewport"><img id="lapImg" src="/media/film/shots/invoice-s01.png" alt="" /></div></div><div class="base"></div></div>
+    <div class="tag" id="tPdf"><span class="dot" style="background:var(--cyan2)"></span>PDF</div>
+    <div class="tag" id="tScan"><span class="dot" style="background:var(--cyan2)"></span>Scan</div>
+    <div class="tag" id="tPhoto"><span class="dot" style="background:var(--cyan2)"></span>Phone photo</div>
+  </div>
+  <div class="layer" id="match">
+    <svg id="matchlines" width="1920" height="1080" style="position:absolute;inset:0"><line id="ml1" /><line id="ml2" /><line id="ml3" /></svg>
+    <div class="node" id="nPO"><b>Purchase order</b><span>ME23N</span></div>
+    <div class="node" id="nGR"><b>Goods received</b><span>MIGO</span></div>
+    <div class="node" id="nINV"><b>Invoice</b><span>MIRO</span></div>
+    <div class="h2" id="matchText" style="position:absolute;left:0;right:0;top:110px;text-align:center"></div>
+  </div>
+
+  <!-- E: decisions -->
+  <div class="layer" id="decide">
+    <div class="h2" id="decideText" style="position:absolute;left:0;right:0;top:96px;text-align:center"></div>
+    <div class="card" id="cApprove" style="width:560px"><img src="/media/film/shots/decision-approve.png" alt="" /></div>
+    <div class="card" id="cFlag" style="width:560px"><img src="/media/film/shots/decision-flag.png" alt="" /></div>
+    <div class="card" id="cBlock" style="width:560px"><img src="/media/film/shots/decision-block.png" alt="" /></div>
+    <div class="h2" id="reasonText" style="position:absolute;left:0;right:0;bottom:90px;text-align:center;font-size:56px"></div>
+  </div>
+
+  <!-- F: rules decide -->
+  <div class="layer center" id="rules">
+    <div id="codes" style="position:absolute;inset:0"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 55% 40% at 50% 50%, rgba(3,5,10,.95), rgba(3,5,10,0) 75%)"></div>
+    <div class="h1" id="rules1" style="position:relative"></div>
+    <div class="h1" id="rules2" style="margin-top:14px;position:relative"></div>
+    <div class="tag" id="offline" style="position:relative;margin-top:56px;font-size:24px"><span class="dot" style="background:var(--green)"></span>Works fully offline</div>
+  </div>
+
+  <!-- G: fraud -->
+  <div class="layer" id="fraud">
+    <div class="glow" style="width:900px;height:900px;background:rgba(224,40,122,.10);left:900px;top:100px"></div>
+    <div id="fraudWords" style="position:absolute;left:150px;top:0;bottom:0;width:640px;display:flex;flex-direction:column;justify-content:center;gap:12px"></div>
+    <div class="card" id="fDup" style="width:980px"><img src="/media/film/shots/compare.png" alt="" style="width:160%;margin:-2% 0 -26% -24%" /></div>
+    <div class="card" id="fBank" style="width:900px"><img src="/media/film/shots/decision-bank.png" alt="" /></div>
+    <div class="card" id="fInj" style="width:1000px;transform-origin:0 50%"><img src="/media/film/shots/injection.png" alt="" /></div>
+  </div>
+
+  <!-- H: pays -->
+  <div class="layer" id="pays">
+    <div class="glow" style="width:1200px;height:600px;background:rgba(38,179,107,.12);left:360px;top:300px"></div>
+    <div class="card" id="pProposal" style="width:1240px"><img src="/media/film/shots/proposal.png" alt="" /></div>
+    <div class="tag" id="pMsme" style="font-size:30px"><span class="dot" style="background:var(--amber)"></span>MSME · paid first · 4 days left</div>
+    <div class="card" id="pGuardian" style="width:1240px"><img src="/media/film/shots/guardian.png" alt="" /></div>
+    <div class="h2" id="paysText" style="position:absolute;left:0;right:0;top:80px;text-align:center"></div>
+  </div>
+
+  <!-- I: suppliers -->
+  <div class="layer" id="suppliers">
+    <div class="glow" style="width:900px;height:900px;background:rgba(19,163,198,.16);left:860px;top:90px"></div>
+    <div class="phone" id="phone"><div class="island"></div><div class="vp">
+      <img id="phEn" src="/media/film/shots/phone-portal-en.png" alt="" />
+      <img id="phChat" src="/media/film/shots/phone-chat.png" alt="" />
+      <img id="phHi" src="/media/film/shots/phone-portal-hi.png" alt="" />
+    </div></div>
+    <div id="supText" style="position:absolute;left:170px;top:0;bottom:0;width:820px;display:flex;flex-direction:column;justify-content:center"></div>
+  </div>
+
+  <!-- J: audit -->
+  <div class="layer" id="audit">
+    <div id="chain" style="position:absolute;inset:0"></div>
+    <div class="h2" id="auditText" style="position:absolute;left:0;right:0;top:150px;text-align:center"></div>
+    <div class="card" id="aVerified" style="width:1100px;left:410px;top:760px"><img src="/media/film/shots/audit-verified.png" alt="" /></div>
+  </div>
+
+  <!-- K: close -->
+  <div class="layer center" id="close">
+    <div class="glow" style="width:1000px;height:520px;background:rgba(19,163,198,.20);left:460px;top:280px"></div>
+    <svg viewBox="0 0 32 32" style="width:150px;height:150px" aria-hidden="true">
+      <rect width="32" height="32" rx="6" fill="#0B1F44" />
+      <path d="M9 8h7a8 8 0 0 1 0 16H9z" fill="none" stroke="#13A3C6" stroke-width="3" stroke-linejoin="round" />
+      <path d="M13 16l2.5 2.5L20 13" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <div class="wordmark" id="closeWord" style="font-size:132px"></div>
+    <div class="h2" id="closeTag" style="font-size:54px;margin-top:6px"></div>
+    <div id="closeUrl" style="margin-top:64px;font-size:30px;font-weight:500;letter-spacing:.04em;color:rgba(255,255,255,.75)">duly.website</div>
+  </div>
+
+  <svg id="grain" viewBox="0 0 200 200" preserveAspectRatio="none"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch" /></filter><rect width="100%" height="100%" filter="url(#n)" /></svg>
+  <div id="vignette"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+// ---------------------------------------------------------------- timing helpers
+let TL = null; // timeline.json (voiceover lines with word times)
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, p) => a + (b - a) * p;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = (p) => 1 - Math.pow(1 - p, 4);
+const easeInOut = (p) => (p < 0.5 ? 8 * p ** 4 : 1 - Math.pow(-2 * p + 2, 4) / 2);
+const easeOutBack = (p) => { const c = 1.25; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); };
+/** In-hold-out envelope: 0 before a, ramps to 1 by a+fi, stays, ramps to 0 from b-fo to b. */
+const env = (t, a, b, fi = 0.6, fo = 0.6) => Math.min(easeOut(prog(t, a, a + fi)), 1 - easeInOut(prog(t, b - fo, b)));
+function line(id) { return TL.lines.find((l) => l.id === id); }
+/** Time the narrator says `word` in line `id` (nth occurrence), from the voice's word boundaries. */
+function W(id, word, nth = 0) {
+  const ws = line(id).words.filter((w) => w.w.toLowerCase().replace(/[^a-z'-]/g, "") === word.toLowerCase());
+  return (ws[nth] || ws[ws.length - 1] || { t: line(id).start }).t;
+}
+function set(el, { o, x = 0, y = 0, s = 1, rx = 0, ry = 0, rz = 0, blur = 0, z = 0 }) {
+  if (typeof el === "string") el = $(el);
+  if (o !== undefined) el.style.opacity = o.toFixed(4);
+  el.style.transform = `translate3d(${x}px,${y}px,${z}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s})`;
+  el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "";
+}
+/** Words that rise and sharpen in, each at its own time. */
+function words(container, parts) {
+  const el = typeof container === "string" ? $(container) : container;
+  el.innerHTML = parts.map((p) => `<span class="w${p.cls ? " " + p.cls : ""}">${p.text}</span>`).join(" ");
+  return [...el.querySelectorAll(".w")].map((span, i) => ({ span, at: parts[i].at }));
+}
+function revealWords(list, t, dur = 0.7, rise = 34) {
+  for (const { span, at } of list) {
+    const p = easeOut(prog(t, at - 0.08, at - 0.08 + dur));
+    set(span, { o: p, y: (1 - p) * rise, blur: (1 - p) * 14 });
+  }
+}
+
+// ---------------------------------------------------------------- build (once)
+const PAGES = ["S01", "S04", "S06", "S07", "S08", "S13", "S14"];
+let papers = [], openW1, openW2, probItems, wordmarkW, taglineW, matchW, decideW, reasonW, rulesW1, rulesW2,
+  fraudItems, paysW, supW, auditW, closeW, closeTagW, blocks = [], links = [];
+
+function build() {
+  // drifting invoice field: deterministic pseudo-random layout
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 26; i++) {
+    const img = document.createElement("img");
+    img.className = "paper"; img.src = `/media/film/shots/pages/${PAGES[i % PAGES.length]}.png`;
+    $("field").appendChild(img);
+    papers.push({ img, x: (rnd() - 0.5) * 2600, y: (rnd() - 0.5) * 1500, z0: rnd() * 3200, rz: (rnd() - 0.5) * 24, ry: (rnd() - 0.5) * 30 });
+  }
+  openW1 = words("open1", [{ text: "Every", at: W("open", "every") }, { text: "month,", at: W("open", "month") }]);
+  openW2 = words("open2", [{ text: "thousands", at: W("open", "thousands"), cls: "" }, { text: "of", at: W("open", "of") }, { text: "invoices.", at: W("open", "invoices") }]);
+  openW2.forEach((w) => (w.span.style.fontWeight = 600));
+
+  const probs = [
+    { text: "Billed twice.", at: W("problems", "billed"), color: "var(--magenta)" },
+    { text: "Priced wrong.", at: W("problems", "priced"), color: "var(--amber)" },
+    { text: "Before the goods arrive.", at: W("problems", "arrive"), color: "var(--amber)" },
+    { text: "Not who they say they are.", at: W("problems", "aren't") , color: "var(--magenta)" },
+  ];
+  probItems = probs.map((p, i) => {
+    const d = document.createElement("div");
+    d.className = "h1"; d.style.position = "absolute"; d.style.fontWeight = 600;
+    const [first, ...rest] = p.text.split(" ");
+    d.innerHTML = `<span style="color:${p.color}">${first}</span> ${rest.join(" ")}`;
+    $("problems").appendChild(d);
+    return { el: d, at: p.at - 0.15, until: i + 1 < probs.length ? probs[i + 1].at - 0.25 : line("problems").end + 0.9 };
+  });
+
+  wordmarkW = words("wordmark", [{ text: "Duly", at: W("intro", "duly") + 0.05 }]);
+  taglineW = words("tagline", [{ text: "Every invoice.", at: W("tagline", "every") }, { text: "Duly done.", at: W("tagline", "duly"), cls: "grad" }]);
+  taglineW[1].span.style.fontWeight = 600;
+
+  matchW = words("matchText", [{ text: "Checked against what was", at: W("reads", "purchase") }, { text: "ordered", at: W("reads", "purchase") + 0.3 }, { text: "and", at: W("reads", "and", 1) }, { text: "delivered.", at: W("reads", "arrived"), cls: "grad" }]);
+  decideW = words("decideText", [{ text: "Then it", at: W("decides", "then") }, { text: "decides.", at: W("decides", "decides"), cls: "grad" }]);
+  reasonW = words("reasonText", [{ text: "Always with a", at: W("decides", "always") }, { text: "reason you can see.", at: W("decides", "reason") }]);
+  reasonW[1].span.style.fontWeight = 600;
+
+  rulesW1 = words("rules1", [{ text: "The rules", at: W("rules", "the") }, { text: "make the call.", at: W("rules", "make") }]);
+  rulesW1[1].span.style.fontWeight = 600;
+  rulesW2 = words("rules2", [{ text: "AI only", at: W("rules", "ai") }, { text: "reads", at: W("rules", "reads"), cls: "grad" }, { text: "and", at: W("rules", "and") }, { text: "explains.", at: W("rules", "explains"), cls: "grad" }]);
+  rulesW2.forEach((w) => (w.span.style.fontSize = "86px"));
+  const CODES = ["PRICE_VARIANCE", "QTY_EXCEEDS_GR", "MISSING_GR", "DUPLICATE", "BANK_MISMATCH", "QR_MISMATCH", "GSTIN_INVALID", "TAX_MISMATCH",
+    "UOM_CONVERTED", "CURRENCY_CONVERTED", "INJECTION_ATTEMPT", "NO_PO", "MATH_ERROR", "SES_VALUE_EXCEEDED", "PO_CLOSED", "LINE_NOT_ON_PO"];
+  for (let r = 0; r < 14; r++) {
+    const d = document.createElement("div"); d.className = "code";
+    d.textContent = Array.from({ length: 8 }, (_, k) => CODES[(r * 5 + k * 3) % CODES.length]).join("    ");
+    d.style.top = `${40 + r * 74}px`; d.dataset.dir = r % 2 ? 1 : -1; $("codes").appendChild(d);
+  }
+
+  const fw = [
+    { t: "Duplicates.", sub: "The same invoice, resent as a photo.", at: W("fraud", "duplicate") },
+    { t: "Bank fraud.", sub: "A quietly changed account, blocked.", at: W("fraud", "bank") },
+    { t: "Hidden prompts.", sub: "Instructions written for the AI, caught.", at: W("fraud", "hidden") },
+  ];
+  fraudItems = fw.map((f) => {
+    const d = document.createElement("div");
+    d.innerHTML = `<div class="h1" style="font-size:92px;font-weight:600">${f.t}</div><div style="font-size:32px;font-weight:300;color:rgba(255,255,255,.72);margin-top:6px">${f.sub}</div>`;
+    d.style.position = "absolute"; d.style.left = "0"; d.style.right = "0";
+    $("fraudWords").appendChild(d);
+    return { el: d, at: f.at - 0.2 };
+  });
+
+  paysW = words("paysText", [{ text: "Small suppliers,", at: W("pays", "small") }, { text: "paid on time.", at: W("pays", "on"), cls: "grad" }]);
+  paysW[1].span.style.fontWeight = 600;
+  supW = words("supText", [{ text: "Suppliers always know", at: W("suppliers", "suppliers") }, { text: "where their", at: W("suppliers", "where") }, { text: "money is.", at: W("suppliers", "money"), cls: "grad" }]);
+  $("supText").classList.add("h1"); $("supText").style.fontSize = "92px"; supW[2].span.style.fontWeight = 600;
+  const langs = document.createElement("div");
+  langs.id = "langs"; langs.style.cssText = "margin-top:44px;font-size:52px;font-weight:300;color:rgba(255,255,255,.85)";
+  langs.innerHTML = `<span class="w" id="lgEn">English.</span>  <span class="w" id="lgHi" style="font-weight:500">हिन्दी.</span>`;
+  $("supText").appendChild(langs);
+
+  auditW = words("auditText", [{ text: "Every decision,", at: W("audit", "every") }, { text: "sealed.", at: W("audit", "sealed"), cls: "grad" }]);
+  auditW[1].span.style.fontWeight = 600;
+  const acts = ["invoice.uploaded", "invoice.matched", "approval.routed", "approval.approved", "payment.released", "invoice.uploaded", "invoice.matched", "approval.approved"];
+  const hex = "0123456789abcdef"; let s2 = 11; const r2 = () => (s2 = (s2 * 48271) % 2147483647) / 2147483647;
+  acts.forEach((a, i) => {
+    const b = document.createElement("div"); b.className = "block";
+    const h = Array.from({ length: 12 }, () => hex[Math.floor(r2() * 16)]).join("");
+    b.innerHTML = `<div class="n">#${1542 + i}</div><div class="a">${a}</div><div class="h">${h.slice(0, 6)}…${h.slice(6)}</div><div class="ok">✓</div>`;
+    $("chain").appendChild(b); blocks.push(b);
+    if (i) { const l = document.createElement("div"); l.className = "link"; $("chain").appendChild(l); links.push(l); }
+  });
+
+  closeW = words("closeWord", [{ text: "Duly", at: W("close", "duly") }]);
+  closeTagW = words("closeTag", [{ text: "Every invoice,", at: W("close", "every") }, { text: "duly done.", at: W("close", "duly", 1), cls: "grad" }]);
+  closeTagW[1].span.style.fontWeight = 600;
+}
+
+// ---------------------------------------------------------------- render(t): the whole film is a function of time
+function render(t) {
+  const L = (id) => line(id);
+  // camera drift used everywhere
+  const drift = (a) => Math.sin(t * 0.35 + a) * 6;
+
+  // A/B. field of invoices: flies toward the camera; scatters on "aren't who they say they are"
+  const fieldIn = env(t, 0, L("problems").end + 1.0, 1.4, 1.0);
+  const scatter = easeInOut(prog(t, W("problems", "aren't") - 0.1, W("problems", "aren't") + 1.4));
+  set("field", { o: fieldIn });
+  set("shade", { o: fieldIn });
+  papers.forEach((p, i) => {
+    const z = ((p.z0 + t * 260) % 3400) - 2600;
+    const dark = clamp(1 - Math.abs(z + 600) / 2600);
+    const sx = p.x * (1 + scatter * 1.6), sy = p.y * (1 + scatter * 1.6);
+    p.img.style.opacity = (0.10 + 0.32 * dark) * (1 - scatter * 0.85);
+    p.img.style.transform = `translate3d(${sx}px,${sy}px,${z}px) rotateY(${p.ry + scatter * 40}deg) rotateZ(${p.rz + scatter * 30}deg)`;
+    p.img.style.filter = `grayscale(1) brightness(.85) blur(${(Math.abs(z + 400) / 380).toFixed(1)}px)`;
+  });
+  set("openText", { o: env(t, 0.9, L("problems").start - 0.1, 0.4, 0.5), s: 1 + t * 0.006 });
+  revealWords(openW1, t); revealWords(openW2, t);
+  set("problems", { o: env(t, L("problems").start - 0.4, L("problems").end + 1.2, 0.3, 0.5) });
+  probItems.forEach((p) => {
+    const a = easeOut(prog(t, p.at, p.at + 0.55)), out = easeInOut(prog(t, p.until - 0.3, p.until));
+    const glitch = p === probItems[3] ? Math.sin(t * 90) * 6 * (1 - prog(t, p.at, p.at + 0.6)) : 0;
+    set(p.el, { o: a * (1 - out), y: (1 - a) * 40 - out * 30, blur: (1 - a) * 16 + out * 10, x: glitch, s: 1 + out * 0.04 });
+  });
+
+  // C. logo reveal
+  const lgA = L("intro").start - 0.6, lgB = L("tagline").end + 1.0;
+  set("logo", { o: env(t, lgA, lgB, 0.5, 0.6), s: 1 + prog(t, lgA, lgB) * 0.05 });
+  const rectP = easeOut(prog(t, lgA, lgA + 0.9));
+  $("lgRect").style.opacity = rectP; $("lgRect").style.transform = `scale(${0.6 + 0.4 * rectP})`; $("lgRect").style.transformOrigin = "16px 16px";
+  const dLen = 46, tickLen = 13;
+  $("lgD").style.strokeDasharray = dLen; $("lgD").style.strokeDashoffset = dLen * (1 - easeInOut(prog(t, lgA + 0.4, W("intro", "duly"))));
+  $("lgTick").style.strokeDasharray = tickLen; $("lgTick").style.strokeDashoffset = tickLen * (1 - easeOut(prog(t, W("intro", "duly") - 0.1, W("intro", "duly") + 0.4)));
+  set("logoGlow", { o: 0.6 + 0.4 * Math.sin(t * 1.3), s: 0.9 + easeOut(prog(t, W("intro", "duly"), W("intro", "duly") + 1.2)) * 0.25 });
+  revealWords(wordmarkW, t, 0.9, 40); revealWords(taglineW, t, 0.8, 28);
+
+  // D. reads: laptop rises, pushes in on the document; format tags pop on the narrator's words
+  const rA = L("reads").start - 0.5, rB = W("reads", "purchase") + 0.2;
+  set("reads", { o: env(t, rA, rB + 0.6, 0.5, 0.7) });
+  const rise = easeOut(prog(t, rA, rA + 1.6));
+  const push = easeInOut(prog(t, W("reads", "pdf") - 0.3, rB));
+  $("laptop").style.transform = `translate(-50%, -50%) translate(${lerp(150, 430, push)}px, ${lerp(380, 60, rise) + push * 150}px) perspective(2200px) rotateX(${lerp(26, 4, rise) + push * 2}deg) rotateY(${push * -10}deg) scale(${lerp(0.82, 1, rise) * (1 + push * 0.42)})`;
+  $("laptop").style.opacity = rise;
+  [["tPdf", "pdf", 70, 400], ["tScan", "scan", 70, 500], ["tPhoto", "photo", 70, 600]].forEach(([id, w, x, y]) => {
+    const p = easeOutBack(prog(t, W("reads", w) - 0.1, W("reads", w) + 0.5));
+    set(id, { o: clamp(p) * (1 - easeInOut(prog(t, rB - 0.2, rB + 0.4))), x: x - 40 + (1 - p) * -60, y: y + drift(x), s: 0.9 + 0.1 * clamp(p) });
+  });
+  // three-way match diagram
+  const mA = W("reads", "purchase") - 0.1, mB = L("decides").start - 0.2;
+  set("match", { o: env(t, mA, mB, 0.6, 0.5) });
+  revealWords(matchW, t, 0.7, 26);
+  const nodes = [["nPO", 560, 600, W("reads", "purchase")], ["nGR", 1360, 600, W("reads", "arrived") - 0.45], ["nINV", 960, 860, W("reads", "purchase") + 0.4]];
+  nodes.forEach(([id, x, y, at]) => {
+    const p = easeOutBack(prog(t, at, at + 0.6));
+    set(id, { o: clamp(p * 1.2), x: x, y: y + drift(x) * 0.6, s: clamp(p, 0, 1.2) });
+    $(id).style.left = "0px"; $(id).style.top = "0px";
+  });
+  const lines = [["ml1", 560, 600, 1360, 600], ["ml2", 560, 600, 960, 860], ["ml3", 1360, 600, 960, 860]];
+  lines.forEach(([id, x1, y1, x2, y2], i) => {
+    const p = easeInOut(prog(t, W("reads", "arrived") - 0.2 + i * 0.12, W("reads", "arrived") + 0.6 + i * 0.12));
+    const el = $(id); el.setAttribute("x1", x1); el.setAttribute("y1", y1); el.setAttribute("x2", lerp(x1, x2, p)); el.setAttribute("y2", lerp(y1, y2, p));
+    el.style.opacity = p > 0 ? 0.9 : 0;
+  });
+
+  // E. decides: three verdict cards dealt onto the table on "Approve. Flag. Or block."
+  const dA = L("decides").start - 0.3, dB = L("rules").start - 0.15;
+  set("decide", { o: env(t, dA, dB, 0.5, 0.5) });
+  revealWords(decideW, t, 0.7, 26); revealWords(reasonW, t, 0.7, 24);
+  const focus = easeInOut(prog(t, W("decides", "always") - 0.1, W("decides", "always") + 0.9));
+  [["cApprove", "approve", -620, -8], ["cFlag", "flag", 0, 0], ["cBlock", "block", 620, 8]].forEach(([id, w, x, rz], i) => {
+    const p = easeOut(prog(t, W("decides", w) - 0.12, W("decides", w) + 0.55));
+    const isBlock = id === "cBlock";
+    const fx = isBlock ? lerp(x, 0, focus) : x * (1 + focus * 0.25);
+    const fs = isBlock ? 1 + focus * 0.45 : 1 - focus * 0.12;
+    const fo = isBlock ? 1 : 1 - focus;
+    $(id).style.left = "680px"; $(id).style.top = "300px";
+    set(id, { o: p * fo, x: fx, y: (1 - p) * 220 + drift(i) - focus * (isBlock ? 20 : -10), rz: rz * (1 - focus) * (isBlock ? 1 : 1.2), s: (0.92 + 0.08 * p) * fs, blur: (isBlock ? 0 : focus * 4) + (1 - p) * 10 });
+    $(id).style.zIndex = isBlock ? 3 : 1;
+  });
+
+  // F. rules decide / AI only reads
+  const fA = L("rules").start - 0.3, fB = L("fraud").start - 0.2;
+  set("rules", { o: env(t, fA, fB, 0.5, 0.5), s: 1 + prog(t, fA, fB) * 0.04 });
+  revealWords(rulesW1, t, 0.8, 30); revealWords(rulesW2, t, 0.8, 30);
+  [...$("codes").children].forEach((c, i) => { c.style.transform = `translateX(${(c.dataset.dir * (t - fA) * 60) - 300}px)`; });
+  const off = easeOut(prog(t, W("rules", "explains") + 0.35, W("rules", "explains") + 0.95));
+  set("offline", { o: off, y: (1 - off) * 20 });
+
+  // G. fraud: three exhibits slide in as he names them
+  const gA = L("fraud").start - 0.3, gB = L("pays").start - 0.2;
+  set("fraud", { o: env(t, gA, gB, 0.5, 0.5) });
+  const ex = [["fDup", fraudItems[0].at, fraudItems[1].at], ["fBank", fraudItems[1].at, fraudItems[2].at], ["fInj", fraudItems[2].at, gB]];
+  fraudItems.forEach((f, i) => {
+    const next = i + 1 < fraudItems.length ? fraudItems[i + 1].at : gB;
+    const a = easeOut(prog(t, f.at, f.at + 0.6)), out = easeInOut(prog(t, next - 0.35, next - 0.05));
+    set(f.el, { o: a * (1 - (i < 2 ? out : 0)), y: (1 - a) * 40 - out * 30, blur: (1 - a) * 12 + out * 8 });
+  });
+  ex.forEach(([id, a0, a1], i) => {
+    const a = easeOut(prog(t, a0, a0 + 0.8)), out = i < 2 ? easeInOut(prog(t, a1 - 0.35, a1 + 0.25)) : 0;
+    $(id).style.left = i === 2 ? "800px" : "860px"; $(id).style.top = i === 2 ? "440px" : i === 1 ? "330px" : "190px";
+    const big = i === 2 ? 1.06 : 1;
+    set(id, { o: a * (1 - out), x: (1 - a) * 500 - out * 260, y: drift(i * 2), ry: (1 - a) * -18 + out * 12, s: (0.94 + 0.06 * a - out * 0.06) * big, blur: out * 8 });
+  });
+
+  // H. pays
+  const hA = L("pays").start - 0.3, hB = L("suppliers").start - 0.2;
+  set("pays", { o: env(t, hA, hB, 0.5, 0.5) });
+  revealWords(paysW, t, 0.8, 26);
+  const pp = easeOut(prog(t, hA + 0.1, hA + 1.4)), cash = easeInOut(prog(t, W("pays", "cash") - 0.5, W("pays", "cash") + 0.6));
+  $("pProposal").style.left = "340px"; $("pProposal").style.top = "250px";
+  set("pProposal", { o: pp * (1 - cash * 0.6), y: (1 - pp) * 200 - cash * 40, rx: (1 - pp) * 18 + 6, s: (0.9 + 0.1 * pp) * (1 - cash * 0.05), blur: cash * 3 });
+  const tg = easeOutBack(prog(t, W("pays", "time") - 0.1, W("pays", "time") + 0.5));
+  set("pMsme", { o: clamp(tg) * (1 - cash), x: 1210, y: 205 + drift(3), s: clamp(tg, 0, 1.1) });
+  const gp = easeOut(prog(t, W("pays", "cash") - 0.3, W("pays", "cash") + 0.6));
+  $("pGuardian").style.left = "340px"; $("pGuardian").style.top = "640px";
+  set("pGuardian", { o: gp, y: (1 - gp) * 120, s: 0.96 + 0.04 * gp });
+
+  // I. suppliers: phone with English portal -> chat -> Hindi
+  const iA = L("suppliers").start - 0.3, iB = L("audit").start - 0.2;
+  set("suppliers", { o: env(t, iA, iB, 0.5, 0.5) });
+  revealWords(supW, t, 0.8, 30);
+  const ph = easeOut(prog(t, iA, iA + 1.2));
+  $("phone").style.left = "1220px"; $("phone").style.top = "100px";
+  set("phone", { o: ph, y: (1 - ph) * 240 + drift(5), rz: (1 - ph) * 6 - 2, ry: -12 + ph * 4, s: 0.94 + 0.06 * ph });
+  const chat = easeInOut(prog(t, W("suppliers", "money") - 0.2, W("suppliers", "money") + 0.4));
+  const hi = easeInOut(prog(t, W("suppliers", "hindi") - 0.2, W("suppliers", "hindi") + 0.3));
+  $("phEn").style.opacity = 1; $("phChat").style.opacity = chat * (1 - hi); $("phHi").style.opacity = hi;
+  ["lgEn", "lgHi"].forEach((id, k) => { const at = k ? W("suppliers", "hindi") : W("suppliers", "english");
+    const p = easeOut(prog(t, at - 0.1, at + 0.5)); set(id, { o: p, y: (1 - p) * 20, blur: (1 - p) * 8 }); });
+
+  // J. audit chain: blocks slide, each gets sealed as the scan light passes
+  const jA = L("audit").start - 0.3, jB = L("close").start - 0.3;
+  set("audit", { o: env(t, jA, jB, 0.5, 0.6) });
+  revealWords(auditW, t, 0.8, 26);
+  const slide = (t - jA) * 70;
+  blocks.forEach((b, i) => {
+    const x = 120 + i * 330 - slide;
+    const sealAt = W("audit", "sealed") - 0.2 + i * 0.16;
+    const sp = easeOut(prog(t, sealAt, sealAt + 0.35));
+    b.style.left = `${x}px`; b.style.opacity = clamp(prog(t, jA + i * 0.05, jA + 0.6 + i * 0.05));
+    b.querySelector(".ok").style.opacity = sp; b.querySelector(".ok").style.transform = `scale(${0.5 + 0.5 * easeOutBack(clamp(sp))})`;
+    b.style.borderColor = sp > 0.5 ? "rgba(38,179,107,.6)" : "rgba(111,214,240,.25)";
+    if (i) { const l = links[i - 1]; l.style.left = `${x - 80}px`; l.style.width = "80px"; l.style.opacity = b.style.opacity * 0.9; }
+  });
+  const av = easeOut(prog(t, W("audit", "trail") - 0.1, W("audit", "trail") + 0.6));
+  set("aVerified", { o: av, y: (1 - av) * 40 });
+
+  // K. close
+  const kA = L("close").start - 0.5;
+  set("close", { o: easeOut(prog(t, kA, kA + 0.8)), s: 1 + prog(t, kA, TL.total) * 0.03 });
+  revealWords(closeW, t, 0.9, 40); revealWords(closeTagW, t, 0.8, 26);
+  const url = easeOut(prog(t, L("close").end + 0.3, L("close").end + 1.1));
+  set("closeUrl", { o: url, y: (1 - url) * 16 });
+
+  // finishing: grain shimmer, fade in/out
+  $("grain").style.transform = `translate(${(t * 997) % 80 - 40}px, ${(t * 571) % 60 - 30}px)`;
+  $("fade").style.opacity = Math.max(1 - prog(t, 0, 0.8), prog(t, TL.total - 1.2, TL.total));
+}
+
+// ---------------------------------------------------------------- boot
+async function boot() {
+  TL = await (await fetch("/media/film/timeline.json")).json();
+  build();
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? null : new Promise((r) => { i.onload = r; i.onerror = r; }))));
+  await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+  render(0);
+  window.FILM = { total: TL.total, render };
+  if (new URLSearchParams(location.search).has("play")) {
+    const t0 = performance.now(); const loop = () => { render((performance.now() - t0) / 1000); requestAnimationFrame(loop); }; loop();
+  }
+}
+boot();
+</script>
+</body>
+</html>

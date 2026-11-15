@@ -1,0 +1,19 @@
+{
+  "voice": "en-US-AndrewNeural",
+  "rate": "-8%",
+  "pitch": "-3Hz",
+  "lines": [
+    { "id": "open", "text": "Every month, your finance team opens thousands of invoices.", "gap_after": 0.6 },
+    { "id": "problems", "text": "Some are billed twice. Some are priced wrong. Some arrive before the goods do. And some... aren't who they say they are.", "gap_after": 1.4 },
+    { "id": "intro", "text": "Introducing Duly.", "gap_after": 0.7 },
+    { "id": "tagline", "text": "Every invoice. Duly done.", "gap_after": 1.3 },
+    { "id": "reads", "text": "Duly reads every invoice, whether it's a PDF, a scan, or a photo from a phone, and checks it against the purchase order, and what actually arrived.", "gap_after": 0.7 },
+    { "id": "decides", "text": "Then it decides. Approve. Flag. Or block. Always with a reason you can see.", "gap_after": 0.8 },
+    { "id": "rules", "text": "The rules make the call. AI only reads, and explains.", "gap_after": 0.9 },
+    { "id": "fraud", "text": "It catches the duplicate, sent as a photo. The bank account that quietly changed. Even hidden instructions, written for the AI.", "gap_after": 0.8 },
+    { "id": "pays", "text": "It pays small suppliers on time, every time, and puts your cash to work.", "gap_after": 0.7 },
+    { "id": "suppliers", "text": "Suppliers always know where their money is. In English, or in Hindi.", "gap_after": 0.7 },
+    { "id": "audit", "text": "And every decision is sealed, in a tamper-evident audit trail.", "gap_after": 1.3 },
+    { "id": "close", "text": "Duly. Every invoice, duly done.", "gap_after": 3.5 }
+  ]
+}

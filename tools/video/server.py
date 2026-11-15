@@ -29,6 +29,7 @@ def main() -> int:
         DEMO_MODE="true",
         LOGIN_RATE_LIMIT="1000/minute",
         DEMO_LOGIN_RATE_LIMIT="1000/minute",
+        UPLOAD_RATE_LIMIT="1000/minute",  # staging scripts upload many files from one address
     )
     # Same staging as the hosted demo: history + the scenarios that are not uploaded on camera.
     subprocess.run([sys.executable, str(ROOT / "scripts" / "demo_prestage.py"), "--reset", "--ids", PRESTAGE],
