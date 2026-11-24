@@ -21,9 +21,10 @@ const OUT = path.join(ROOT, "media", "linkedin");
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? "msedge" });
 const jobs = [["hero", 1080, 1350, "1-duly-every-invoice.png"], ["fraud", 1080, 1350, "2-duly-catches-what-slips-through.png"],
-  ["suppliers", 1080, 1350, "3-duly-suppliers-paid-on-time.png"], ["thumb", 1920, 1080, "video-thumbnail.png"]];
-for (const [id, w, h, name] of jobs) {
-  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
+  ["suppliers", 1080, 1350, "3-duly-suppliers-paid-on-time.png"], ["thumb", 1920, 1080, "video-thumbnail.png"],
+  ["cover", 2000, 1600, "project-cover.png", 1]];
+for (const [id, w, h, name, scale = 2] of jobs) {
+  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: scale });
   await page.goto(`http://localhost:5298/tools/film/posters.html?id=${id}`);
   await page.evaluate(() => window.READY);
   await page.waitForTimeout(300);

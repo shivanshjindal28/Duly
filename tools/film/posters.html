@@ -107,6 +107,18 @@ section.on { display: block; }
   </div>
 </div></section>
 
+<!-- 5. LinkedIn project cover (2000 x 1600, 5:4) -->
+<section id="cover"><div class="art" style="width:2000px;height:1600px;background:radial-gradient(ellipse 75% 65% at 50% 58%, #10285a 0%, #060c1b 55%, var(--ink) 100%)">
+  <div class="glow" style="width:1500px;height:700px;background:rgba(19,163,198,.24);left:250px;top:760px"></div>
+  <div style="position:absolute;left:0;right:0;top:150px;display:flex;flex-direction:column;align-items:center">
+    <div style="display:flex;align-items:center;gap:24px"><svg style="width:104px;height:104px"><use href="#logo" /></svg><span style="font-weight:600;font-size:120px;letter-spacing:-0.045em">Duly</span></div>
+    <div class="h" style="font-size:58px;margin-top:22px">Every invoice, <b class="grad">duly done.</b></div>
+  </div>
+  <div class="laptop" style="left:260px;top:560px;width:1480px;transform:perspective(2600px) rotateX(10deg);transform-origin:50% 100%">
+    <div class="screen" style="padding:22px 22px 26px;border-radius:26px 26px 6px 6px"><div class="vp"><img src="/media/film/shots/invoice-s01.png" alt="" /></div></div><div class="base" style="height:28px;margin:0 -96px"></div>
+  </div>
+</div></section>
+
 <script>
 const id = new URLSearchParams(location.search).get("id") || "hero";
 document.getElementById(id).classList.add("on");
