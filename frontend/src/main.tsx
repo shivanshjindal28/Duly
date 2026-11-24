@@ -11,6 +11,7 @@ import "@fontsource/ibm-plex-sans-devanagari/400.css";
 import "@fontsource/ibm-plex-sans-devanagari/600.css";
 import "./i18n";
 import { applyTokens } from "./theme/tokens";
+import { wakeBackend } from "./lib/wake";
 import "./theme/global.css";
 import "./theme/common.css";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
@@ -105,6 +106,7 @@ const router = createBrowserRouter([
   },
 ]);
 
+wakeBackend(); // hosted demo: start waking the sleeping API right away
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
